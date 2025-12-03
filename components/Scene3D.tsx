@@ -180,7 +180,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ analyser }) => {
     };
   }, [analyser]);
 
-  return <div ref={mountRef} className="fixed inset-0 z-0 pointer-events-none" />;
+  return <div ref={mountRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
 };
 
 export default Scene3D;

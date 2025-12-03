@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { View, BlogPost, DirectoryNode } from './types';
 import { APP_TITLE, AUTHOR_NAME, MOCK_POSTS, PROJECTS, BGM_URL, BG_MEDIA_URL, GITHUB_USERNAME, GITHUB_REPO } from './constants';
@@ -285,10 +285,10 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({ content }) => {
             }
 
             // C. Headers
-            const headerMatch = line.match(/^(#{1,6})\s+(.*)/);
+            const headerMatch = line.match(/^((#{1,6})\s+(.*))/);
             if (headerMatch) {
-               const level = headerMatch[1].length;
-               const text = headerMatch[2];
+               const level = headerMatch[2].length;
+               const text = headerMatch[3];
                const content = parseInline(text);
                
                switch (level) {
@@ -566,7 +566,15 @@ const App: React.FC = () => {
   // Ensure video plays
   useEffect(() => {
       if (videoRef.current) {
-          videoRef.current.play().catch(e => console.log("Video autoplay failed", e));
+          // Attempt to play immediately
+          const playVideo = async () => {
+              try {
+                  await videoRef.current?.play();
+              } catch(e) {
+                  console.log("Autoplay prevented by browser interaction policy.");
+              }
+          };
+          playVideo();
       }
   }, []);
 
@@ -970,37 +978,42 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen text-slate-200 selection:bg-amber-400 selection:text-black font-sans relative">
       
-      {/* Dynamic Background (Video/Gif) */}
-      <div className="fixed inset-0 overflow-hidden">
+      {/* --- Background Stack --- */}
+      
+      {/* 1. Dynamic Background Video (Bottom) */}
+      <div className="fixed inset-0 overflow-hidden bg-slate-950 z-0">
         {BG_MEDIA_URL.endsWith('.mp4') ? (
             <video 
                 ref={videoRef}
                 autoPlay 
                 loop 
                 muted 
-                playsInline 
-                className="w-full h-full object-cover opacity-70 z-0"
+                playsInline
+                className="w-full h-full object-cover"
             >
                 <source src={BG_MEDIA_URL} type="video/mp4" />
             </video>
         ) : (
             <img 
                 src={BG_MEDIA_URL} 
-                className="w-full h-full object-cover opacity-70 z-0"
+                className="w-full h-full object-cover opacity-70"
                 alt="Magic Background" 
             />
         )}
       </div>
 
-      {/* 3D Particles Layer */}
-      <Scene3D analyser={analyserRef.current || undefined} />
+      {/* 2. 3D Particles Layer (Middle) */}
+      <div className="fixed inset-0 z-10 pointer-events-none">
+         <Scene3D analyser={analyserRef.current || undefined} />
+      </div>
       
-      {/* Dark overlay for text readability over the background - Hidden on Home */}
-      <div className={`fixed inset-0 z-0 pointer-events-none transition-colors duration-1000 ${
+      {/* 3. Dark Overlay (Top of Backgrounds) - Hidden on Home */}
+      <div className={`fixed inset-0 z-20 pointer-events-none transition-colors duration-1000 ${
         currentView === View.HOME ? 'bg-transparent' : 'bg-slate-950/60'
       }`} />
 
-      <div className="relative z-10 flex flex-col min-h-screen">
+      {/* --- Main Content (Above All Backgrounds) --- */}
+      <div className="relative z-30 flex flex-col min-h-screen">
         {renderNav()}
         
         {/* Updated Main Container with Flex logic */}
