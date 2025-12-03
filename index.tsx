@@ -43,9 +43,9 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-8 text-center">
-            <h1 className="text-4xl font-serif text-amber-500 mb-4">A Magical Mishap Occurred</h1>
+            <h1 className="text-4xl font-serif text-amber-500 mb-4">发生了魔法事故</h1>
             <p className="text-slate-300 mb-6 max-w-lg">
-                Something went wrong while casting the rendering spell. 
+                渲染咒语执行时出了问题。
                 <br/>
                 <span className="text-xs font-mono text-red-300 mt-2 block bg-black/30 p-2 rounded">
                     {this.state.error?.message}
@@ -55,7 +55,7 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
                 onClick={() => { localStorage.clear(); window.location.reload(); }}
                 className="px-6 py-2 bg-purple-600 rounded hover:bg-purple-500 transition-colors"
             >
-                Reset & Reload Grimoire
+                重置并重新加载魔法书
             </button>
         </div>
       );
@@ -660,11 +660,11 @@ const App: React.FC = () => {
         <div className="flex items-center gap-4">
             <div className="hidden md:flex gap-2 bg-slate-950/40 p-1 rounded-full border border-white/5">
             {[
-                { id: View.HOME, icon: Home, label: 'Home' },
-                { id: View.BLOG, icon: Book, label: 'Grimoire' },
-                { id: View.PORTFOLIO, icon: Code, label: 'Works' },
-                { id: View.MUSIC, icon: Music, label: 'Melodies' },
-                { id: View.ABOUT, icon: User, label: 'The Witch' },
+                { id: View.HOME, icon: Home, label: '首页' },
+                { id: View.BLOG, icon: Book, label: '魔法书' },
+                { id: View.PORTFOLIO, icon: Code, label: '作品' },
+                { id: View.MUSIC, icon: Music, label: '旋律' },
+                { id: View.ABOUT, icon: User, label: '关于' },
             ].map((item) => (
                 <button
                 key={item.id}
@@ -688,7 +688,7 @@ const App: React.FC = () => {
                     ? 'bg-amber-500/20 border-amber-500 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.3)] animate-pulse' 
                     : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-200'
                 }`}
-                title="Background Music"
+                title="背景音乐"
             >
                 {isMusicPlaying ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
@@ -716,10 +716,10 @@ const App: React.FC = () => {
           {userProfile?.name || AUTHOR_NAME}
         </h1>
         <p className="text-xl md:text-2xl text-slate-200 max-w-2xl mx-auto mb-10 font-light leading-relaxed drop-shadow-md text-center">
-          {userProfile?.bio || "\"A traveler weaving code and colors into new worlds.\""}
+          {userProfile?.bio || "\"一位用代码和色彩编织新世界的旅行者。\""}
           <br/>
           <span className="text-base text-amber-200/90 mt-3 block font-mono bg-black/20 inline-block px-4 py-1 rounded-full border border-amber-500/20">
-            Unity • Graphics • C++ • Piano
+            Unity • 图形学 • C++ • 钢琴
           </span>
         </p>
 
@@ -728,13 +728,13 @@ const App: React.FC = () => {
             onClick={() => setCurrentView(View.PORTFOLIO)}
             className="px-8 py-3 bg-purple-600/90 hover:bg-purple-500 text-white rounded-lg font-bold shadow-[0_0_20px_rgba(124,58,237,0.4)] transition-all hover:scale-105 flex items-center gap-2 border border-purple-400/50 backdrop-blur-sm"
           >
-            <Code size={20} /> View Projects
+            <Code size={20} /> 查看项目
           </button>
           <button 
             onClick={() => setCurrentView(View.BLOG)}
             className="px-8 py-3 bg-slate-100/10 hover:bg-slate-100/20 text-slate-100 rounded-lg font-bold border border-white/20 transition-all hover:scale-105 flex items-center gap-2 backdrop-blur-md"
           >
-            <Book size={20} /> Read Grimoire
+            <Book size={20} /> 阅读魔法书
           </button>
         </div>
       </div>
@@ -750,13 +750,13 @@ const App: React.FC = () => {
                  {/* Rate Limit Warning */}
                  {isRateLimited && (
                     <div className="absolute top-0 left-0 right-0 bg-red-900/80 text-white text-xs py-1 animate-pulse border-b border-red-500">
-                        Warning: Magical energy depleted (GitHub Rate Limit). Displaying cached/mock spells.
+                        警告：魔法能量耗尽（GitHub 速率限制）。正在显示缓存/模拟内容。
                     </div>
                 )}
                 <h2 className="text-4xl font-serif font-bold text-white mb-2 flex items-center justify-center gap-3 mt-2">
-                    <Book className="text-amber-400"/> The Witch's Grimoire
+                    <Book className="text-amber-400"/> 魔女的魔法书
                 </h2>
-                <p className="text-slate-300">Notes on rendering, logic, and the arcane arts.</p>
+                <p className="text-slate-300">关于渲染、逻辑和神秘艺术的笔记。</p>
             </div>
         )}
 
@@ -766,17 +766,17 @@ const App: React.FC = () => {
             <div className={`md:col-span-3 bg-slate-900/80 backdrop-blur-md rounded-xl border border-white/10 p-4 h-fit max-h-[80vh] overflow-y-auto sticky top-24 ${selectedPost ? 'hidden md:block' : 'block'}`}>
                 <div className="flex justify-between items-center mb-4 px-2 border-b border-white/10 pb-2">
                     <h3 className="font-bold text-slate-200 flex items-center gap-2">
-                        <Folder size={16} className="text-amber-400" /> Archives
+                        <Folder size={16} className="text-amber-400" /> 档案库
                     </h3>
-                    <button onClick={handleRefresh} title="Refresh Content" className="p-1.5 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white">
+                    <button onClick={handleRefresh} title="刷新内容" className="p-1.5 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white">
                         <RefreshCcw size={14} className={isLoadingPosts ? 'animate-spin' : ''} />
                     </button>
                 </div>
 
                 {blogDirectory.length === 0 && !isLoadingPosts ? (
                     <div className="text-slate-500 text-sm px-2 italic">
-                         No spells found... <br/>
-                         <span className="text-[10px] opacity-70">Check connection or refresh.</span>
+                         未找到咒语... <br/>
+                         <span className="text-[10px] opacity-70">请检查连接或刷新。</span>
                     </div>
                 ) : null}
                 
@@ -793,12 +793,12 @@ const App: React.FC = () => {
             <div className="md:col-span-9">
                 {isLoadingPosts && posts.length === 0 ? (
                     <div className="text-center text-amber-400 py-20 bg-slate-900/50 rounded-xl border border-white/5">
-                        <CustomSparkleIcon className="animate-spin inline-block mr-2" /> Summoning scrolls...
+                        <CustomSparkleIcon className="animate-spin inline-block mr-2" /> 正在召唤卷轴...
                     </div>
                 ) : isFetchingContent ? (
                     <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 rounded-xl border border-white/5 h-[60vh]">
                         <Loader2 className="animate-spin text-purple-400 mb-4" size={48} />
-                        <span className="text-slate-300">Deciphering runes...</span>
+                        <span className="text-slate-300">正在解读符文...</span>
                     </div>
                 ) : selectedPost ? (
                     <article className="bg-slate-900/80 border border-white/10 rounded-2xl p-8 md:p-12 shadow-2xl backdrop-blur-md min-h-[60vh] animate-fade-in-up">
@@ -806,7 +806,7 @@ const App: React.FC = () => {
                             onClick={() => setSelectedPost(null)}
                             className="mb-6 flex items-center text-slate-300 hover:text-amber-400 transition-colors bg-black/20 px-4 py-2 rounded-full w-fit backdrop-blur-sm text-sm"
                         >
-                            <ChevronRight className="rotate-180 mr-1" size={14} /> Back
+                            <ChevronRight className="rotate-180 mr-1" size={14} /> 返回
                         </button>
                         
                         <header className="mb-8 border-b border-white/10 pb-8">
@@ -863,9 +863,9 @@ const App: React.FC = () => {
     <div className="max-w-6xl mx-auto py-12 px-4 animate-fade-in-up relative z-10">
       <div className="text-center mb-12 bg-black/30 p-6 rounded-2xl backdrop-blur-sm border border-white/5">
         <h2 className="text-3xl font-serif font-bold text-white mb-2 flex items-center justify-center gap-2">
-            <CustomSparkleIcon /> Magical Works
+            <CustomSparkleIcon /> 魔法作品
         </h2>
-        <p className="text-slate-300">Artifacts created with code and caffeine.</p>
+        <p className="text-slate-300">用代码和咖啡创造的神器。</p>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -917,18 +917,17 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex-1">
-              <h2 className="text-4xl font-serif font-bold text-white mb-4">About the Traveler</h2>
+              <h2 className="text-4xl font-serif font-bold text-white mb-4">关于旅行者</h2>
               <div className="space-y-4 text-slate-300 leading-relaxed font-sans">
                 {userProfile?.bio ? (
                     <p>{userProfile.bio}</p>
                 ) : (
                     <>
                     <p>
-                        Hello! I am a student passionate about <strong className="text-amber-300">Computer Graphics</strong>, <strong className="text-amber-300">Unity</strong>, and <strong className="text-amber-300">Game Engine Architecture</strong>.
+                        你好！我是一名对 <strong className="text-amber-300">计算机图形学</strong>、<strong className="text-amber-300">Unity</strong> 和 <strong className="text-amber-300">游戏引擎架构</strong> 充满热情的学生。
                     </p>
                     <p>
-                        When I'm not debugging shaders or optimizing draw calls, I spend my time playing the piano or painting landscapes inspired by my favorite anime, 
-                        <em className="text-purple-300"> Wandering Witch: The Journey of Elaina</em>.
+                        当我不在调试着色器或优化绘制调用时，我会花时间弹钢琴或绘制受我最喜欢的动漫《<em className="text-purple-300">魔女之旅</em>》启发的风景画。
                     </p>
                     </>
                 )}
@@ -940,29 +939,29 @@ const App: React.FC = () => {
                         <Github className="text-amber-400" />
                         <div>
                             <h4 className="font-bold text-slate-200 text-sm">GitHub</h4>
-                            <p className="text-xs text-slate-500">View Source</p>
+                            <p className="text-xs text-slate-500">查看源码</p>
                         </div>
                     </a>
                 )}
                 <div className="bg-slate-950/50 p-4 rounded-lg border border-white/10 flex items-center gap-3">
                    <Terminal className="text-amber-400" />
                    <div>
-                     <h4 className="font-bold text-slate-200 text-sm">Languages</h4>
+                     <h4 className="font-bold text-slate-200 text-sm">编程语言</h4>
                      <p className="text-xs text-slate-500">C++, C#, HLSL, Python</p>
                    </div>
                 </div>
                 <div className="bg-slate-950/50 p-4 rounded-lg border border-white/10 flex items-center gap-3">
                    <Palette className="text-amber-400" />
                    <div>
-                     <h4 className="font-bold text-slate-200 text-sm">Tools</h4>
+                     <h4 className="font-bold text-slate-200 text-sm">工具</h4>
                      <p className="text-xs text-slate-500">Unity, Blender, Photoshop</p>
                    </div>
                 </div>
                  <div className="bg-slate-950/50 p-4 rounded-lg border border-white/10 flex items-center gap-3">
                    <Music className="text-amber-400" />
                    <div>
-                     <h4 className="font-bold text-slate-200 text-sm">Hobby</h4>
-                     <p className="text-xs text-slate-500">Piano Improvisation</p>
+                     <h4 className="font-bold text-slate-200 text-sm">爱好</h4>
+                     <p className="text-xs text-slate-500">钢琴即兴演奏</p>
                    </div>
                 </div>
               </div>
@@ -975,15 +974,15 @@ const App: React.FC = () => {
   const renderMusic = () => (
     <div className="max-w-5xl mx-auto py-12 px-4 animate-fade-in-up relative z-10">
       <div className="text-center mb-8 bg-black/30 p-6 rounded-2xl backdrop-blur-sm border border-white/5">
-        <h2 className="text-3xl font-serif font-bold text-white mb-2">Bardic Composition</h2>
-        <p className="text-slate-300">Sketch a melody. Even a witch needs a break from studying.</p>
+        <h2 className="text-3xl font-serif font-bold text-white mb-2">吟游诗人作曲</h2>
+        <p className="text-slate-300">创作一段旋律。即使是魔女也需要从学习中休息一下。</p>
       </div>
       
       <PianoEditor className="w-full" />
       
       <div className="mt-8 text-center max-w-2xl mx-auto bg-slate-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
         <p className="text-slate-400 italic text-sm">
-          "Magic is not just about casting spells, it is about listening to the rhythm of the world."
+          "魔法不仅仅是施展咒语，更是聆听世界的节奏。"
         </p>
       </div>
     </div>
@@ -1042,10 +1041,10 @@ const App: React.FC = () => {
         <MagicChat />
         
         <footer className="bg-slate-950/80 backdrop-blur-md border-t border-white/5 py-8 text-center text-slate-500 text-sm mt-auto">
-            <p>© {new Date().getFullYear()} {userProfile?.name || AUTHOR_NAME}. Inspired by Majo no Tabitabi.</p>
+            <p>© {new Date().getFullYear()} {userProfile?.name || AUTHOR_NAME}. 灵感来自《魔女之旅》。</p>
             <div className="flex justify-center gap-4 mt-2">
             <a href={userProfile?.html_url || "#"} className="hover:text-amber-400 transition-colors">GitHub</a>
-            <a href="#" className="hover:text-amber-400 transition-colors">Twitter</a>
+            <a href="#" className="hover:text-amber-400 transition-colors">推特</a>
             <a href="#" className="hover:text-amber-400 transition-colors">ArtStation</a>
             </div>
         </footer>
