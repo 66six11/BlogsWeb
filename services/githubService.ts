@@ -18,6 +18,16 @@ const getHeaders = (): HeadersInit => {
 };
 
 // --- Caching Helpers ---
+export const clearBlogCache = () => {
+    if (typeof window === 'undefined') return;
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith(CACHE_PREFIX)) {
+            localStorage.removeItem(key);
+        }
+    });
+    console.log("Magic cache cleared.");
+};
+
 const getCache = <T>(key: string): T | null => {
     if (typeof window === 'undefined') return null;
     const json = localStorage.getItem(CACHE_PREFIX + key);

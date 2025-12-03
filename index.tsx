@@ -7,11 +7,12 @@ import PianoEditor from './components/PianoEditor';
 import MagicChat from './components/MagicChat';
 import Scene3D from './components/Scene3D';
 import { CustomSparkleIcon, CustomWitchIcon } from './components/CustomIcons';
-import { fetchBlogPosts, fetchUserProfile, fetchBlogIndex, fetchPostContent, GitHubUser } from './services/githubService';
+import { fetchBlogPosts, fetchUserProfile, fetchBlogIndex, fetchPostContent, clearBlogCache, GitHubUser } from './services/githubService';
 import { 
   Book, Code, Music, User, Home, Feather, 
   ChevronRight, ChevronDown, Star, Coffee, Palette, Terminal,
   Volume2, VolumeX, Github, Folder, FileText, Loader2,
+  RefreshCcw,
   // Callout & Task Icons
   Info, AlertTriangle, CheckCircle, XCircle, HelpCircle, 
   Bug, Quote, CheckSquare, Square,
@@ -471,8 +472,7 @@ const App: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // --- Initialization Effects ---
-  useEffect(() => {
-    const loadData = async () => {
+  const loadData = async () => {
       setIsLoadingPosts(true);
       // Fetch User
       const profile = await fetchUserProfile();
@@ -483,20 +483,25 @@ const App: React.FC = () => {
       
       if (tree.length > 0) {
           setBlogDirectory(tree);
-          // Pre-load a few recent posts for the 'Recent' list if needed, 
-          // or just load the first 5 content-wise for the display
           const recentFiles = allFiles.slice(0, 5);
           const loadedPosts = await Promise.all(recentFiles.map(f => fetchPostContent(f.path)));
           setPosts(loadedPosts.filter((p): p is BlogPost => p !== null));
       } else {
           setPosts(MOCK_POSTS);
-          // If mock, we might want to fake a tree structure from MOCK_POSTS for consistency,
-          // but for now, if GitHub fails, we just show the flat list of mock posts.
       }
       setIsLoadingPosts(false);
-    };
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
+
+  const handleRefresh = async () => {
+      clearBlogCache();
+      setBlogDirectory([]);
+      setPosts([]);
+      await loadData();
+  };
 
   // Initialize Audio
   useEffect(() => {
@@ -641,8 +646,8 @@ const App: React.FC = () => {
             alt="Avatar" 
             className="w-full h-full rounded-full border-4 border-slate-900 relative z-10 bg-slate-800 object-cover" 
           />
-           <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20">
-              <CustomSparkleIcon size={36} className="text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-float" />
+           <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-20">
+              <CustomSparkleIcon size={42} className="text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-float" />
           </div>
         </div>
 
@@ -692,9 +697,15 @@ const App: React.FC = () => {
             
             {/* Sidebar (Tree) - Hidden on mobile if post is selected, or collapsible */}
             <div className={`md:col-span-3 bg-slate-900/80 backdrop-blur-md rounded-xl border border-white/10 p-4 h-fit max-h-[80vh] overflow-y-auto sticky top-24 ${selectedPost ? 'hidden md:block' : 'block'}`}>
-                <h3 className="font-bold text-slate-200 mb-4 px-2 flex items-center gap-2 border-b border-white/10 pb-2">
-                    <Folder size={16} className="text-amber-400" /> Archives
-                </h3>
+                <div className="flex justify-between items-center mb-4 px-2 border-b border-white/10 pb-2">
+                    <h3 className="font-bold text-slate-200 flex items-center gap-2">
+                        <Folder size={16} className="text-amber-400" /> Archives
+                    </h3>
+                    <button onClick={handleRefresh} title="Refresh Content" className="p-1.5 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white">
+                        <RefreshCcw size={14} className={isLoadingPosts ? 'animate-spin' : ''} />
+                    </button>
+                </div>
+
                 {blogDirectory.length === 0 && !isLoadingPosts ? (
                     <div className="text-slate-500 text-sm px-2 italic">No spells found...</div>
                 ) : null}

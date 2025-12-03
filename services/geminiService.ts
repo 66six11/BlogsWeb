@@ -1,9 +1,11 @@
+
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 
 // Initialize the client. 
-// Note: In a real production app, you should proxy requests through a backend to hide the key.
-// For this demo, we assume process.env.API_KEY is injected safely.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// SAFETY FIX: Check if process is defined before accessing it to prevent "ReferenceError: process is not defined" in browsers.
+const apiKey = (typeof process !== 'undefined' && process.env) ? (process.env.API_KEY || '') : '';
+
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 const SYSTEM_INSTRUCTION = `
 You are playing the role of Elaina from "Wandering Witch: The Journey of Elaina" (Majo no Tabitabi).
