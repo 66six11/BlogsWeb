@@ -1,24 +1,14 @@
 
 import { BlogPost, DirectoryNode } from '../types';
-import { GITHUB_USERNAME, GITHUB_REPO, GITHUB_TOKEN } from '../constants';
+import { GITHUB_USERNAME, GITHUB_REPO } from '../constants';
 import { BLOG_INCLUDED_FOLDERS, EXCLUDED_PATHS, EXCLUDED_FILES } from '../config';
 
-const BASE_URL = 'https://api.github.com';
 const CACHE_PREFIX = 'gh_cache_';
 const CACHE_DURATION = 15 * 60 * 1000; // 15 Minutes Cache
 
-const getHeaders = (): HeadersInit => {
-  const h: Record<string, string> = {
-    'Accept': 'application/vnd.github.v3+json',
-  };
-  if (GITHUB_TOKEN && GITHUB_TOKEN !== "undefined" && GITHUB_TOKEN.length > 0) {
-    h['Authorization'] = `Bearer ${GITHUB_TOKEN}`;
-    console.log("🔐 GitHub Token present. Using authenticated request.");
-  } else {
-    console.log("⚠️ No GitHub Token found. Using unauthenticated request (Rate Limit: 60/hr).");
-  }
-  return h;
-};
+const getHeaders = (): HeadersInit => ({
+  'Accept': 'application/json',
+});
 
 // --- Caching Helpers ---
 export const clearBlogCache = () => {
@@ -71,7 +61,7 @@ export const fetchUserProfile = async (): Promise<GitHubUser | null> => {
   if (cached) return cached;
 
   try {
-    const res = await fetch(`${BASE_URL}/users/${GITHUB_USERNAME}`, { headers: getHeaders() });
+    const res = await fetch(`/api/github/user?username=${encodeURIComponent(GITHUB_USERNAME)}`, { headers: getHeaders() });
     
     // Rate Limit or Not Found
     if (!res.ok) {
@@ -187,7 +177,7 @@ export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFile
 
     try {
         const headers = getHeaders();
-        const repoRes = await fetch(`${BASE_URL}/repos/${GITHUB_USERNAME}/${GITHUB_REPO}`, { headers });
+        const repoRes = await fetch(`/api/github/repo?owner=${encodeURIComponent(GITHUB_USERNAME)}&repo=${encodeURIComponent(GITHUB_REPO)}`, { headers });
         if (!repoRes.ok) {
             console.warn(`Repo fetch failed: ${repoRes.status}`);
             return { tree: [], allFiles: [], error: true }; // Return error flag
@@ -196,8 +186,7 @@ export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFile
         const repoData = await repoRes.json();
         const defaultBranch = repoData.default_branch || 'main';
 
-        const treeUrl = `${BASE_URL}/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/git/trees/${defaultBranch}?recursive=1`;
-        const treeRes = await fetch(treeUrl, { headers });
+        const treeRes = await fetch(`/api/github/tree?owner=${encodeURIComponent(GITHUB_USERNAME)}&repo=${encodeURIComponent(GITHUB_REPO)}&branch=${encodeURIComponent(defaultBranch)}`, { headers });
         if (!treeRes.ok) {
              console.warn(`Tree fetch failed: ${treeRes.status}`);
              return { tree: [], allFiles: [], error: true };
