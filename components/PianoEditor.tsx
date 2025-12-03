@@ -110,13 +110,13 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     <div className={`bg-slate-900/80 backdrop-blur-md border border-purple-500/30 rounded-xl p-6 shadow-2xl ${className}`}>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-serif text-purple-300 flex items-center gap-2">
-          <span className="text-2xl">♪</span> Magic Score Editor
+          <span className="text-2xl">♪</span> 魔法乐谱编辑器
         </h3>
         <div className="flex gap-2">
            <button 
             onClick={() => setNotes([])}
             className="p-2 rounded-full hover:bg-red-500/20 text-red-400 transition-colors"
-            title="Clear"
+            title="清除"
           >
             <Trash2 size={20} />
           </button>
@@ -129,7 +129,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
             }`}
           >
             {isPlaying ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-            {isPlaying ? 'Stop' : 'Play'}
+            {isPlaying ? '停止' : '播放'}
           </button>
         </div>
       </div>
@@ -197,7 +197,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
           </div>
         </div>
       </div>
-      <p className="text-xs text-slate-500 mt-2 text-right">Click grid to add/remove notes. Audio requires user interaction first.</p>
+      <p className="text-xs text-slate-500 mt-2 text-right">点击网格添加/移除音符。需要先进行用户交互才能播放音频。</p>
     </div>
   );
 };

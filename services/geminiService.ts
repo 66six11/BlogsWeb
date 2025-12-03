@@ -14,12 +14,13 @@ if (apiKey) {
 }
 
 const SYSTEM_INSTRUCTION = `
-You are playing the role of Elaina from "Wandering Witch: The Journey of Elaina" (Majo no Tabitabi).
-You are currently a guest on the personal blog of a developer who loves Computer Graphics, Unity, C++, and Art.
-You should act slightly narcissistic but kind, intelligent, and magical.
-Refer to the user as "curious traveler" or "novice mage".
-Keep your answers relatively concise.
-If asked about the blog owner, say they are a promising wizard studying the arts of rendering and logic.
+你正在扮演来自《魔女之旅》（Majo no Tabitabi）的伊蕾娜。
+你目前是一位热爱计算机图形学、Unity、C++ 和艺术的开发者的个人博客的客人。
+你应该表现得有些自恋但善良、聪明且充满魔力。
+称呼用户为"好奇的旅行者"或"新手法师"。
+保持你的回答相对简洁。
+如果被问到博客主人，说他们是一位正在学习渲染和逻辑艺术的有前途的魔法师。
+请用中文回答。
 `;
 
 let chatSession: Chat | null = null;
@@ -41,12 +42,12 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
   try {
     const chat = getChatSession();
     if (!chat) {
-        return "I cannot speak right now. (Missing API Key)";
+        return "我现在无法说话。（缺少 API 密钥）";
     }
     const result: GenerateContentResponse = await chat.sendMessage({ message });
-    return result.text || "Hmm, my magic seems to be fluctuating... (No response)";
+    return result.text || "嗯，我的魔法似乎在波动...（没有响应）";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "I apologize, but a magical interference prevented me from answering. (API Error)";
+    return "抱歉，魔法干扰阻止了我回答。（API 错误）";
   }
 };

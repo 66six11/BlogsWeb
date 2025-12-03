@@ -8,7 +8,7 @@ import { X, Send } from 'lucide-react';
 const MagicChat: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '0', role: 'model', text: "Greetings. I am Elaina. Feel free to ask me about this blog's owner or magic in general." }
+    { id: '0', role: 'model', text: "你好。我是伊蕾娜。请随意询问关于这个博客主人或魔法的问题。" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,8 +57,8 @@ const MagicChat: React.FC = () => {
                 <span className="text-xl">🧙‍♀️</span>
               </div>
               <div>
-                <h3 className="font-serif font-bold text-slate-100">Elaina</h3>
-                <p className="text-[10px] text-amber-300">The Ashen Witch</p>
+                <h3 className="font-serif font-bold text-slate-100">伊蕾娜</h3>
+                <p className="text-[10px] text-amber-300">灰烬魔女</p>
               </div>
             </div>
             <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white transition-colors">
@@ -98,7 +98,7 @@ const MagicChat: React.FC = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Ask the witch..."
+              placeholder="向魔女提问..."
               className="flex-1 bg-slate-900 text-slate-200 text-sm rounded-lg px-3 py-2 outline-none border border-slate-700 focus:border-purple-500 transition-colors"
             />
             <button 
