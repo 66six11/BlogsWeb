@@ -14,7 +14,8 @@ import {
 import PianoEditor from './components/PianoEditor';
 import MagicChat from './components/MagicChat';
 import Scene3D from './components/Scene3D';
-import {CustomSparkleIcon, CustomWitchIcon} from './components/CustomIcons';
+import {CustomSparkleIcon, CustomWitchIcon,HexagramIcon} from './components/CustomIcons';
+
 import {
     fetchBlogPosts,
     fetchUserProfile,
@@ -733,9 +734,8 @@ const App: React.FC = () => {
                         setSelectedPost(null);
                     }}
                 >
-                    <div
-                        className="bg-gradient-to-br from-purple-600 to-indigo-600 p-1.5 rounded-lg group-hover:rotate-12 transition-transform shadow-[0_0_10px_rgba(124,58,237,0.3)]">
-                        <Feather className="text-white" size={20}/>
+                    <div className=" from-purple-600 to-amber-500 p-1. 5 rounded-lg group-hover:rotate-[30deg] transition-transform shadow-[0_0_15px_rgba(251,191,36,0. 4)]">
+                        <HexagramIcon size={48}/>
                     </div>
                     <span
                         className="font-serif font-bold text-xl tracking-tight text-slate-100 group-hover:text-amber-200 transition-colors drop-shadow-md">

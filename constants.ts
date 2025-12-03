@@ -31,7 +31,7 @@ export const getEnv = (key: string): string => {
 };
 
 export const APP_TITLE = "魔法开发者";
-export const AUTHOR_NAME = "伊蕾娜的门徒";
+export const AUTHOR_NAME = "66six11";
 
 // GitHub Configuration
 export const GITHUB_USERNAME = "66six11"; 
