@@ -1,11 +1,17 @@
 
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
+import { getEnv } from "../constants";
 
-// Initialize the client. 
-// SAFETY FIX: Check if process is defined before accessing it to prevent "ReferenceError: process is not defined" in browsers.
-const apiKey = (typeof process !== 'undefined' && process.env) ? (process.env.API_KEY || '') : '';
+// Initialize the client safely
+const apiKey = getEnv('API_KEY');
 
-const ai = new GoogleGenAI({ apiKey: apiKey });
+// Only initialize AI if key is present to avoid errors on init
+let ai: GoogleGenAI | null = null;
+if (apiKey) {
+    ai = new GoogleGenAI({ apiKey: apiKey });
+} else {
+    console.warn("Gemini API Key is missing. MagicChat will not function.");
+}
 
 const SYSTEM_INSTRUCTION = `
 You are playing the role of Elaina from "Wandering Witch: The Journey of Elaina" (Majo no Tabitabi).
@@ -18,7 +24,8 @@ If asked about the blog owner, say they are a promising wizard studying the arts
 
 let chatSession: Chat | null = null;
 
-export const getChatSession = (): Chat => {
+export const getChatSession = (): Chat | null => {
+  if (!ai) return null;
   if (!chatSession) {
     chatSession = ai.chats.create({
       model: 'gemini-2.5-flash',
@@ -33,6 +40,9 @@ export const getChatSession = (): Chat => {
 export const sendMessageToGemini = async (message: string): Promise<string> => {
   try {
     const chat = getChatSession();
+    if (!chat) {
+        return "I cannot speak right now. (Missing API Key)";
+    }
     const result: GenerateContentResponse = await chat.sendMessage({ message });
     return result.text || "Hmm, my magic seems to be fluctuating... (No response)";
   } catch (error) {

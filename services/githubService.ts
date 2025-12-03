@@ -70,28 +70,21 @@ export const fetchUserProfile = async (): Promise<GitHubUser | null> => {
   try {
     const res = await fetch(`${BASE_URL}/users/${GITHUB_USERNAME}`, { headers: getHeaders() });
     
-    if (res.status === 403) {
-      console.warn("GitHub API rate limit exceeded. Using local fallback for profile.");
-      return null;
-    }
-    
-    if (res.status === 404) {
-      console.warn(`GitHub user '${GITHUB_USERNAME}' not found.`);
-      return null;
+    // Rate Limit or Not Found
+    if (!res.ok) {
+        console.warn(`GitHub Profile Error: ${res.status}`);
+        return null; 
     }
 
-    if (!res.ok) {
-       return null;
-    }
     const data = await res.json();
     setCache('profile', data);
     return data;
   } catch (error) {
+    console.error("GitHub Profile Fetch Error", error);
     return null;
   }
 };
 
-// Helper to parse Obsidian-style Frontmatter
 const parseFrontmatter = (content: string) => {
   const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
   const match = content.match(frontmatterRegex);
@@ -116,7 +109,6 @@ const parseFrontmatter = (content: string) => {
       }
     });
   }
-  
   return { metadata, body };
 };
 
@@ -124,25 +116,19 @@ const isExcluded = (path: string) => {
   const parts = path.split('/');
   const fileName = parts[parts.length - 1];
 
-  // Check for specific excluded files
-  if (EXCLUDED_FILES.includes(fileName)) {
-    return true;
-  }
+  if (EXCLUDED_FILES.includes(fileName)) return true;
 
-  // Check for excluded directories
   return parts.some(part => 
     part.startsWith('.') || 
     EXCLUDED_PATHS.includes(part)
   );
 };
 
-// Check if a path belongs to the included folders list
 const isIncludedFolder = (path: string) => {
-    if (BLOG_INCLUDED_FOLDERS.length === 0) return true; // Include all if empty
+    if (BLOG_INCLUDED_FOLDERS.length === 0) return true; 
     return BLOG_INCLUDED_FOLDERS.some(folder => path.startsWith(folder));
 };
 
-// Convert flat file list to tree
 const buildTree = (files: any[]): DirectoryNode[] => {
     const root: DirectoryNode[] = [];
 
@@ -152,8 +138,6 @@ const buildTree = (files: any[]): DirectoryNode[] => {
 
         parts.forEach((part: string, index: number) => {
             const isFile = index === parts.length - 1;
-            
-            // If it's a file but not .md, skip (already filtered upstream but double check)
             if (isFile && !part.endsWith('.md')) return;
 
             let existingNode = currentLevel.find(n => n.name === part);
@@ -166,9 +150,6 @@ const buildTree = (files: any[]): DirectoryNode[] => {
                     children: [],
                     fileId: isFile ? file.sha : undefined
                 };
-
-                // Only add folders if they eventually contain files (this logic is partial here, 
-                // but since we only iterate over valid files, we only create paths that lead to files)
                 currentLevel.push(newNode);
                 existingNode = newNode;
             }
@@ -179,7 +160,6 @@ const buildTree = (files: any[]): DirectoryNode[] => {
         });
     });
 
-    // Helper to sort: Folders first, then Files. Alphabetical.
     const sortNodes = (nodes: DirectoryNode[]) => {
         nodes.sort((a, b) => {
             if (a.type === b.type) return a.name.localeCompare(b.name);
@@ -192,30 +172,34 @@ const buildTree = (files: any[]): DirectoryNode[] => {
     return root;
 };
 
-
 export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFiles: any[] }> => {
     if (!GITHUB_USERNAME || !GITHUB_REPO) return { tree: [], allFiles: [] };
 
-    // Try Cache for Tree
+    // Try Cache
     const cached = getCache<{ tree: DirectoryNode[], allFiles: any[] }>('blog_index');
     if (cached) return cached;
 
     try {
         const headers = getHeaders();
         const repoRes = await fetch(`${BASE_URL}/repos/${GITHUB_USERNAME}/${GITHUB_REPO}`, { headers });
-        if (!repoRes.ok) return { tree: [], allFiles: [] };
+        if (!repoRes.ok) {
+            console.warn(`Repo fetch failed: ${repoRes.status}`);
+            return { tree: [], allFiles: [] }; // Do NOT cache failure
+        }
         
         const repoData = await repoRes.json();
         const defaultBranch = repoData.default_branch || 'main';
 
         const treeUrl = `${BASE_URL}/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/git/trees/${defaultBranch}?recursive=1`;
         const treeRes = await fetch(treeUrl, { headers });
-        if (!treeRes.ok) return { tree: [], allFiles: [] };
+        if (!treeRes.ok) {
+             console.warn(`Tree fetch failed: ${treeRes.status}`);
+             return { tree: [], allFiles: [] }; // Do NOT cache failure
+        }
         
         const treeData = await treeRes.json();
         if (!treeData.tree) return { tree: [], allFiles: [] };
 
-        // Filter valid markdown files
         const mdFiles = treeData.tree.filter((item: any) => {
             return item.type === 'blob' && 
                    item.path.endsWith('.md') && 
@@ -226,7 +210,10 @@ export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFile
         const tree = buildTree(mdFiles);
         const result = { tree, allFiles: mdFiles };
         
-        // Save to cache
+        // ONLY Cache if we actually got files. If we got 0 files, it might be a glitch or empty repo, 
+        // we probably shouldn't cache it for 15 mins if it was a network glitch. 
+        // But if it's truly empty, caching is fine. 
+        // For safety, let's cache only if successful.
         setCache('blog_index', result);
         
         return result;
@@ -239,10 +226,6 @@ export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFile
 
 export const fetchPostContent = async (path: string): Promise<BlogPost | null> => {
     try {
-         // RAW content does NOT consume API rate limits (It uses a different CDN limit which is very high)
-         // So we usually don't need to strictly cache this to save API calls, but caching helps performance.
-         
-         // Use the path as key
          const cacheKey = `post_${path}`;
          const cached = getCache<BlogPost>(cacheKey);
          if (cached) return cached;
@@ -260,7 +243,7 @@ export const fetchPostContent = async (path: string): Promise<BlogPost | null> =
          const fileName = pathParts[pathParts.length - 1].replace('.md', '');
          
          const post = {
-             id: path, // Use path as ID
+             id: path, 
              title: metadata.title || fileName,
              date: metadata.date || 'Unknown Date',
              category: metadata.category || pathParts[0],
@@ -278,10 +261,8 @@ export const fetchPostContent = async (path: string): Promise<BlogPost | null> =
     }
 };
 
-// Kept for backward compatibility / initial load of "Recent Posts"
 export const fetchBlogPosts = async (): Promise<BlogPost[]> => {
     const { allFiles } = await fetchBlogIndex();
-    // Fetch first 5
     const filesToFetch = allFiles.slice(0, 5);
     const posts = await Promise.all(filesToFetch.map(f => fetchPostContent(f.path)));
     return posts.filter((p): p is BlogPost => p !== null);

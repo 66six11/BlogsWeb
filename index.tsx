@@ -13,7 +13,6 @@ import {
   ChevronRight, ChevronDown, Star, Coffee, Palette, Terminal,
   Volume2, VolumeX, Github, Folder, FileText, Loader2,
   RefreshCcw,
-  // Callout & Task Icons
   Info, AlertTriangle, CheckCircle, XCircle, HelpCircle, 
   Bug, Quote, CheckSquare, Square,
   ListChecks, ClipboardList
@@ -22,6 +21,46 @@ import {
 declare global {
   interface Window {
     katex: any;
+  }
+}
+
+// --- Error Boundary ---
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error("Uncaught Error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-8 text-center">
+            <h1 className="text-4xl font-serif text-amber-500 mb-4">A Magical Mishap Occurred</h1>
+            <p className="text-slate-300 mb-6 max-w-lg">
+                Something went wrong while casting the rendering spell. 
+                <br/>
+                <span className="text-xs font-mono text-red-300 mt-2 block bg-black/30 p-2 rounded">
+                    {this.state.error?.message}
+                </span>
+            </p>
+            <button 
+                onClick={() => { localStorage.clear(); window.location.reload(); }}
+                className="px-6 py-2 bg-purple-600 rounded hover:bg-purple-500 transition-colors"
+            >
+                Reset & Reload Grimoire
+            </button>
+        </div>
+      );
+    }
+    return this.props.children;
   }
 }
 
@@ -83,7 +122,6 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({ content }) => {
 
   const parseInline = (text: string) => {
     // 1. Inline Math $...$
-    // We split by $...$ first
     const parts = text.split(/(\$[^$\n]+?\$)/g);
     
     return parts.map((part, index) => {
@@ -474,22 +512,29 @@ const App: React.FC = () => {
   // --- Initialization Effects ---
   const loadData = async () => {
       setIsLoadingPosts(true);
-      // Fetch User
-      const profile = await fetchUserProfile();
-      if (profile) setUserProfile(profile);
-
-      // Fetch Blog Directory & Index
-      const { tree, allFiles } = await fetchBlogIndex();
       
-      if (tree.length > 0) {
-          setBlogDirectory(tree);
-          const recentFiles = allFiles.slice(0, 5);
-          const loadedPosts = await Promise.all(recentFiles.map(f => fetchPostContent(f.path)));
-          setPosts(loadedPosts.filter((p): p is BlogPost => p !== null));
-      } else {
+      try {
+          // Fetch User
+          const profile = await fetchUserProfile();
+          if (profile) setUserProfile(profile);
+
+          // Fetch Blog Directory & Index
+          const { tree, allFiles } = await fetchBlogIndex();
+          
+          if (tree.length > 0) {
+              setBlogDirectory(tree);
+              const recentFiles = allFiles.slice(0, 5);
+              const loadedPosts = await Promise.all(recentFiles.map(f => fetchPostContent(f.path)));
+              setPosts(loadedPosts.filter((p): p is BlogPost => p !== null));
+          } else {
+              setPosts(MOCK_POSTS);
+          }
+      } catch (e) {
+          console.error("Initialization Error", e);
           setPosts(MOCK_POSTS);
+      } finally {
+          setIsLoadingPosts(false);
       }
-      setIsLoadingPosts(false);
   };
 
   useEffect(() => {
@@ -707,7 +752,10 @@ const App: React.FC = () => {
                 </div>
 
                 {blogDirectory.length === 0 && !isLoadingPosts ? (
-                    <div className="text-slate-500 text-sm px-2 italic">No spells found...</div>
+                    <div className="text-slate-500 text-sm px-2 italic">
+                         No spells found... <br/>
+                         <span className="text-[10px] opacity-70">Check connection or refresh.</span>
+                    </div>
                 ) : null}
                 
                 {blogDirectory.length > 0 && (
@@ -980,4 +1028,8 @@ const App: React.FC = () => {
 };
 
 const root = createRoot(document.getElementById('root')!);
-root.render(<App />);
+root.render(
+    <ErrorBoundary>
+        <App />
+    </ErrorBoundary>
+);

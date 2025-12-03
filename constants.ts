@@ -1,6 +1,28 @@
 
 import { BlogPost, Project } from './types';
 
+// --- Environment Variable Helper ---
+// Safely retrieves env vars from process.env (Webpack/Node) or import.meta.env (Vite)
+// without crashing the browser if 'process' is undefined.
+export const getEnv = (key: string): string => {
+  try {
+    // 1. Try Vite (import.meta.env)
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+      // @ts-ignore
+      return import.meta.env[key];
+    }
+    
+    // 2. Try Node/Webpack (process.env)
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key];
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+  return "";
+};
+
 export const APP_TITLE = "The Wandering Dev";
 export const AUTHOR_NAME = "Elaina's Disciple";
 
@@ -8,15 +30,13 @@ export const AUTHOR_NAME = "Elaina's Disciple";
 export const GITHUB_USERNAME = "66six11"; 
 export const GITHUB_REPO = "MyNotes";
 export const GITHUB_BLOG_PATH = ""; // Root traversal
-// Safely access process.env to avoid reference errors in some environments
-export const GITHUB_TOKEN = (typeof process !== 'undefined' && process.env) ? (process.env.GITHUB_TOKEN || "") : "";
+export const GITHUB_TOKEN = getEnv('GITHUB_TOKEN');
 
 // Assets
-// NOTE: Files in the 'public' directory are served at the root path. 
 export const BG_MEDIA_URL = "/Elaina.mp4"; 
 export const BGM_URL = "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"; 
 
-// Fallback Mock Posts (Used if GitHub fetch fails)
+// Fallback Mock Posts
 export const MOCK_POSTS: BlogPost[] = [
   {
     id: 'syntax-guide',
@@ -60,10 +80,6 @@ Special blocks for highlighting information.
 
 > [!QUOTE] Elaina
 > "I am the Ashes Witch, Elaina."
-
->1
->
->2
 
 ## 4. Structured Data (Tables)
 
@@ -115,17 +131,6 @@ Shadow mapping is a process by which shadows are added to 3D computer graphics.
 2. Store the depth information in a texture (Shadow Map).
 3. Render the scene from the camera's point of view, checking if a fragment is occluded.
 
-## Code Snippet (C++)
-
-\`\`\`cpp
-// Simple depth calculation
-float shadowCalculation(vec4 fragPosLightSpace) {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
-    // ... pcf logic ...
-}
-\`\`\`
-
 ## Math Example
 
 Here is the GGX Distribution function:
@@ -157,27 +162,6 @@ Entity Component System (ECS) is a pattern used in game development that favors 
 | Velocity | float3 | Physics movement |
 
 > "Performance by default." - Unity Technologies
-    `
-  },
-  {
-    id: '3',
-    title: 'The Art of Color Theory in Anime',
-    date: '2024-01-05',
-    category: 'Art',
-    tags: ['Painting', 'Color', 'Design'],
-    path: 'Art/Color Theory.md',
-    excerpt: 'Analyzing the color palettes used in "Wandering Witch: The Journey of Elaina".',
-    content: `
-# Violet and Sunlight
-
-The contrast between the deep violet robes and the harsh, bright sunlight creates a mystical yet grounded atmosphere.
-
-## Key Palettes
-*   **Deep Violet**: #4c1d95
-*   **Slate Dust**: #f1f5f9
-*   **Amber Eyes**: #fbbf24
-
-When painting backgrounds, I often start with a gradient map to establish these moods early.
     `
   }
 ];
