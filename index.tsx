@@ -15,7 +15,7 @@ import {
   RefreshCcw,
   Info, AlertTriangle, CheckCircle, XCircle, HelpCircle, 
   Bug, Quote, CheckSquare, Square,
-  ListChecks, ClipboardList
+  List, Clipboard
 } from 'lucide-react';
 
 declare global {
@@ -108,13 +108,13 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({ content }) => {
           case 'faq':
               return { color: 'border-amber-500 bg-amber-500/10 text-amber-200', icon: <HelpCircle size={18} className="text-amber-400" /> };
           case 'example':
-              return { color: 'border-purple-500 bg-purple-500/10 text-purple-200', icon: <ListChecks size={18} className="text-purple-400" /> };
+              return { color: 'border-purple-500 bg-purple-500/10 text-purple-200', icon: <List size={18} className="text-purple-400" /> };
           case 'quote':
           case 'cite':
               return { color: 'border-slate-500 bg-slate-500/10 text-slate-300', icon: <Quote size={18} className="text-slate-400" /> };
           case 'summary':
           case 'abstract':
-              return { color: 'border-cyan-500 bg-cyan-500/10 text-cyan-200', icon: <ClipboardList size={18} className="text-cyan-400" /> };
+              return { color: 'border-cyan-500 bg-cyan-500/10 text-cyan-200', icon: <Clipboard size={18} className="text-cyan-400" /> };
           default:
               return { color: 'border-slate-600 bg-slate-800/50 text-slate-300', icon: <FileText size={18} className="text-slate-400" /> };
       }

@@ -5,21 +5,23 @@ import { BlogPost, Project } from './types';
 // Safely retrieves env vars from process.env (Webpack/Node) or import.meta.env (Vite)
 // without crashing the browser if 'process' is undefined.
 export const getEnv = (key: string): string => {
+  // 1. Try Vite (import.meta.env)
   try {
-    // 1. Try Vite (import.meta.env)
     // @ts-ignore
     if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
       // @ts-ignore
       return import.meta.env[key];
     }
-    
-    // 2. Try Node/Webpack (process.env)
-    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+  } catch (e) { /* ignore */ }
+
+  // 2. Try Node/Webpack (process.env)
+  try {
+    // Check for process existence safely
+    if (typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env[key]) {
       return process.env[key];
     }
-  } catch (e) {
-    // Ignore errors
-  }
+  } catch (e) { /* ignore */ }
+  
   return "";
 };
 

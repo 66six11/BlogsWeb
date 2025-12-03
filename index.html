@@ -64,6 +64,17 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #6d28d9;
       }
+      #loading-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #fbbf24;
+        font-family: 'Playfair Display', serif;
+        font-size: 1.5rem;
+        opacity: 1;
+        transition: opacity 0.5s;
+      }
     </style>
   <script type="importmap">
 {
@@ -79,6 +90,19 @@
 </script>
 </head>
   <body>
+    <div id="loading-text">Casting Rendering Spell...</div>
     <div id="root"></div>
+    <!-- CRITICAL: Entry point script is required for the app to run -->
+    <script type="module" src="./index.tsx"></script>
+    <script>
+        // Remove loading text when app mounts
+        const observer = new MutationObserver((mutations) => {
+            if (document.getElementById('root').children.length > 0) {
+                const loader = document.getElementById('loading-text');
+                if(loader) loader.style.opacity = '0';
+            }
+        });
+        observer.observe(document.getElementById('root'), { childList: true });
+    </script>
   </body>
 </html>
