@@ -39,7 +39,7 @@ export const GITHUB_REPO = "MyNotes";
 export const GITHUB_BLOG_PATH = ""; // Root traversal
 
 // Assets
-export const BG_MEDIA_URL = "/Elaina.mp4"; 
+export const BG_MEDIA_URL = "/The Journey of Elaina.mp4"; 
 export const BGM_URL = "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"; 
 
 // Fallback Mock Posts
