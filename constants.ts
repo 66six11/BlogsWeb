@@ -40,7 +40,7 @@ export const GITHUB_BLOG_PATH = ""; // Root traversal
 
 // Assets
 export const BG_MEDIA_URL = "/The Journey of Elaina.mp4"; 
-export const BGM_URL = "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"; 
+export const BGM_URL = "/上田麗奈 - リテラチュア (文学) (Anime Size)_H.mp3"; 
 
 // Fallback Mock Posts
 export const MOCK_POSTS: BlogPost[] = [
