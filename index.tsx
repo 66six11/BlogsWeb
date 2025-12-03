@@ -573,6 +573,7 @@ const FileTreeNode: React.FC<{
 const App: React.FC = () => {
     const [currentView, setCurrentView] = useState<View>(View.HOME);
     const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
+    const [showWelcome, setShowWelcome] = useState(true);
 
     // Data State
     const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -696,6 +697,35 @@ const App: React.FC = () => {
 
             audioRef.current.play().catch(e => console.log("Play failed:", e));
             setIsMusicPlaying(true);
+        }
+    };
+
+    const handleEnterSite = async () => {
+        setShowWelcome(false);
+        
+        // 自动播放音乐
+        if (audioRef.current) {
+            try {
+                if (!audioContextRef.current) {
+                    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                    const ctx = new AudioContextClass();
+                    const analyser = ctx.createAnalyser();
+                    analyser.fftSize = 256;
+
+                    const source = ctx.createMediaElementSource(audioRef.current);
+                    source.connect(analyser);
+                    analyser.connect(ctx.destination);
+
+                    audioContextRef.current = ctx;
+                    analyserRef.current = analyser;
+                    setAnalyserReady(true);
+                }
+
+                await audioRef.current.play();
+                setIsMusicPlaying(true);
+            } catch (e) {
+                console.log("Auto-play failed:", e);
+            }
         }
     };
 
@@ -1107,6 +1137,23 @@ const App: React.FC = () => {
 
     return (
         <div className="min-h-screen text-slate-200 selection:bg-amber-400 selection:text-black font-sans relative">
+
+            {/* 欢迎遮罩层 */}
+            {showWelcome && (
+                <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center">
+                    <HexagramIcon size={80} className="mb-8 animate-pulse" />
+                    <h1 className="text-4xl font-serif font-bold text-white mb-4">{APP_TITLE}</h1>
+                    <p className="text-slate-400 mb-8">点击进入魔法世界</p>
+                    <button
+                        onClick={handleEnterSite}
+                        className="px-8 py-3 bg-gradient-to-r from-purple-600 to-amber-500 text-white rounded-full font-bold 
+                                   shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:scale-105 transition-transform
+                                   flex items-center gap-2 border border-white/20"
+                    >
+                        <Music size={20} /> 进入
+                    </button>
+                </div>
+            )}
 
             {/* --- Background Stack --- */}
 
