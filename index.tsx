@@ -569,10 +569,15 @@ const FileTreeNode: React.FC<{
 };
 
 
+// Welcome overlay transition duration (ms)
+const WELCOME_TRANSITION_DURATION = 700;
+
 // --- Main App Component ---
 const App: React.FC = () => {
     const [currentView, setCurrentView] = useState<View>(View.HOME);
     const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
+    const [showWelcome, setShowWelcome] = useState(true);
+    const [welcomeFading, setWelcomeFading] = useState(false);
 
     // Data State
     const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -668,6 +673,23 @@ const App: React.FC = () => {
         }
     }, []);
 
+    const initializeAudioContext = () => {
+        if (!audioRef.current || audioContextRef.current) return;
+        
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        const ctx = new AudioContextClass();
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+
+        const source = ctx.createMediaElementSource(audioRef.current);
+        source.connect(analyser);
+        analyser.connect(ctx.destination);
+
+        audioContextRef.current = ctx;
+        analyserRef.current = analyser;
+        setAnalyserReady(true);
+    };
+
     const toggleMusic = async () => {
         if (!audioRef.current) return;
 
@@ -675,20 +697,7 @@ const App: React.FC = () => {
             audioRef.current.pause();
             setIsMusicPlaying(false);
         } else {
-            if (!audioContextRef.current) {
-                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-                const ctx = new AudioContextClass();
-                const analyser = ctx.createAnalyser();
-                analyser.fftSize = 256;
-
-                const source = ctx.createMediaElementSource(audioRef.current);
-                source.connect(analyser);
-                analyser.connect(ctx.destination);
-
-                audioContextRef.current = ctx;
-                analyserRef.current = analyser;
-                setAnalyserReady(true);
-            }
+            initializeAudioContext();
 
             if (audioContextRef.current?.state === 'suspended') {
                 await audioContextRef.current.resume();
@@ -696,6 +705,33 @@ const App: React.FC = () => {
 
             audioRef.current.play().catch(e => console.log("Play failed:", e));
             setIsMusicPlaying(true);
+        }
+    };
+
+    const handleEnterSite = async () => {
+        // 开始淡出动画
+        setWelcomeFading(true);
+        
+        // 等待过渡动画完成后再隐藏
+        setTimeout(() => {
+            setShowWelcome(false);
+            setWelcomeFading(false);
+        }, WELCOME_TRANSITION_DURATION);
+        
+        // 自动播放音乐
+        if (audioRef.current) {
+            try {
+                initializeAudioContext();
+
+                if (audioContextRef.current?.state === 'suspended') {
+                    await audioContextRef.current.resume();
+                }
+
+                await audioRef.current.play();
+                setIsMusicPlaying(true);
+            } catch (e) {
+                console.log("Auto-play failed:", e);
+            }
         }
     };
 
@@ -1107,6 +1143,38 @@ const App: React.FC = () => {
 
     return (
         <div className="min-h-screen text-slate-200 selection:bg-amber-400 selection:text-black font-sans relative">
+
+            {/* 欢迎遮罩层 */}
+            {showWelcome && (
+                <div 
+                    className={`fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center
+                                transition-opacity ease-out ${welcomeFading ? 'opacity-0' : 'opacity-100'}`}
+                    style={{ transitionDuration: `${WELCOME_TRANSITION_DURATION}ms` }}
+                >
+                    <HexagramIcon 
+                        size={80} 
+                        className={`mb-8 animate-pulse transition-all duration-500
+                                    ${welcomeFading ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`} 
+                    />
+                    <h1 className={`text-4xl font-serif font-bold text-white mb-4 transition-all duration-500
+                                   ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
+                        {APP_TITLE}
+                    </h1>
+                    <p className={`text-slate-400 mb-8 transition-all duration-500 delay-75
+                                  ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
+                        点击进入魔法世界
+                    </p>
+                    <button
+                        onClick={handleEnterSite}
+                        className={`px-8 py-3 bg-gradient-to-r from-purple-600 to-amber-500 text-white rounded-full 
+                                   font-bold shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:scale-105 
+                                   transition-all duration-500 delay-100 flex items-center gap-2 border border-white/20
+                                   ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}
+                    >
+                        <Music size={20} /> 进入
+                    </button>
+                </div>
+            )}
 
             {/* --- Background Stack --- */}
 
