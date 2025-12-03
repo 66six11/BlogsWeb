@@ -37,7 +37,6 @@ export const AUTHOR_NAME = "Elaina's Disciple";
 export const GITHUB_USERNAME = "66six11"; 
 export const GITHUB_REPO = "MyNotes";
 export const GITHUB_BLOG_PATH = ""; // Root traversal
-export const GITHUB_TOKEN = getEnv('GITHUB_TOKEN');
 
 // Assets
 export const BG_MEDIA_URL = "/Elaina.mp4"; 
