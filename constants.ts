@@ -30,7 +30,7 @@ export const getEnv = (key: string): string => {
   return "";
 };
 
-export const APP_TITLE = "魔法开发者";
+export const APP_TITLE = "魔法Dev";
 export const AUTHOR_NAME = "66six11";
 
 // GitHub Configuration
