@@ -1,0 +1,205 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Note } from '../types';
+import { Play, Square, Trash2, Plus } from 'lucide-react';
+
+const TOTAL_STEPS = 32; // 2 bars of 16th notes
+const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
+const OCTAVES = [5, 4]; // 2 Octaves range
+
+interface PianoEditorProps {
+  className?: string;
+}
+
+const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentStep, setCurrentStep] = useState(-1);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  
+  // Initialize notes with a simple melody
+  useEffect(() => {
+    setNotes([
+      { pitch: 7, octave: 4, startTime: 0, duration: 2 }, // E
+      { pitch: 3, octave: 4, startTime: 2, duration: 2 }, // G#
+      { pitch: 0, octave: 4, startTime: 4, duration: 4 }, // B
+    ]);
+  }, []);
+
+  const toggleNote = (octaveIndex: number, pitchIndex: number, step: number) => {
+    // Pitch calc: PITCHES array index 0 is high (B), 11 is low (C).
+    // We need to convert visual row to actual pitch value relative to C.
+    // In PITCHES: B=0 ... C=11. 
+    // Real Pitch value (0-11): C=0, C#=1 ... B=11.
+    const pitchVal = 11 - pitchIndex;
+    const octaveVal = OCTAVES[octaveIndex];
+
+    setNotes(prev => {
+      const existing = prev.find(n => 
+        n.octave === octaveVal && 
+        n.pitch === pitchVal && 
+        n.startTime === step
+      );
+
+      if (existing) {
+        return prev.filter(n => n !== existing);
+      } else {
+        return [...prev, {
+          pitch: pitchVal,
+          octave: octaveVal,
+          startTime: step,
+          duration: 2 // default duration
+        }];
+      }
+    });
+  };
+
+  const playTone = useCallback((frequency: number, duration: number) => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioContextRef.current;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+    
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  }, []);
+
+  const getFrequency = (pitch: number, octave: number) => {
+    // A4 = 440Hz. A4 is octave 4, pitch 9 (A).
+    // Midi Note Number: (Octave + 1) * 12 + Pitch
+    const midi = (octave + 1) * 12 + pitch;
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  };
+
+  useEffect(() => {
+    let interval: number;
+    if (isPlaying) {
+      let step = 0;
+      interval = window.setInterval(() => {
+        setCurrentStep(step);
+        
+        // Find notes at this step
+        const notesToPlay = notes.filter(n => n.startTime === step);
+        notesToPlay.forEach(n => {
+          const freq = getFrequency(n.pitch, n.octave);
+          playTone(freq, 0.5); // Fixed play duration for simplicity
+        });
+
+        step++;
+        if (step >= TOTAL_STEPS) {
+          step = 0;
+        }
+      }, 200); // Speed
+    } else {
+      setCurrentStep(-1);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, notes, playTone]);
+
+  return (
+    <div className={`bg-slate-900/80 backdrop-blur-md border border-purple-500/30 rounded-xl p-6 shadow-2xl ${className}`}>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-serif text-purple-300 flex items-center gap-2">
+          <span className="text-2xl">♪</span> Magic Score Editor
+        </h3>
+        <div className="flex gap-2">
+           <button 
+            onClick={() => setNotes([])}
+            className="p-2 rounded-full hover:bg-red-500/20 text-red-400 transition-colors"
+            title="Clear"
+          >
+            <Trash2 size={20} />
+          </button>
+          <button 
+            onClick={() => setIsPlaying(!isPlaying)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold transition-all ${
+              isPlaying 
+              ? 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]' 
+              : 'bg-purple-600 text-white hover:bg-purple-500'
+            }`}
+          >
+            {isPlaying ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+            {isPlaying ? 'Stop' : 'Play'}
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto pb-2">
+        <div className="min-w-[800px]">
+           {/* Grid Header */}
+           <div className="flex ml-16 mb-2">
+             {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+               <div key={i} className={`flex-1 text-[10px] text-center ${i % 4 === 0 ? 'text-slate-400 font-bold' : 'text-slate-700'}`}>
+                 {i % 4 === 0 ? i / 4 + 1 : ''}
+               </div>
+             ))}
+           </div>
+
+          <div className="relative border border-slate-700 rounded bg-slate-950">
+            {/* Playhead */}
+            {currentStep >= 0 && (
+              <div 
+                className="absolute top-0 bottom-0 bg-amber-400/30 w-[calc(100%/32)] z-10 pointer-events-none transition-all duration-100"
+                style={{ left: `${(currentStep / TOTAL_STEPS) * 100}%` }}
+              />
+            )}
+
+            {OCTAVES.map((octave, oIdx) => (
+              <React.Fragment key={octave}>
+                {PITCHES.map((noteName, pIdx) => {
+                  const isBlackKey = noteName.includes('#');
+                  return (
+                    <div key={`${octave}-${noteName}`} className="flex h-8 border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                      {/* Key Label */}
+                      <div className={`w-16 flex-shrink-0 flex items-center justify-end pr-2 text-xs border-r border-slate-700 ${isBlackKey ? 'bg-slate-900 text-slate-500' : 'bg-slate-800 text-slate-300'}`}>
+                        {noteName}{octave}
+                      </div>
+                      
+                      {/* Cells */}
+                      <div className="flex-1 flex relative">
+                        {Array.from({ length: TOTAL_STEPS }).map((_, step) => {
+                          const isActive = notes.some(n => 
+                            n.octave === octave && 
+                            n.pitch === (11 - pIdx) && // Convert visual index back to logic pitch
+                            n.startTime === step
+                          );
+                          
+                          return (
+                            <div 
+                              key={step} 
+                              onClick={() => toggleNote(oIdx, pIdx, step)}
+                              className={`flex-1 border-r border-slate-800/30 cursor-pointer transition-colors relative
+                                ${step % 4 === 0 ? 'border-r-slate-700/50' : ''}
+                              `}
+                            >
+                              {isActive && (
+                                <div className="absolute inset-0.5 rounded-sm bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.6)] animate-pulse" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+      <p className="text-xs text-slate-500 mt-2 text-right">Click grid to add/remove notes. Audio requires user interaction first.</p>
+    </div>
+  );
+};
+
+export default PianoEditor;
