@@ -3,24 +3,29 @@ import { BlogPost, Project } from './types';
 
 // --- Environment Variable Helper ---
 // Safely retrieves env vars from process.env (Webpack/Node) or import.meta.env (Vite)
-// without crashing the browser if 'process' is undefined.
+// Checks for VITE_ and REACT_APP_ prefixes automatically.
 export const getEnv = (key: string): string => {
-  // 1. Try Vite (import.meta.env)
-  try {
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+  const prefixes = ['', 'VITE_', 'REACT_APP_'];
+  
+  for (const prefix of prefixes) {
+    const fullKey = prefix + key;
+    
+    // 1. Try Vite (import.meta.env)
+    try {
       // @ts-ignore
-      return import.meta.env[key];
-    }
-  } catch (e) { /* ignore */ }
+      if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[fullKey]) {
+        // @ts-ignore
+        return import.meta.env[fullKey];
+      }
+    } catch (e) { /* ignore */ }
 
-  // 2. Try Node/Webpack (process.env)
-  try {
-    // Check for process existence safely
-    if (typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env[key]) {
-      return process.env[key];
-    }
-  } catch (e) { /* ignore */ }
+    // 2. Try Node/Webpack (process.env)
+    try {
+      if (typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env[fullKey]) {
+        return process.env[fullKey];
+      }
+    } catch (e) { /* ignore */ }
+  }
   
   return "";
 };

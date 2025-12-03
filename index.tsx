@@ -498,6 +498,7 @@ const App: React.FC = () => {
   const [userProfile, setUserProfile] = useState<GitHubUser | null>(null);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [isFetchingContent, setIsFetchingContent] = useState(false);
+  const [isRateLimited, setIsRateLimited] = useState(false);
 
   // Audio State
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
@@ -512,6 +513,7 @@ const App: React.FC = () => {
   // --- Initialization Effects ---
   const loadData = async () => {
       setIsLoadingPosts(true);
+      setIsRateLimited(false);
       
       try {
           // Fetch User
@@ -519,8 +521,14 @@ const App: React.FC = () => {
           if (profile) setUserProfile(profile);
 
           // Fetch Blog Directory & Index
-          const { tree, allFiles } = await fetchBlogIndex();
+          const { tree, allFiles, error } = await fetchBlogIndex();
           
+          if (error) {
+              // Potential rate limit or network error
+              // We check if tree is empty as a secondary sign
+              setIsRateLimited(true);
+          }
+
           if (tree.length > 0) {
               setBlogDirectory(tree);
               const recentFiles = allFiles.slice(0, 5);
@@ -738,8 +746,14 @@ const App: React.FC = () => {
       <div className="max-w-7xl mx-auto py-8 px-4 animate-fade-in-up relative z-10 w-full">
         {/* Header */}
         {!selectedPost && (
-            <div className="text-center mb-8 bg-black/30 p-6 rounded-2xl backdrop-blur-sm border border-white/5">
-                <h2 className="text-4xl font-serif font-bold text-white mb-2 flex items-center justify-center gap-3">
+            <div className="text-center mb-8 bg-black/30 p-6 rounded-2xl backdrop-blur-sm border border-white/5 relative overflow-hidden">
+                 {/* Rate Limit Warning */}
+                 {isRateLimited && (
+                    <div className="absolute top-0 left-0 right-0 bg-red-900/80 text-white text-xs py-1 animate-pulse border-b border-red-500">
+                        Warning: Magical energy depleted (GitHub Rate Limit). Displaying cached/mock spells.
+                    </div>
+                )}
+                <h2 className="text-4xl font-serif font-bold text-white mb-2 flex items-center justify-center gap-3 mt-2">
                     <Book className="text-amber-400"/> The Witch's Grimoire
                 </h2>
                 <p className="text-slate-300">Notes on rendering, logic, and the arcane arts.</p>

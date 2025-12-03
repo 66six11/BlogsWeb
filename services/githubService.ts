@@ -12,7 +12,10 @@ const getHeaders = (): HeadersInit => {
     'Accept': 'application/vnd.github.v3+json',
   };
   if (GITHUB_TOKEN && GITHUB_TOKEN !== "undefined" && GITHUB_TOKEN.length > 0) {
-    h['Authorization'] = `token ${GITHUB_TOKEN}`;
+    h['Authorization'] = `Bearer ${GITHUB_TOKEN}`;
+    console.log("🔐 GitHub Token present. Using authenticated request.");
+  } else {
+    console.log("⚠️ No GitHub Token found. Using unauthenticated request (Rate Limit: 60/hr).");
   }
   return h;
 };
@@ -72,7 +75,10 @@ export const fetchUserProfile = async (): Promise<GitHubUser | null> => {
     
     // Rate Limit or Not Found
     if (!res.ok) {
-        console.warn(`GitHub Profile Error: ${res.status}`);
+        console.warn(`GitHub Profile Error: ${res.status} ${res.statusText}`);
+        if (res.status === 403) {
+             console.error("API Rate Limit Exceeded. Please provide a GITHUB_TOKEN.");
+        }
         return null; 
     }
 
@@ -172,7 +178,7 @@ const buildTree = (files: any[]): DirectoryNode[] => {
     return root;
 };
 
-export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFiles: any[] }> => {
+export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFiles: any[], error?: boolean }> => {
     if (!GITHUB_USERNAME || !GITHUB_REPO) return { tree: [], allFiles: [] };
 
     // Try Cache
@@ -184,7 +190,7 @@ export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFile
         const repoRes = await fetch(`${BASE_URL}/repos/${GITHUB_USERNAME}/${GITHUB_REPO}`, { headers });
         if (!repoRes.ok) {
             console.warn(`Repo fetch failed: ${repoRes.status}`);
-            return { tree: [], allFiles: [] }; // Do NOT cache failure
+            return { tree: [], allFiles: [], error: true }; // Return error flag
         }
         
         const repoData = await repoRes.json();
@@ -194,7 +200,7 @@ export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFile
         const treeRes = await fetch(treeUrl, { headers });
         if (!treeRes.ok) {
              console.warn(`Tree fetch failed: ${treeRes.status}`);
-             return { tree: [], allFiles: [] }; // Do NOT cache failure
+             return { tree: [], allFiles: [], error: true };
         }
         
         const treeData = await treeRes.json();
@@ -210,17 +216,12 @@ export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFile
         const tree = buildTree(mdFiles);
         const result = { tree, allFiles: mdFiles };
         
-        // ONLY Cache if we actually got files. If we got 0 files, it might be a glitch or empty repo, 
-        // we probably shouldn't cache it for 15 mins if it was a network glitch. 
-        // But if it's truly empty, caching is fine. 
-        // For safety, let's cache only if successful.
         setCache('blog_index', result);
-        
         return result;
 
     } catch (e) {
         console.error("Failed to fetch blog index", e);
-        return { tree: [], allFiles: [] };
+        return { tree: [], allFiles: [], error: true };
     }
 };
 
