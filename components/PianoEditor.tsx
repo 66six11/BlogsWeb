@@ -81,10 +81,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const [selectedScore, setSelectedScore] = useState<string>('');
   const [bpm, setBpm] = useState<number>(DEFAULT_BPM);
   const [scoreMetadata, setScoreMetadata] = useState<ScoreMetadata>({ bpm: DEFAULT_BPM });
-  const [isDraggingProgress, setIsDraggingProgress] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const progressBarRef = useRef<HTMLDivElement>(null);
   
   // Calculate interval based on BPM (16th note duration in ms)
   const stepInterval = useMemo(() => {
@@ -774,7 +772,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       // Reset playback state when loading new score
       setIsPlaying(false);
       setCurrentStep(-1);
-      setIsDraggingProgress(false);
       
       const response = await fetch(`${MEDIA_CONFIG.scores.folder}/${scoreName}`);
       if (!response.ok) {
@@ -909,7 +906,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
 
   useEffect(() => {
     let interval: number;
-    if (isPlaying && !isDraggingProgress) {
+    if (isPlaying) {
       let step = currentStep >= 0 ? currentStep : 0;
       interval = window.setInterval(() => {
         // Find notes at this step and play them FIRST, then update step display
@@ -954,50 +951,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
           setCurrentStep(-1);
         }
       }, stepInterval); // Use dynamic interval based on BPM
-    } else if (!isPlaying && !isDraggingProgress) {
-      setCurrentStep(-1);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, notes, playTone, lastNoteEndTime, stepInterval, isDraggingProgress]);
-
-  // Handle progress bar click/drag
-  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressBarRef.current || lastNoteEndTime === 0) return;
-    const rect = progressBarRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, x / rect.width));
-    const newStep = Math.floor(percentage * lastNoteEndTime);
-    setCurrentStep(newStep);
-  }, [lastNoteEndTime]);
-
-  const handleProgressMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    setIsDraggingProgress(true);
-    handleProgressClick(e);
-  }, [handleProgressClick]);
-
-  const handleProgressMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDraggingProgress || !progressBarRef.current || lastNoteEndTime === 0) return;
-    const rect = progressBarRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, x / rect.width));
-    const newStep = Math.floor(percentage * lastNoteEndTime);
-    setCurrentStep(newStep);
-  }, [isDraggingProgress, lastNoteEndTime]);
-
-  const handleProgressMouseUp = useCallback(() => {
-    setIsDraggingProgress(false);
-  }, []);
-
-  useEffect(() => {
-    if (isDraggingProgress) {
-      document.addEventListener('mousemove', handleProgressMouseMove);
-      document.addEventListener('mouseup', handleProgressMouseUp);
-    }
-    return () => {
-      document.removeEventListener('mousemove', handleProgressMouseMove);
-      document.removeEventListener('mouseup', handleProgressMouseUp);
-    };
-  }, [isDraggingProgress, handleProgressMouseMove, handleProgressMouseUp]);
+  }, [isPlaying, notes, playTone, lastNoteEndTime, stepInterval]);
 
   // Custom scrollbar styles for piano editor
   const scrollbarStyles = `
@@ -1132,22 +1088,33 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
           style={{ marginLeft: `${KEY_LABEL_WIDTH}px` }}
         >
           <div style={{ minWidth: `${totalSteps * CELL_WIDTH}px` }}>
-            {/* Grid Header - beat numbers */}
+            {/* Grid Header - clickable ruler for positioning */}
             <div className="flex h-6 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)' }}>
-              {Array.from({ length: totalSteps }).map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`text-[10px] text-center flex items-center justify-center ${i % 4 === 0 ? 'font-bold' : ''}`} 
-                  style={{ 
-                    width: `${CELL_WIDTH}px`, 
-                    flexShrink: 0,
-                    color: i % 4 === 0 ? 'var(--accent-1, #deb99a)' : 'var(--text-secondary, #475569)',
-                    borderRight: i % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
-                  }}
-                >
-                  {i % 4 === 0 ? i / 4 + 1 : ''}
-                </div>
-              ))}
+              {Array.from({ length: totalSteps }).map((_, i) => {
+                const isCurrentStep = currentStep === i;
+                const isBeatStart = i % 4 === 0;
+                return (
+                  <div 
+                    key={i} 
+                    onClick={() => setCurrentStep(i)}
+                    className={`text-[10px] text-center flex items-center justify-center cursor-pointer transition-all hover:bg-white/10 ${isBeatStart ? 'font-bold' : ''}`} 
+                    style={{ 
+                      width: `${CELL_WIDTH}px`, 
+                      flexShrink: 0,
+                      color: isCurrentStep 
+                        ? 'var(--accent-3, #7C85EB)' 
+                        : isBeatStart 
+                          ? 'var(--accent-1, #deb99a)' 
+                          : 'var(--text-secondary, #475569)',
+                      backgroundColor: isCurrentStep ? 'rgba(124, 133, 235, 0.2)' : 'transparent',
+                      borderRight: i % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
+                    }}
+                    title={`点击定位到第 ${i + 1} 步`}
+                  >
+                    {isBeatStart ? i / 4 + 1 : '·'}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Note grid */}
@@ -1211,93 +1178,20 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
         </div>
       </div>
       
-      {/* Ruler for quick navigation */}
-      {lastNoteEndTime > 0 && (
-        <div className="mt-3 px-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono" style={{ color: 'var(--text-secondary, #94a3b8)', minWidth: '24px' }}>
-              {currentStep >= 0 ? Math.floor((currentStep / 4) + 1) : 0}
-            </span>
-            <div 
-              ref={progressBarRef}
-              className="flex-1 cursor-pointer relative"
-              style={{ height: '24px' }}
-              onMouseDown={handleProgressMouseDown}
-            >
-              {/* Ruler background */}
-              <div 
-                className="absolute left-0 right-0 bottom-0 h-1.5 rounded-full"
-                style={{ backgroundColor: 'var(--bg-secondary, #1e293b)' }}
-              />
-              
-              {/* Ruler tick marks */}
-              {Array.from({ length: Math.ceil(lastNoteEndTime / 4) + 1 }).map((_, i) => {
-                const isMeasure = i % 4 === 0; // Major tick every 4 beats (measure)
-                const position = (i * 4 / lastNoteEndTime) * 100;
-                if (position > 100) return null;
-                return (
-                  <div
-                    key={i}
-                    className="absolute bottom-0"
-                    style={{
-                      left: `${position}%`,
-                      width: isMeasure ? '2px' : '1px',
-                      height: isMeasure ? '16px' : '8px',
-                      backgroundColor: isMeasure ? 'var(--accent-1, #deb99a)' : 'var(--text-secondary, #64748b)',
-                      transform: 'translateX(-50%)'
-                    }}
-                  >
-                    {/* Beat number label for measures */}
-                    {isMeasure && (
-                      <span 
-                        className="absolute text-[10px] font-mono"
-                        style={{ 
-                          top: '-14px', 
-                          left: '50%', 
-                          transform: 'translateX(-50%)',
-                          color: 'var(--accent-1, #deb99a)'
-                        }}
-                      >
-                        {i + 1}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-              
-              {/* Progress indicator line */}
-              <div 
-                className="absolute bottom-0 w-0.5 rounded-full"
-                style={{ 
-                  left: `${currentStep >= 0 ? (currentStep / lastNoteEndTime) * 100 : 0}%`,
-                  height: '20px',
-                  backgroundColor: 'var(--accent-3, #7C85EB)',
-                  boxShadow: '0 0 6px var(--accent-3, #7C85EB)',
-                  transform: 'translateX(-50%)',
-                  transition: isDraggingProgress ? 'none' : 'left 0.1s ease-out'
-                }}
-              />
-              
-              {/* Draggable handle */}
-              <div 
-                className="absolute bottom-0 w-3 h-3 rounded-full shadow-lg cursor-grab active:cursor-grabbing hover:scale-125"
-                style={{ 
-                  left: `${currentStep >= 0 ? (currentStep / lastNoteEndTime) * 100 : 0}%`,
-                  transform: 'translate(-50%, 25%)',
-                  backgroundColor: 'var(--accent-1, #deb99a)',
-                  transition: isDraggingProgress ? 'none' : 'left 0.1s ease-out'
-                }}
-              />
-            </div>
-            <span className="text-xs font-mono" style={{ color: 'var(--text-secondary, #94a3b8)', minWidth: '24px', textAlign: 'right' }}>
-              {Math.floor((lastNoteEndTime / 4) + 1)}
-            </span>
-          </div>
+      {/* Current position indicator */}
+      {currentStep >= 0 && (
+        <div className="mt-2 flex items-center justify-center gap-2">
+          <span className="text-xs font-mono px-2 py-1 rounded" style={{ 
+            backgroundColor: 'var(--bg-secondary, #1e293b)', 
+            color: 'var(--accent-3, #7C85EB)' 
+          }}>
+            当前位置: 第 {Math.floor(currentStep / 4) + 1} 拍 · 第 {(currentStep % 4) + 1} 步
+          </span>
         </div>
       )}
       
       <p className="text-xs mt-2 text-right" style={{ color: 'var(--text-secondary, #64748b)' }}>
-        点击网格添加/移除音符。点击标尺可快速跳转播放位置。播放时视窗自动跟随。
+        点击网格添加/移除音符。点击上方标尺数字可定位播放位置。播放时视窗自动跟随。
       </p>
     </div>
   );
