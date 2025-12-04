@@ -154,6 +154,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     
     return { isStart: false, isMiddle: false };
   }, [activeNoteMap, filteredNotes]);
+
+  // Check if a note is active at a specific position (for grid display)
+  const isNoteActive = useCallback((octave: number, pitch: number, step: number): boolean => {
+    const result = isPartOfNote(octave, pitch, step);
+    return result.isStart || result.isMiddle;
+  }, [isPartOfNote]);
   
   // Initialize
   useEffect(() => {
