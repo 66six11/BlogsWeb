@@ -1,18 +1,27 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Note } from '../types';
-import { Play, Square, Trash2, Upload, FileText, Plus } from 'lucide-react';
+import { Play, Square, Trash2, Upload, FileText, Plus, Minus } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
 
 const MIN_STEPS = 32; // Minimum 2 bars of 16th notes
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
-const OCTAVES = [5, 4]; // 2 Octaves range
+const OCTAVES = [5, 4, 3]; // 3 Octaves range for more range
 const KEY_LABEL_WIDTH = 64; // w-16 = 4rem = 64px
+const DEFAULT_BPM = 120;
 
 // Note name to pitch value mapping
 const NOTE_TO_PITCH: Record<string, number> = {
-  'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
-  'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11
+  'C': 0, 'C#': 1, 'DB': 1, 'D': 2, 'D#': 3, 'EB': 3, 'E': 4, 'F': 5,
+  'F#': 6, 'GB': 6, 'G': 7, 'G#': 8, 'AB': 8, 'A': 9, 'A#': 10, 'BB': 10, 'B': 11
 };
+
+// Score metadata interface
+interface ScoreMetadata {
+  title?: string;
+  bpm: number;
+  timeSignature?: string;
+  key?: string;
+}
 
 interface PianoEditorProps {
   className?: string;
@@ -25,7 +34,17 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
   const [currentStep, setCurrentStep] = useState(-1);
   const [availableScores, setAvailableScores] = useState<string[]>([]);
   const [selectedScore, setSelectedScore] = useState<string>('');
+  const [bpm, setBpm] = useState<number>(DEFAULT_BPM);
+  const [scoreMetadata, setScoreMetadata] = useState<ScoreMetadata>({ bpm: DEFAULT_BPM });
   const audioContextRef = useRef<AudioContext | null>(null);
+  
+  // Calculate interval based on BPM (16th note duration in ms)
+  const stepInterval = useMemo(() => {
+    // BPM is beats per minute, a beat is a quarter note = 4 sixteenth notes
+    // 60000ms / BPM = ms per quarter note
+    // Divide by 4 for 16th note
+    return Math.round(60000 / bpm / 4);
+  }, [bpm]);
   
   // Calculate total steps dynamically based on notes
   const totalSteps = useMemo(() => {
@@ -58,16 +77,74 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
     setAvailableScores(MEDIA_CONFIG.scores.files);
   };
 
-  const parseScoreFile = (content: string): Note[] => {
+  const parseScoreFile = (content: string): { notes: Note[], metadata: ScoreMetadata } => {
     const lines = content.split('\n');
     const parsedNotes: Note[] = [];
-    let currentTime = 0;
+    const metadata: ScoreMetadata = { bpm: DEFAULT_BPM };
+    
+    // Track management for multi-track support
+    // Key: track name, Value: current time position for that track
+    const trackPositions: Map<string, number> = new Map();
+    let currentTrack = 'default';
+    trackPositions.set(currentTrack, 0);
 
     for (const line of lines) {
       const trimmed = line.trim();
       
-      // Skip comments and empty lines
-      if (!trimmed || trimmed.startsWith('#')) continue;
+      // Skip empty lines
+      if (!trimmed) continue;
+      
+      // Parse metadata comments (special format: #@ key: value)
+      if (trimmed.startsWith('#@')) {
+        const metaMatch = trimmed.match(/^#@\s*(\w+)\s*:\s*(.+)$/i);
+        if (metaMatch) {
+          const [, key, value] = metaMatch;
+          switch (key.toLowerCase()) {
+            case 'bpm':
+            case 'tempo':
+              metadata.bpm = parseInt(value, 10) || DEFAULT_BPM;
+              break;
+            case 'title':
+              metadata.title = value.trim();
+              break;
+            case 'time':
+            case 'timesignature':
+              metadata.timeSignature = value.trim();
+              break;
+            case 'key':
+              metadata.key = value.trim();
+              break;
+          }
+        }
+        continue;
+      }
+      
+      // Skip regular comments
+      if (trimmed.startsWith('#')) continue;
+      
+      // Track switch command: [TrackName] or [TrackName:position]
+      const trackMatch = trimmed.match(/^\[(\w+)(?::(\d+))?\]$/);
+      if (trackMatch) {
+        currentTrack = trackMatch[1];
+        if (!trackPositions.has(currentTrack)) {
+          // If position specified, use it; otherwise start at 0
+          const startPos = trackMatch[2] ? parseInt(trackMatch[2], 10) : 0;
+          trackPositions.set(currentTrack, startPos);
+        } else if (trackMatch[2]) {
+          // Reset track to specified position
+          trackPositions.set(currentTrack, parseInt(trackMatch[2], 10));
+        }
+        continue;
+      }
+      
+      // Sync command: @position - sets current track to absolute position
+      const syncMatch = trimmed.match(/^@(\d+)$/);
+      if (syncMatch) {
+        trackPositions.set(currentTrack, parseInt(syncMatch[1], 10));
+        continue;
+      }
+      
+      const currentTime = trackPositions.get(currentTrack) || 0;
 
       // Check if this is a chord (multiple notes joined by +)
       if (trimmed.includes('+')) {
@@ -105,7 +182,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
             });
           }
         }
-        currentTime += chordDuration;
+        trackPositions.set(currentTrack, currentTime + chordDuration);
       } else {
         // Single note parsing
         const parts = trimmed.split(/\s+/);
@@ -123,13 +200,13 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
               startTime: currentTime,
               duration
             });
-            currentTime += duration;
+            trackPositions.set(currentTrack, currentTime + duration);
           }
         }
       }
     }
 
-    return parsedNotes;
+    return { notes: parsedNotes, metadata };
   };
 
   const loadScore = async (scoreName: string) => {
@@ -141,11 +218,13 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
       }
       
       const content = await response.text();
-      const parsedNotes = parseScoreFile(content);
+      const { notes: parsedNotes, metadata } = parseScoreFile(content);
       
       if (parsedNotes.length > 0) {
         setNotes(parsedNotes);
         setSelectedScore(scoreName);
+        setScoreMetadata(metadata);
+        setBpm(metadata.bpm);
       }
     } catch (e) {
       console.error('Error loading score:', e);
@@ -236,7 +315,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
         const notesToPlay = notes.filter(n => n.startTime === step);
         notesToPlay.forEach(n => {
           const freq = getFrequency(n.pitch, n.octave);
-          playTone(freq, 0.5); // Fixed play duration for simplicity
+          // Duration based on note's duration in 16th notes
+          const durationSec = (n.duration * stepInterval) / 1000;
+          playTone(freq, Math.min(durationSec, 0.5)); // Cap at 0.5s for smooth sound
         });
 
         step++;
@@ -245,12 +326,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
           setIsPlaying(false);
           setCurrentStep(-1);
         }
-      }, 200); // Speed
+      }, stepInterval); // Use dynamic interval based on BPM
     } else {
       setCurrentStep(-1);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, notes, playTone, lastNoteEndTime]);
+  }, [isPlaying, notes, playTone, lastNoteEndTime, stepInterval]);
 
   // Custom scrollbar styles for piano editor
   const scrollbarStyles = `
@@ -275,10 +356,39 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
          style={{ backgroundColor: 'var(--bg-tertiary, rgba(15, 23, 42, 0.8))' }}>
       <style>{scrollbarStyles}</style>
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-serif flex items-center gap-2" style={{ color: 'var(--accent-3, #a78bfa)' }}>
-          <span className="text-2xl">♪</span> 魔法乐谱编辑器
-        </h3>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <h3 className="text-xl font-serif flex items-center gap-2" style={{ color: 'var(--accent-3, #a78bfa)' }}>
+            <span className="text-2xl">♪</span> 魔法乐谱编辑器
+          </h3>
+          {scoreMetadata.title && (
+            <span className="text-sm px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--accent-1, #deb99a)' }}>
+              {scoreMetadata.title}
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2 items-center flex-wrap">
+          {/* BPM Control */}
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)' }}>
+            <button
+              onClick={() => setBpm(prev => Math.max(40, prev - 10))}
+              className="p-1 rounded hover:bg-white/10 transition-colors"
+              style={{ color: 'var(--text-secondary, #94a3b8)' }}
+              title="减速"
+            >
+              <Minus size={14} />
+            </button>
+            <span className="text-xs font-mono w-16 text-center" style={{ color: 'var(--accent-1, #deb99a)' }}>
+              {bpm} BPM
+            </span>
+            <button
+              onClick={() => setBpm(prev => Math.min(240, prev + 10))}
+              className="p-1 rounded hover:bg-white/10 transition-colors"
+              style={{ color: 'var(--text-secondary, #94a3b8)' }}
+              title="加速"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
           {/* Score loader */}
           {availableScores.length > 0 && (
             <select

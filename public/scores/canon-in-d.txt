@@ -1,0 +1,122 @@
+# Pachelbel's Canon in D
+# 帕赫贝尔 D大调卡农
+#@ title: Canon in D (Pachelbel)
+#@ bpm: 60
+#@ key: D Major
+#@ time: 4/4
+
+# ========================================
+# Track 1: Bass line (Ground bass / Basso continuo)
+# ========================================
+[Bass]
+D 3 8
+A 3 8
+B 3 8
+F# 3 8
+G 3 8
+D 3 8
+G 3 8
+A 3 8
+
+# Repeat bass
+D 3 8
+A 3 8
+B 3 8
+F# 3 8
+G 3 8
+D 3 8
+G 3 8
+A 3 8
+
+# ========================================
+# Track 2: Chord accompaniment
+# ========================================
+[Chords:0]
+D 4 + F# 4 + A 4 8
+A 3 + C# 4 + E 4 8
+B 3 + D 4 + F# 4 8
+F# 3 + A 3 + C# 4 8
+G 3 + B 3 + D 4 8
+D 3 + F# 3 + A 3 8
+G 3 + B 3 + D 4 8
+A 3 + C# 4 + E 4 8
+
+# Repeat chords
+D 4 + F# 4 + A 4 8
+A 3 + C# 4 + E 4 8
+B 3 + D 4 + F# 4 8
+F# 3 + A 3 + C# 4 8
+G 3 + B 3 + D 4 8
+D 3 + F# 3 + A 3 8
+G 3 + B 3 + D 4 8
+A 3 + C# 4 + E 4 8
+
+# ========================================
+# Track 3: Melody (Violin 1)
+# ========================================
+[Melody:0]
+# First phrase
+F# 5 4
+E 5 4
+D 5 4
+C# 5 4
+B 4 4
+A 4 4
+B 4 4
+C# 5 4
+
+# Second phrase  
+D 5 4
+C# 5 4
+B 4 4
+A 4 4
+G 4 4
+F# 4 4
+G 4 4
+E 4 4
+
+# Third phrase - more elaborate
+F# 5 2
+D 5 2
+E 5 2
+C# 5 2
+D 5 2
+B 4 2
+C# 5 2
+A 4 2
+B 4 2
+G 4 2
+A 4 2
+F# 4 2
+G 4 2
+B 4 2
+A 4 4
+
+# Fourth phrase
+D 5 2
+F# 5 2
+A 5 2
+G 5 2
+F# 5 2
+D 5 2
+F# 5 2
+E 5 2
+D 5 2
+B 4 2
+D 5 2
+A 4 2
+G 4 2
+B 4 2
+A 4 2
+G 4 2
+F# 4 2
+D 4 2
+E 4 2
+G 4 2
+F# 4 2
+A 4 2
+G 4 2
+B 4 2
+A 4 2
+C# 5 2
+D 5 4
