@@ -752,6 +752,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
 
   const loadScore = async (scoreName: string) => {
     try {
+      // Reset playback state when loading new score
+      setIsPlaying(false);
+      setCurrentStep(-1);
+      setIsDraggingProgress(false);
+      
       const response = await fetch(`${MEDIA_CONFIG.scores.folder}/${scoreName}`);
       if (!response.ok) {
         console.error('Failed to load score:', scoreName);
@@ -812,29 +817,75 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
     }]);
   };
 
+  // Piano-like sound using multiple oscillators with ADSR envelope
   const playTone = useCallback((frequency: number, duration: number) => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     const ctx = audioContextRef.current;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+    const now = ctx.currentTime;
     
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + duration);
+    // Create main oscillator (fundamental)
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const osc3 = ctx.createOscillator();
     
-    // Notify parent for particle effects
+    // Create gains for each oscillator
+    const gain1 = ctx.createGain();
+    const gain2 = ctx.createGain();
+    const gain3 = ctx.createGain();
+    const masterGain = ctx.createGain();
+    
+    // Piano-like waveform (fundamental + harmonics)
+    osc1.type = 'triangle'; // Fundamental
+    osc1.frequency.setValueAtTime(frequency, now);
+    
+    osc2.type = 'sine'; // 2nd harmonic (octave)
+    osc2.frequency.setValueAtTime(frequency * 2, now);
+    
+    osc3.type = 'sine'; // 3rd harmonic (fifth)
+    osc3.frequency.setValueAtTime(frequency * 3, now);
+    
+    // Mix harmonics (piano timbre)
+    gain1.gain.setValueAtTime(0.5, now);
+    gain2.gain.setValueAtTime(0.2, now);
+    gain3.gain.setValueAtTime(0.05, now);
+    
+    // ADSR envelope for piano-like attack and decay
+    const attackTime = 0.01;
+    const decayTime = 0.1;
+    const sustainLevel = 0.3;
+    const releaseTime = Math.min(duration * 0.7, 0.5);
+    
+    masterGain.gain.setValueAtTime(0, now);
+    masterGain.gain.linearRampToValueAtTime(0.4, now + attackTime); // Attack
+    masterGain.gain.linearRampToValueAtTime(sustainLevel, now + attackTime + decayTime); // Decay to sustain
+    masterGain.gain.setValueAtTime(sustainLevel, now + duration - releaseTime); // Hold
+    masterGain.gain.exponentialRampToValueAtTime(0.001, now + duration); // Release
+    
+    // Connect
+    osc1.connect(gain1);
+    osc2.connect(gain2);
+    osc3.connect(gain3);
+    gain1.connect(masterGain);
+    gain2.connect(masterGain);
+    gain3.connect(masterGain);
+    masterGain.connect(ctx.destination);
+    
+    // Start and stop
+    osc1.start(now);
+    osc2.start(now);
+    osc3.start(now);
+    osc1.stop(now + duration + 0.1);
+    osc2.stop(now + duration + 0.1);
+    osc3.stop(now + duration + 0.1);
+    
+    // Notify parent for particle effects (throttled to avoid performance issues)
     if (onNotePlay) {
-      onNotePlay(frequency, 0.5);
+      // Use requestAnimationFrame to avoid blocking
+      requestAnimationFrame(() => {
+        onNotePlay(frequency, 0.5);
+      });
     }
   }, [onNotePlay]);
 
@@ -850,6 +901,16 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
     if (isPlaying && !isDraggingProgress) {
       let step = currentStep >= 0 ? currentStep : 0;
       interval = window.setInterval(() => {
+        // Find notes at this step and play them FIRST, then update step display
+        const notesToPlay = notes.filter(n => n.startTime === step);
+        notesToPlay.forEach(n => {
+          const freq = getFrequency(n.pitch, n.octave);
+          // Duration based on note's duration in 16th notes
+          const durationSec = (n.duration * stepInterval) / 1000;
+          playTone(freq, Math.min(durationSec, 0.8)); // Slightly longer for piano sound
+        });
+        
+        // Update step display AFTER playing notes
         setCurrentStep(step);
         
         // Auto-scroll to follow playhead
@@ -874,15 +935,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
             });
           }
         }
-        
-        // Find notes at this step
-        const notesToPlay = notes.filter(n => n.startTime === step);
-        notesToPlay.forEach(n => {
-          const freq = getFrequency(n.pitch, n.octave);
-          // Duration based on note's duration in 16th notes
-          const durationSec = (n.duration * stepInterval) / 1000;
-          playTone(freq, Math.min(durationSec, 0.5)); // Cap at 0.5s for smooth sound
-        });
 
         step++;
         // Stop playback after the last note ends (not loop)
