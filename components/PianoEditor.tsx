@@ -109,6 +109,35 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     if (notes.length === 0) return 0;
     return Math.max(...notes.map(n => n.startTime + n.duration));
   }, [notes]);
+
+  // Pre-index notes by step for O(1) lookup during playback
+  // This prevents O(n) filtering on every step for large scores
+  const notesByStep = useMemo(() => {
+    const index = new Map<number, Note[]>();
+    for (const note of notes) {
+      const step = note.startTime;
+      if (!index.has(step)) {
+        index.set(step, []);
+      }
+      index.get(step)!.push(note);
+    }
+    return index;
+  }, [notes]);
+
+  // Pre-index notes by cell (octave, pitch, step) for O(1) lookup during grid rendering
+  // Key format: "octave-pitch-step"
+  const activeNoteSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const note of notes) {
+      set.add(`${note.octave}-${note.pitch}-${note.startTime}`);
+    }
+    return set;
+  }, [notes]);
+
+  // Helper function to check if a cell has an active note
+  const isNoteActive = useCallback((octave: number, pitch: number, step: number) => {
+    return activeNoteSet.has(`${octave}-${pitch}-${step}`);
+  }, [activeNoteSet]);
   
   // Initialize notes with a simple melody
   useEffect(() => {
@@ -914,9 +943,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   };
 
   // Pre-schedule notes using Web Audio API's precise timing
-  // This prevents stuttering on large scores by scheduling notes ahead of time
+  // Uses notesByStep index for O(1) lookup instead of filtering
   const scheduleNotesAhead = useCallback((startStep: number, currentAudioTime: number, stepDurationSec: number) => {
-    const LOOK_AHEAD_STEPS = 16; // Schedule 16 steps ahead (1 bar)
+    const LOOK_AHEAD_STEPS = 32; // Schedule 32 steps ahead (2 bars)
     const ctx = audioContextRef.current;
     if (!ctx) return;
 
@@ -929,7 +958,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       scheduledNotesRef.current.add(step);
       
       const stepTime = currentAudioTime + (i * stepDurationSec);
-      const notesToPlay = notes.filter(n => n.startTime === step);
+      // Use O(1) lookup from pre-indexed map instead of O(n) filter
+      const notesToPlay = notesByStep.get(step) || [];
       
       notesToPlay.forEach(n => {
         const freq = getFrequency(n.pitch, n.octave);
@@ -937,7 +967,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
         playTone(freq, Math.min(durationSec, 0.8), stepTime);
       });
     }
-  }, [notes, lastNoteEndTime, playTone]);
+  }, [notesByStep, lastNoteEndTime, playTone]);
 
   useEffect(() => {
     if (isPlaying) {
@@ -1225,11 +1255,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
                           />
                         )}
                         {Array.from({ length: totalSteps }).map((_, step) => {
-                          const isActive = notes.some(n => 
-                            n.octave === octave && 
-                            n.pitch === (11 - pIdx) &&
-                            n.startTime === step
-                          );
+                          // Use O(1) Set lookup instead of O(n) array.some()
+                          const isActive = isNoteActive(octave, 11 - pIdx, step);
                           
                           return (
                             <div 
