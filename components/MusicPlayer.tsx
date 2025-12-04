@@ -327,6 +327,6 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
       )}
     </div>
   );
-};
+});
 
 export default MusicPlayer;
