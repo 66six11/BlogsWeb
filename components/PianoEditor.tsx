@@ -69,22 +69,62 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
       // Skip comments and empty lines
       if (!trimmed || trimmed.startsWith('#')) continue;
 
-      const parts = trimmed.split(/\s+/);
-      if (parts.length >= 3) {
-        const noteName = parts[0].toUpperCase();
-        const octave = parseInt(parts[1], 10);
-        const duration = parseInt(parts[2], 10);
+      // Check if this is a chord (multiple notes joined by +)
+      if (trimmed.includes('+')) {
+        // Parse chord: "C 4 + E 4 + G 4 4" - last number is duration for all
+        const chordParts = trimmed.split('+').map(p => p.trim());
+        const chordNotes: { noteName: string; octave: number }[] = [];
+        let chordDuration = 4; // default duration
 
-        const pitch = NOTE_TO_PITCH[noteName];
-        
-        if (pitch !== undefined && !isNaN(octave) && !isNaN(duration)) {
-          parsedNotes.push({
-            pitch,
-            octave,
-            startTime: currentTime,
-            duration
-          });
-          currentTime += duration;
+        for (let i = 0; i < chordParts.length; i++) {
+          const parts = chordParts[i].split(/\s+/);
+          if (parts.length >= 2) {
+            const noteName = parts[0].toUpperCase();
+            const octave = parseInt(parts[1], 10);
+            const pitch = NOTE_TO_PITCH[noteName];
+            
+            if (pitch !== undefined && !isNaN(octave)) {
+              chordNotes.push({ noteName, octave });
+              // Check if this part has a duration (last note in chord should have it)
+              if (parts.length >= 3) {
+                chordDuration = parseInt(parts[2], 10) || 4;
+              }
+            }
+          }
+        }
+
+        // Add all chord notes at the same start time
+        for (const cn of chordNotes) {
+          const pitch = NOTE_TO_PITCH[cn.noteName];
+          if (pitch !== undefined) {
+            parsedNotes.push({
+              pitch,
+              octave: cn.octave,
+              startTime: currentTime,
+              duration: chordDuration
+            });
+          }
+        }
+        currentTime += chordDuration;
+      } else {
+        // Single note parsing
+        const parts = trimmed.split(/\s+/);
+        if (parts.length >= 3) {
+          const noteName = parts[0].toUpperCase();
+          const octave = parseInt(parts[1], 10);
+          const duration = parseInt(parts[2], 10);
+
+          const pitch = NOTE_TO_PITCH[noteName];
+          
+          if (pitch !== undefined && !isNaN(octave) && !isNaN(duration)) {
+            parsedNotes.push({
+              pitch,
+              octave,
+              startTime: currentTime,
+              duration
+            });
+            currentTime += duration;
+          }
         }
       }
     }

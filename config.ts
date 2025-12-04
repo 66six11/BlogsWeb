@@ -144,7 +144,7 @@ export const MEDIA_CONFIG = {
   scores: {
     folder: "/scores",
     // List of available score files
-    files: ['sample.txt']
+    files: ['sample.txt', 'chords-demo.txt']
   },
 };
 
