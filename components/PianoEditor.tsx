@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Note } from '../types';
-import { Play, Square, Trash2, Upload, FileText, Plus, Minus } from 'lucide-react';
+import { Play, Square, Trash2, Upload, FileText, Plus, Minus, Loader2 } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
 
 const MIN_STEPS = 32; // Minimum 2 bars of 16th notes
@@ -81,8 +81,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const [selectedScore, setSelectedScore] = useState<string>('');
   const [bpm, setBpm] = useState<number>(DEFAULT_BPM);
   const [scoreMetadata, setScoreMetadata] = useState<ScoreMetadata>({ bpm: DEFAULT_BPM });
+  const [isLoading, setIsLoading] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scheduledNotesRef = useRef<Set<number>>(new Set());
+  const playbackStartTimeRef = useRef<number>(0);
+  const animationFrameRef = useRef<number>(0);
   
   // Calculate interval based on BPM (16th note duration in ms)
   const stepInterval = useMemo(() => {
@@ -772,10 +776,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       // Reset playback state when loading new score
       setIsPlaying(false);
       setCurrentStep(-1);
+      setIsLoading(true);
       
       const response = await fetch(`${MEDIA_CONFIG.scores.folder}/${scoreName}`);
       if (!response.ok) {
         console.error('Failed to load score:', scoreName);
+        setIsLoading(false);
         return;
       }
       
@@ -788,8 +794,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
         setScoreMetadata(metadata);
         setBpm(metadata.bpm);
       }
+      setIsLoading(false);
     } catch (e) {
       console.error('Error loading score:', e);
+      setIsLoading(false);
     }
   };
 
@@ -834,12 +842,13 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   };
 
   // Piano-like sound using multiple oscillators with ADSR envelope
-  const playTone = useCallback((frequency: number, duration: number) => {
+  // Supports scheduled time for precise Web Audio API timing
+  const playTone = useCallback((frequency: number, duration: number, scheduledTime?: number) => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     const ctx = audioContextRef.current;
-    const now = ctx.currentTime;
+    const now = scheduledTime ?? ctx.currentTime;
     
     // Create main oscillator (fundamental)
     const osc1 = ctx.createOscillator();
@@ -904,56 +913,117 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     return 440 * Math.pow(2, (midi - 69) / 12);
   };
 
+  // Pre-schedule notes using Web Audio API's precise timing
+  // This prevents stuttering on large scores by scheduling notes ahead of time
+  const scheduleNotesAhead = useCallback((startStep: number, currentAudioTime: number, stepDurationSec: number) => {
+    const LOOK_AHEAD_STEPS = 16; // Schedule 16 steps ahead (1 bar)
+    const ctx = audioContextRef.current;
+    if (!ctx) return;
+
+    for (let i = 0; i < LOOK_AHEAD_STEPS; i++) {
+      const step = startStep + i;
+      if (step > lastNoteEndTime) break;
+      
+      // Skip already scheduled notes
+      if (scheduledNotesRef.current.has(step)) continue;
+      scheduledNotesRef.current.add(step);
+      
+      const stepTime = currentAudioTime + (i * stepDurationSec);
+      const notesToPlay = notes.filter(n => n.startTime === step);
+      
+      notesToPlay.forEach(n => {
+        const freq = getFrequency(n.pitch, n.octave);
+        const durationSec = (n.duration * stepDurationSec);
+        playTone(freq, Math.min(durationSec, 0.8), stepTime);
+      });
+    }
+  }, [notes, lastNoteEndTime, playTone]);
+
   useEffect(() => {
-    let interval: number;
     if (isPlaying) {
-      let step = currentStep >= 0 ? currentStep : 0;
-      interval = window.setInterval(() => {
-        // Find notes at this step and play them FIRST, then update step display
-        const notesToPlay = notes.filter(n => n.startTime === step);
-        notesToPlay.forEach(n => {
-          const freq = getFrequency(n.pitch, n.octave);
-          // Duration based on note's duration in 16th notes
-          const durationSec = (n.duration * stepInterval) / 1000;
-          playTone(freq, Math.min(durationSec, 0.8)); // Slightly longer for piano sound
-        });
+      // Initialize audio context
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      const ctx = audioContextRef.current;
+      
+      // Resume context if suspended
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      
+      const stepDurationSec = stepInterval / 1000;
+      const startStep = currentStep >= 0 ? currentStep : 0;
+      playbackStartTimeRef.current = ctx.currentTime;
+      scheduledNotesRef.current.clear();
+      
+      // Initial scheduling
+      scheduleNotesAhead(startStep, ctx.currentTime, stepDurationSec);
+      
+      // Use requestAnimationFrame for smooth visual updates and continuous scheduling
+      let lastScheduledStep = startStep;
+      
+      const updatePlayback = () => {
+        if (!audioContextRef.current) return;
         
-        // Update step display AFTER playing notes
-        setCurrentStep(step);
+        const elapsed = audioContextRef.current.currentTime - playbackStartTimeRef.current;
+        const currentPlayStep = startStep + Math.floor(elapsed / stepDurationSec);
+        
+        // Update visual step
+        setCurrentStep(currentPlayStep);
+        
+        // Schedule more notes ahead as we progress
+        if (currentPlayStep > lastScheduledStep) {
+          scheduleNotesAhead(currentPlayStep, audioContextRef.current.currentTime, stepDurationSec);
+          lastScheduledStep = currentPlayStep;
+        }
         
         // Auto-scroll to follow playhead
         if (scrollContainerRef.current) {
           const container = scrollContainerRef.current;
-          const playheadPosition = step * CELL_WIDTH;
+          const playheadPosition = currentPlayStep * CELL_WIDTH;
           const containerWidth = container.clientWidth;
           const scrollLeft = container.scrollLeft;
           
-          // If playhead is about to go out of view on the right, scroll
           if (playheadPosition > scrollLeft + containerWidth - CELL_WIDTH * 4) {
             container.scrollTo({
               left: playheadPosition - containerWidth / 2,
               behavior: 'smooth'
             });
-          }
-          // If playhead is out of view on the left, scroll
-          else if (playheadPosition < scrollLeft) {
+          } else if (playheadPosition < scrollLeft) {
             container.scrollTo({
               left: Math.max(0, playheadPosition - CELL_WIDTH * 4),
               behavior: 'smooth'
             });
           }
         }
-
-        step++;
-        // Stop playback after the last note ends (not loop)
-        if (step > lastNoteEndTime) {
+        
+        // Stop playback after the last note ends
+        if (currentPlayStep > lastNoteEndTime) {
           setIsPlaying(false);
           setCurrentStep(-1);
+          scheduledNotesRef.current.clear();
+          return;
         }
-      }, stepInterval); // Use dynamic interval based on BPM
+        
+        animationFrameRef.current = requestAnimationFrame(updatePlayback);
+      };
+      
+      animationFrameRef.current = requestAnimationFrame(updatePlayback);
+      
+      return () => {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+      };
+    } else {
+      // Cleanup when stopped
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      scheduledNotesRef.current.clear();
     }
-    return () => clearInterval(interval);
-  }, [isPlaying, notes, playTone, lastNoteEndTime, stepInterval]);
+  }, [isPlaying, notes, lastNoteEndTime, stepInterval, scheduleNotesAhead]);
 
   // Custom scrollbar styles for piano editor
   const scrollbarStyles = `
@@ -1051,7 +1121,20 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
         </div>
       </div>
 
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--accent-3, #7C85EB)' }} />
+            <span className="text-sm" style={{ color: 'var(--text-secondary, #94a3b8)' }}>
+              正在加载乐谱...
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Main grid container with fixed key labels */}
+      {!isLoading && (
       <div className="relative border rounded" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-primary, #0f172a)' }}>
         {/* Fixed key labels column */}
         <div className="absolute left-0 top-0 bottom-0 z-20" style={{ width: `${KEY_LABEL_WIDTH}px` }}>
@@ -1177,9 +1260,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
           </div>
         </div>
       </div>
+      )}
       
       {/* Current position indicator */}
-      {currentStep >= 0 && (
+      {!isLoading && currentStep >= 0 && (
         <div className="mt-2 flex items-center justify-center gap-2">
           <span className="text-xs font-mono px-2 py-1 rounded" style={{ 
             backgroundColor: 'var(--bg-secondary, #1e293b)', 
@@ -1190,9 +1274,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
         </div>
       )}
       
+      {!isLoading && (
       <p className="text-xs mt-2 text-right" style={{ color: 'var(--text-secondary, #64748b)' }}>
         点击网格添加/移除音符。点击上方标尺数字可定位播放位置。播放时视窗自动跟随。
       </p>
+      )}
     </div>
   );
 };
