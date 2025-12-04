@@ -7,8 +7,23 @@ import * as Tone from 'tone';
 
 const MIN_STEPS = 32;
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
-const OCTAVES = [5, 4, 3];
+// Full 88-key piano range: A0 to C8 (octaves 0-8, but octave 0 only has A, A#, B, and octave 8 only has C)
+// For simplicity, we use octaves 0-8 with all 12 notes, and the ABC parser will handle edge cases
+const OCTAVES = [8, 7, 6, 5, 4, 3, 2, 1, 0];
 const KEY_LABEL_WIDTH = 64;
+
+// Octave colors - gradient from red (high) to blue (low)
+const OCTAVE_COLORS: Record<number, string> = {
+  8: '#ef4444', // C8 - highest - red
+  7: '#f97316', // Orange
+  6: '#eab308', // Yellow
+  5: '#84cc16', // Lime
+  4: '#22c55e', // Green (middle C)
+  3: '#14b8a6', // Teal
+  2: '#3b82f6', // Blue
+  1: '#6366f1', // Indigo
+  0: '#8b5cf6', // Purple - lowest - violet
+};
 const DURATION_PALETTE_WIDTH = 48; // Width for duration selector on left
 const CELL_WIDTH = 25;
 const DEFAULT_BPM = 120;
@@ -118,6 +133,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
   const [selectedVoice, setSelectedVoice] = useState<string>('all'); // Voice filter
   const [selectedDuration, setSelectedDuration] = useState<NoteDurationType>('eighth'); // Default to 8th note
+  const [selectedPitch, setSelectedPitch] = useState<{ octave: number; pitch: number } | null>(null); // Selected pitch for editing
   
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
