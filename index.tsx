@@ -594,6 +594,9 @@ const App: React.FC = () => {
     const analyserRef = useRef<AnalyserNode | null>(null);
     const [analyserReady, setAnalyserReady] = useState(false);
 
+    // Piano beat state for particle animation
+    const [pianoBeat, setPianoBeat] = useState(0);
+
     // Video Ref
     const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -1130,7 +1133,10 @@ const App: React.FC = () => {
                 <p className="text-slate-300">创作一段旋律。即使是魔女也需要从学习中休息一下。</p>
             </div>
 
-            <PianoEditor className="w-full"/>
+            <PianoEditor 
+                className="w-full" 
+                onBeat={(intensity) => setPianoBeat(intensity)}
+            />
 
             <div
                 className="mt-8 text-center max-w-2xl mx-auto bg-slate-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
@@ -1202,7 +1208,7 @@ const App: React.FC = () => {
 
             {/* 2. 3D Particles Layer (Middle) */}
             <div className="fixed inset-0 z-10 pointer-events-none">
-                <Scene3D analyser={analyserRef.current || undefined}/>
+                <Scene3D analyser={analyserRef.current || undefined} pianoBeat={pianoBeat}/>
             </div>
 
             {/* 3. Dark Overlay (Top of Backgrounds) - Hidden on Home */}

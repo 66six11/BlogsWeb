@@ -1,14 +1,28 @@
 
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
+import { defaultTheme } from '../theme';
 
 interface Scene3DProps {
   analyser?: AnalyserNode;
+  pianoBeat?: number; // Beat intensity from piano editor (0-1)
 }
 
-const Scene3D: React.FC<Scene3DProps> = ({ analyser }) => {
+const Scene3D: React.FC<Scene3DProps> = ({ analyser, pianoBeat = 0 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
+  const pianoBeatRef = useRef<number>(0);
+  const materialRef = useRef<THREE.ShaderMaterial | null>(null);
+
+  // Update piano beat ref when prop changes
+  useEffect(() => {
+    pianoBeatRef.current = pianoBeat;
+    // Directly update material if available for immediate response
+    if (materialRef.current) {
+      const currentBeat = materialRef.current.uniforms.uBeat.value;
+      materialRef.current.uniforms.uBeat.value = Math.max(currentBeat, pianoBeat * 0.8);
+    }
+  }, [pianoBeat]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -101,11 +115,14 @@ const Scene3D: React.FC<Scene3DProps> = ({ analyser }) => {
       }
     `;
 
+    // Use particle color from theme
+    const particleColor = defaultTheme.particles.primary;
+
     const particleMaterial = new THREE.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
         uBeat: { value: 0 },
-        uColor: { value: new THREE.Color('#fbbf24') } // Gold
+        uColor: { value: new THREE.Color(particleColor) }
       },
       vertexShader: particleVertexShader,
       fragmentShader: particleFragmentShader,
@@ -113,6 +130,8 @@ const Scene3D: React.FC<Scene3DProps> = ({ analyser }) => {
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
+
+    materialRef.current = particleMaterial;
 
     const particlesMesh = new THREE.Points(particlesGeometry, particleMaterial);
     scene.add(particlesMesh);
@@ -145,16 +164,22 @@ const Scene3D: React.FC<Scene3DProps> = ({ analyser }) => {
           beat = Math.pow(avg / 255, 2); // Square it to make weak sounds weaker, strong sounds stronger
       }
 
+      // Combine BGM beat with piano beat
+      const combinedBeat = Math.max(beat, pianoBeatRef.current);
+
       // Smooth beat value for visuals
       particleMaterial.uniforms.uBeat.value = THREE.MathUtils.lerp(
           particleMaterial.uniforms.uBeat.value, 
-          beat, 
+          combinedBeat, 
           0.15
       );
 
+      // Decay piano beat over time
+      pianoBeatRef.current *= 0.9;
+
       // --- Particle Physics Update ---
       // Accelerate time based on beat (Music makes particles move faster)
-      particleTime += delta * (0.5 + beat * 3.0); 
+      particleTime += delta * (0.5 + combinedBeat * 3.0); 
       particleMaterial.uniforms.uTime.value = particleTime;
 
       renderer.render(scene, camera);
@@ -177,6 +202,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ analyser }) => {
       renderer.dispose();
       particlesGeometry.dispose();
       particleMaterial.dispose();
+      materialRef.current = null;
     };
   }, [analyser]);
 
