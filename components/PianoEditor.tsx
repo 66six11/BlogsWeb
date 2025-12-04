@@ -3,7 +3,6 @@ import { Note } from '../types';
 import { Play, Square, Trash2, Plus, Minus, Loader2 } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
 import { parseScore, ScoreMetadata } from './ScoreParser';
-import abcjs from 'abcjs';
 
 const MIN_STEPS = 32;
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
@@ -11,6 +10,64 @@ const OCTAVES = [5, 4, 3];
 const KEY_LABEL_WIDTH = 64;
 const CELL_WIDTH = 25;
 const DEFAULT_BPM = 120;
+const VISIBLE_STEP_BUFFER = 10; // Extra steps to render beyond visible area
+
+// Audio node object pool for performance
+class AudioNodePool {
+  private oscillatorPool: OscillatorNode[] = [];
+  private gainPool: GainNode[] = [];
+  private ctx: AudioContext;
+  private poolSize = 50;
+  
+  constructor(ctx: AudioContext) {
+    this.ctx = ctx;
+    this.prewarm();
+  }
+  
+  prewarm() {
+    // Pre-create nodes for pool
+    for (let i = 0; i < this.poolSize; i++) {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      gain.gain.value = 0;
+      this.oscillatorPool.push(osc);
+      this.gainPool.push(gain);
+    }
+  }
+  
+  getNodes(): { osc: OscillatorNode; gain: GainNode } {
+    // Reuse or create new
+    let osc = this.oscillatorPool.pop();
+    let gain = this.gainPool.pop();
+    
+    if (!osc || osc.context !== this.ctx) {
+      osc = this.ctx.createOscillator();
+      osc.type = 'triangle';
+    }
+    if (!gain || gain.context !== this.ctx) {
+      gain = this.ctx.createGain();
+    }
+    
+    return { osc, gain };
+  }
+  
+  // Return nodes to pool after use (for future reuse)
+  returnNodes(osc: OscillatorNode, gain: GainNode) {
+    // Can't reuse stopped oscillators, but gains can be reused
+    if (this.gainPool.length < this.poolSize) {
+      try {
+        gain.disconnect();
+        this.gainPool.push(gain);
+      } catch (e) {}
+    }
+  }
+  
+  clear() {
+    this.oscillatorPool = [];
+    this.gainPool = [];
+  }
+}
 
 interface PianoEditorProps {
   className?: string;
@@ -33,8 +90,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const playbackIdRef = useRef<number>(0);
   const animationFrameRef = useRef<number>(0);
-  const abcSynthRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const audioPoolRef = useRef<AudioNodePool | null>(null);
+  
+  // Virtual scroll state
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: MIN_STEPS });
   
   // Derived values
   const stepInterval = useMemo(() => Math.round(60000 / bpm / 4), [bpm]);
@@ -73,6 +133,34 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     setAvailableScores(MEDIA_CONFIG.scores.files);
   }, []);
 
+  // Update visible range on scroll for virtual scrolling
+  const updateVisibleRange = useCallback(() => {
+    if (!scrollContainerRef.current) return;
+    const container = scrollContainerRef.current;
+    const scrollLeft = container.scrollLeft;
+    const clientWidth = container.clientWidth;
+    
+    const startStep = Math.max(0, Math.floor(scrollLeft / CELL_WIDTH) - VISIBLE_STEP_BUFFER);
+    const endStep = Math.min(totalSteps, Math.ceil((scrollLeft + clientWidth) / CELL_WIDTH) + VISIBLE_STEP_BUFFER);
+    
+    setVisibleRange({ start: startStep, end: endStep });
+  }, [totalSteps]);
+
+  // Listen to scroll events
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    updateVisibleRange();
+    container.addEventListener('scroll', updateVisibleRange);
+    return () => container.removeEventListener('scroll', updateVisibleRange);
+  }, [updateVisibleRange]);
+
+  // Update visible range when totalSteps changes
+  useEffect(() => {
+    updateVisibleRange();
+  }, [totalSteps, updateVisibleRange]);
+
   // Stop playback
   const stopPlayback = useCallback(() => {
     playbackIdRef.current++;
@@ -82,9 +170,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       animationFrameRef.current = 0;
     }
     
-    if (abcSynthRef.current) {
-      try { abcSynthRef.current.stop(); } catch (e) {}
-      abcSynthRef.current = null;
+    if (audioPoolRef.current) {
+      audioPoolRef.current.clear();
+      audioPoolRef.current = null;
     }
     
     if (audioContextRef.current) {
@@ -97,7 +185,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     setPlayheadPosition(-1);
   }, []);
 
-  // Play using Web Audio - works for both ABC and manual notes
+  // Play using Web Audio with object pool - works for both ABC and manual notes
   const startPlayback = useCallback(async () => {
     if (notes.length === 0) return;
     
@@ -106,6 +194,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     audioContextRef.current = ctx;
     if (ctx.state === 'suspended') await ctx.resume();
+    
+    // Create audio pool
+    const pool = new AudioNodePool(ctx);
+    audioPoolRef.current = pool;
     
     const stepDurationSec = stepInterval / 1000;
     const startStep = currentStep >= 0 ? currentStep : 0;
@@ -355,35 +447,47 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
                 />
               )}
               
-              {/* Ruler */}
-              <div className="flex h-6 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)' }}>
-                {Array.from({ length: totalSteps }).map((_, i) => {
-                  const isBeatStart = i % 4 === 0;
-                  return (
-                    <div 
-                      key={i} 
-                      onClick={() => { if (!isPlaying) setCurrentStep(i); }}
-                      className={`text-[10px] text-center flex items-center justify-center cursor-pointer hover:bg-white/10 ${isBeatStart ? 'font-bold' : ''}`} 
-                      style={{ 
-                        width: `${CELL_WIDTH}px`, flexShrink: 0,
-                        color: currentStep === i ? 'var(--accent-3, #7C85EB)' : isBeatStart ? 'var(--accent-1, #deb99a)' : 'var(--text-secondary, #475569)',
-                        backgroundColor: currentStep === i ? 'rgba(124, 133, 235, 0.2)' : 'transparent',
-                        borderRight: i % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
-                      }}
-                    >
-                      {isBeatStart ? i / 4 + 1 : '·'}
-                    </div>
-                  );
-                })}
+              {/* Ruler - virtual scrolling */}
+              <div className="relative h-6 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)', width: `${totalSteps * CELL_WIDTH}px` }}>
+                {/* Left spacer for virtual scroll */}
+                <div style={{ position: 'absolute', left: 0, width: `${visibleRange.start * CELL_WIDTH}px`, height: '100%' }} />
+                
+                {/* Visible ruler cells */}
+                <div className="absolute flex h-full" style={{ left: `${visibleRange.start * CELL_WIDTH}px` }}>
+                  {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
+                    const i = visibleRange.start + idx;
+                    const isBeatStart = i % 4 === 0;
+                    return (
+                      <div 
+                        key={i} 
+                        onClick={() => { if (!isPlaying) setCurrentStep(i); }}
+                        className={`text-[10px] text-center flex items-center justify-center cursor-pointer hover:bg-white/10 ${isBeatStart ? 'font-bold' : ''}`} 
+                        style={{ 
+                          width: `${CELL_WIDTH}px`, flexShrink: 0,
+                          color: currentStep === i ? 'var(--accent-3, #7C85EB)' : isBeatStart ? 'var(--accent-1, #deb99a)' : 'var(--text-secondary, #475569)',
+                          backgroundColor: currentStep === i ? 'rgba(124, 133, 235, 0.2)' : 'transparent',
+                          borderRight: i % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
+                        }}
+                      >
+                        {isBeatStart ? i / 4 + 1 : '·'}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Note grid */}
+              {/* Note grid - virtual scrolling */}
               {OCTAVES.map((octave, oIdx) => (
                 <React.Fragment key={octave}>
                   {PITCHES.map((noteName, pIdx) => (
-                    <div key={`${octave}-${noteName}`} className="flex h-8 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)' }}>
-                      <div className="flex-1 flex">
-                        {Array.from({ length: totalSteps }).map((_, step) => {
+                    <div key={`${octave}-${noteName}`} className="relative h-8 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)', width: `${totalSteps * CELL_WIDTH}px` }}>
+                      {/* Left spacer for virtual scroll */}
+                      <div style={{ position: 'absolute', left: 0, width: `${visibleRange.start * CELL_WIDTH}px`, height: '100%' }} />
+                      
+                      {/* Visible grid cells */}
+                      <div className="absolute flex h-full" style={{ left: `${visibleRange.start * CELL_WIDTH}px` }}>
+                        {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
+                          const step = visibleRange.start + idx;
                           const isActive = isNoteActive(octave, 11 - pIdx, step);
                           return (
                             <div 
@@ -391,7 +495,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
                               onClick={() => toggleNote(oIdx, pIdx, step)}
                               className="cursor-pointer hover:bg-white/5 relative"
                               style={{ 
-                                width: `${CELL_WIDTH}px`, flexShrink: 0,
+                                width: `${CELL_WIDTH}px`, height: '100%', flexShrink: 0,
                                 borderRight: step % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
                               }}
                             >
