@@ -133,7 +133,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
   const [selectedVoice, setSelectedVoice] = useState<string>('all'); // Voice filter
   const [selectedDuration, setSelectedDuration] = useState<NoteDurationType>('eighth'); // Default to 8th note
-  const [selectedPitch, setSelectedPitch] = useState<{ octave: number; pitch: number } | null>(null); // Selected pitch for editing
   
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -518,6 +517,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     .piano-scroll::-webkit-scrollbar { height: 8px; }
     .piano-scroll::-webkit-scrollbar-track { background: var(--bg-secondary, #1e293b); }
     .piano-scroll::-webkit-scrollbar-thumb { background: var(--accent-3, #7C85EB); border-radius: 4px; }
+    .piano-scroll::-webkit-scrollbar { width: 8px; }
+    .piano-grid-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+    .piano-grid-scroll::-webkit-scrollbar-track { background: var(--bg-secondary, #1e293b); }
+    .piano-grid-scroll::-webkit-scrollbar-thumb { background: var(--accent-3, #7C85EB); border-radius: 4px; }
   `;
 
   return (
@@ -544,44 +547,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
         
         {/* Controls row */}
         <div className="flex gap-2 items-center flex-wrap">
-          {/* Note duration selector */}
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)' }}>
-            <Music size={14} style={{ color: 'var(--accent-3, #7C85EB)' }} />
-            <select
-              value={selectedDuration}
-              onChange={(e) => setSelectedDuration(e.target.value as NoteDurationType)}
-              className="text-xs bg-transparent border-none outline-none cursor-pointer"
-              style={{ color: 'var(--accent-1, #deb99a)' }}
-              title="音符时值"
-            >
-              {DURATION_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          
-          {/* Selected pitch indicator */}
-          {selectedPitch && (
-            <div 
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium"
-              style={{ 
-                backgroundColor: OCTAVE_COLORS[selectedPitch.octave] + '33',
-                color: OCTAVE_COLORS[selectedPitch.octave],
-                border: `1px solid ${OCTAVE_COLORS[selectedPitch.octave]}`
-              }}
-            >
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: OCTAVE_COLORS[selectedPitch.octave] }} />
-              {PITCHES[11 - selectedPitch.pitch]}{selectedPitch.octave}
-              <button 
-                onClick={() => setSelectedPitch(null)} 
-                className="ml-1 hover:opacity-70"
-                title="取消选择"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-          
           {/* Sustain toggle */}
           <button
             onClick={() => setSustain(prev => !prev)}
@@ -666,69 +631,99 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
 
       {/* Piano Grid - always shown */}
       {!isLoading && (
-        <div className="relative border rounded" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-primary, #0f172a)' }}>
-          {/* Key labels / Note Palette - clickable to select note for adding */}
-          <div className="absolute left-0 top-0 bottom-0 z-20" style={{ width: `${KEY_LABEL_WIDTH}px` }}>
-            <div className="h-6 border-b flex items-center justify-center text-[10px]" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--text-secondary, #64748b)' }}>
-              音符
+        <div className="flex gap-0 overflow-hidden" style={{ height: '400px', maxHeight: '400px' }}>
+          {/* Duration Selector - vertical on the left */}
+          <div className="flex flex-col border-r shrink-0 z-30 overflow-hidden" style={{ width: `${DURATION_PALETTE_WIDTH}px`, borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-secondary, #1e293b)' }}>
+            <div className="h-6 border-b flex items-center justify-center text-[9px] shrink-0" style={{ borderColor: 'var(--bg-tertiary, #334155)', color: 'var(--text-secondary, #64748b)' }}>
+              时值
             </div>
-            {OCTAVES.map((octave, oIdx) => (
-              <React.Fragment key={octave}>
-                {PITCHES.map((noteName, pIdx) => {
-                  const isBlackKey = noteName.includes('#');
-                  const pitch = 11 - pIdx;
-                  const isSelected = selectedPitch?.octave === octave && selectedPitch?.pitch === pitch;
-                  const octaveColor = OCTAVE_COLORS[octave] || '#8b5cf6';
-                  return (
-                    <div 
-                      key={`${octave}-${noteName}`}
-                      onClick={() => setSelectedPitch(isSelected ? null : { pitch, octave })}
-                      className={`flex items-center justify-between px-1 text-xs border-b border-r h-8 cursor-pointer transition-all hover:opacity-80 ${isSelected ? 'ring-2 ring-inset ring-white' : ''}`}
-                      style={{ 
-                        width: `${KEY_LABEL_WIDTH}px`,
-                        backgroundColor: isBlackKey ? 'var(--bg-primary, #0f172a)' : 'var(--bg-secondary, #1e293b)',
-                        color: isBlackKey ? 'var(--text-secondary, #64748b)' : 'var(--text-primary, #e2e8f0)',
-                        borderColor: 'var(--bg-tertiary, #334155)'
-                      }}
-                      title={`点击选择 ${noteName}${octave}，然后点击网格添加`}
-                    >
-                      {/* Color indicator for octave */}
-                      <div 
-                        className="w-3 h-3 rounded-full shrink-0" 
-                        style={{ backgroundColor: octaveColor, opacity: isBlackKey ? 0.6 : 1 }} 
-                      />
-                      <span className="text-right">{noteName}{octave}</span>
-                    </div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
+            <div className="flex-1 flex flex-col overflow-y-auto">
+              {DURATION_OPTIONS.map((opt) => {
+                const isSelected = selectedDuration === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSelectedDuration(opt.value)}
+                    className={`flex flex-col items-center justify-center py-2 border-b transition-all shrink-0 ${isSelected ? 'ring-2 ring-inset ring-amber-400' : 'hover:bg-white/5'}`}
+                    style={{
+                      borderColor: 'var(--bg-tertiary, #334155)',
+                      backgroundColor: isSelected ? 'var(--accent-3, #7C85EB)' : 'transparent',
+                      color: isSelected ? 'white' : 'var(--text-secondary, #94a3b8)'
+                    }}
+                    title={`${opt.label}音符 (${opt.steps}步)`}
+                  >
+                    <span className="text-lg leading-none">{opt.icon}</span>
+                    <span className="text-[9px] mt-0.5">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-
-          {/* Scrollable grid */}
-          <div ref={scrollContainerRef} className="piano-scroll overflow-x-auto" style={{ marginLeft: `${KEY_LABEL_WIDTH}px` }}>
-            <div className="relative" style={{ minWidth: `${totalSteps * CELL_WIDTH}px` }}>
-              {/* Playhead */}
-              {playheadPosition >= 0 && (
-                <div className="absolute top-0 bottom-0 z-30 pointer-events-none"
-                  style={{ width: '2px', left: `${playheadPosition}px`, backgroundColor: 'rgba(251, 191, 36, 0.9)', boxShadow: '0 0 12px rgba(251, 191, 36, 0.8)' }}
-                />
-              )}
-              
-              {/* Ruler - virtual scrolling */}
-              <div className="relative h-6 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)', width: `${totalSteps * CELL_WIDTH}px` }}>
-                {/* Left spacer for virtual scroll */}
-                <div style={{ position: 'absolute', left: 0, width: `${visibleRange.start * CELL_WIDTH}px`, height: '100%' }} />
+          
+          {/* Main Grid Container with vertical scroll */}
+          <div className="flex-1 relative border rounded overflow-hidden" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-primary, #0f172a)' }}>
+            {/* Key labels - fixed on the left of the scrollable area */}
+            <div className="absolute left-0 top-0 bottom-0 z-20 overflow-hidden" style={{ width: `${KEY_LABEL_WIDTH}px` }}>
+              <div className="h-6 border-b border-r flex items-center justify-center text-[10px]" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--text-secondary, #64748b)' }}>
+                音高
+              </div>
+              <div className="overflow-hidden" style={{ height: 'calc(100% - 24px)' }}>
+                <div className="key-labels-inner" style={{ transform: 'translateY(var(--scroll-top, 0px))' }}>
+                  {OCTAVES.map((octave) => (
+                    <React.Fragment key={octave}>
+                      {PITCHES.map((noteName, pIdx) => {
+                        const isBlackKey = noteName.includes('#');
+                        return (
+                          <div 
+                            key={`${octave}-${noteName}`}
+                            className="flex items-center justify-end px-2 text-xs border-b border-r h-8"
+                            style={{ 
+                              width: `${KEY_LABEL_WIDTH}px`,
+                              backgroundColor: isBlackKey ? 'var(--bg-primary, #0f172a)' : 'var(--bg-secondary, #1e293b)',
+                              color: isBlackKey ? 'var(--text-secondary, #64748b)' : 'var(--text-primary, #e2e8f0)',
+                              borderColor: 'var(--bg-tertiary, #334155)'
+                            }}
+                          >
+                            <span>{noteName}{octave}</span>
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {/* Scrollable container - horizontal scroll only, with margin for key labels */}
+            <div 
+              ref={scrollContainerRef} 
+              className="piano-grid-scroll overflow-x-auto overflow-y-auto h-full" 
+              style={{ marginLeft: `${KEY_LABEL_WIDTH}px` }}
+              onScroll={(e) => {
+                // Sync vertical scroll with key labels
+                const scrollTop = (e.target as HTMLDivElement).scrollTop;
+                const keyLabelsInner = document.querySelector('.key-labels-inner') as HTMLElement;
+                if (keyLabelsInner) {
+                  keyLabelsInner.style.transform = `translateY(-${scrollTop}px)`;
+                }
+              }}
+            >
+              <div className="relative" style={{ minWidth: `${totalSteps * CELL_WIDTH}px`, minHeight: `${26 + OCTAVES.length * PITCHES.length * 32}px` }}>
+                {/* Playhead */}
+                {playheadPosition >= 0 && (
+                  <div className="absolute top-0 bottom-0 z-30 pointer-events-none"
+                    style={{ width: '2px', left: `${playheadPosition}px`, backgroundColor: 'rgba(251, 191, 36, 0.9)', boxShadow: '0 0 12px rgba(251, 191, 36, 0.8)' }}
+                  />
+                )}
                 
-                {/* Visible ruler cells */}
-                <div className="absolute flex h-full" style={{ left: `${visibleRange.start * CELL_WIDTH}px` }}>
-                  {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
-                    const i = visibleRange.start + idx;
+                {/* Ruler - sticky at top */}
+                <div className="sticky top-0 z-20 h-6 border-b flex" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-secondary, #1e293b)', width: `${totalSteps * CELL_WIDTH}px` }}>
+                  {Array.from({ length: totalSteps }).map((_, i) => {
                     const isBeatStart = i % 4 === 0;
                     return (
                       <div 
                         key={i} 
-                        onClick={() => { if (!isPlaying) setCurrentStep(i); }}
+                        onClick={() => handleRulerClick(i)}
                         className={`text-[10px] text-center flex items-center justify-center cursor-pointer hover:bg-white/10 ${isBeatStart ? 'font-bold' : ''}`} 
                         style={{ 
                           width: `${CELL_WIDTH}px`, flexShrink: 0,
@@ -742,67 +737,64 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
                     );
                   })}
                 </div>
-              </div>
 
-              {/* Note grid - virtual scrolling */}
-              {OCTAVES.map((octave, oIdx) => (
-                <React.Fragment key={octave}>
-                  {PITCHES.map((noteName, pIdx) => (
-                    <div key={`${octave}-${noteName}`} className="relative h-8 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)', width: `${totalSteps * CELL_WIDTH}px` }}>
-                      {/* Left spacer for virtual scroll */}
-                      <div style={{ position: 'absolute', left: 0, width: `${visibleRange.start * CELL_WIDTH}px`, height: '100%' }} />
-                      
-                      {/* Visible grid cells */}
-                      <div className="absolute flex h-full" style={{ left: `${visibleRange.start * CELL_WIDTH}px` }}>
-                        {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
-                          const step = visibleRange.start + idx;
-                          const noteInfo = isPartOfNote(octave, 11 - pIdx, step);
-                          const { isStart, isMiddle, isEnd, note } = noteInfo;
-                          const isActive = isStart || isMiddle;
-                          
-                          // Determine border radius for unified note block appearance
-                          let borderRadius = '0';
-                          if (isStart && isEnd) {
-                            borderRadius = '4px'; // Single cell note
-                          } else if (isStart) {
-                            borderRadius = '4px 0 0 4px'; // Start of multi-cell note
-                          } else if (isEnd) {
-                            borderRadius = '0 4px 4px 0'; // End of multi-cell note
-                          }
-                          
-                          return (
-                            <div 
-                              key={step} 
-                              onClick={() => toggleNote(oIdx, pIdx, step)}
-                              className="cursor-pointer hover:bg-white/5 relative"
-                              style={{ 
-                                width: `${CELL_WIDTH}px`, height: '100%', flexShrink: 0,
-                                borderRight: step % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
-                              }}
-                            >
-                              {isActive && (
-                                <div 
-                                  className="absolute shadow-[0_0_10px_rgba(168,85,247,0.6)]" 
-                                  style={{ 
-                                    backgroundColor: isStart ? 'var(--accent-3, #a855f7)' : 'var(--accent-3, #9333ea)',
-                                    borderRadius,
-                                    top: '2px',
-                                    bottom: '2px',
-                                    left: isStart ? '2px' : '0',
-                                    right: isEnd ? '2px' : '0',
-                                    // Add visual indicator for note start
-                                    borderLeft: isStart ? '3px solid rgba(255,255,255,0.5)' : 'none'
-                                  }} 
-                                />
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </React.Fragment>
-              ))}
+                {/* Note grid */}
+                {OCTAVES.map((octave, oIdx) => (
+                  <React.Fragment key={octave}>
+                    {PITCHES.map((noteName, pIdx) => {
+                      const pitch = 11 - pIdx;
+                      const pitchColor = PITCH_COLORS[pitch] || '#a855f7';
+                      return (
+                        <div key={`${octave}-${noteName}`} className="flex h-8 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)', width: `${totalSteps * CELL_WIDTH}px` }}>
+                          {Array.from({ length: totalSteps }).map((_, step) => {
+                            const noteInfo = isPartOfNote(octave, pitch, step);
+                            const { isStart, isMiddle, isEnd } = noteInfo;
+                            const isActive = isStart || isMiddle;
+                            
+                            // Determine border radius for unified note block appearance
+                            let borderRadius = '0';
+                            if (isStart && isEnd) {
+                              borderRadius = '4px'; // Single cell note
+                            } else if (isStart) {
+                              borderRadius = '4px 0 0 4px'; // Start of multi-cell note
+                            } else if (isEnd) {
+                              borderRadius = '0 4px 4px 0'; // End of multi-cell note
+                            }
+                            
+                            return (
+                              <div 
+                                key={step} 
+                                onClick={() => toggleNote(oIdx, pIdx, step)}
+                                className="cursor-pointer hover:bg-white/5 relative"
+                                style={{ 
+                                  width: `${CELL_WIDTH}px`, height: '100%', flexShrink: 0,
+                                  borderRight: step % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
+                                }}
+                              >
+                                {isActive && (
+                                  <div 
+                                    className="absolute shadow-[0_0_10px_rgba(168,85,247,0.6)]" 
+                                    style={{ 
+                                      backgroundColor: pitchColor,
+                                      borderRadius,
+                                      top: '2px',
+                                      bottom: '2px',
+                                      left: isStart ? '2px' : '0',
+                                      right: isEnd ? '2px' : '0',
+                                      // Add visual indicator for note start
+                                      borderLeft: isStart ? '3px solid rgba(255,255,255,0.5)' : 'none'
+                                    }} 
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
           </div>
         </div>
