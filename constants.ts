@@ -1,5 +1,6 @@
 
 import { BlogPost, Project } from './types';
+import { SITE_CONFIG, GITHUB_CONFIG, MEDIA_CONFIG, PORTFOLIO_PROJECTS } from './config';
 
 // --- Environment Variable Helper ---
 // Safely retrieves env vars from process.env (Webpack/Node) or import.meta.env (Vite)
@@ -30,17 +31,21 @@ export const getEnv = (key: string): string => {
   return "";
 };
 
-export const APP_TITLE = "魔法Dev";
-export const AUTHOR_NAME = "66six11";
+// Re-export from config for backwards compatibility
+export const APP_TITLE = SITE_CONFIG.title;
+export const AUTHOR_NAME = SITE_CONFIG.authorName;
 
 // GitHub Configuration
-export const GITHUB_USERNAME = "66six11"; 
-export const GITHUB_REPO = "MyNotes";
-export const GITHUB_BLOG_PATH = ""; // Root traversal
+export const GITHUB_USERNAME = GITHUB_CONFIG.username; 
+export const GITHUB_REPO = GITHUB_CONFIG.repo;
+export const GITHUB_BLOG_PATH = GITHUB_CONFIG.blogPath;
 
 // Assets
-export const BG_MEDIA_URL = "/The Journey of Elaina.mp4"; 
-export const BGM_URL = "/上田麗奈 - リテラチュア (文学) (Anime Size)_H.mp3"; 
+export const BG_MEDIA_URL = MEDIA_CONFIG.backgroundMedia; 
+export const BGM_URL = MEDIA_CONFIG.music.folder + "/上田麗奈 - リテラチュア (文学) (Anime Size)_H.mp3"; 
+
+// Re-export projects from config
+export const PROJECTS = PORTFOLIO_PROJECTS;
 
 // Fallback Mock Posts
 export const MOCK_POSTS: BlogPost[] = [
@@ -169,29 +174,5 @@ $$D_{\\text{GGX}} = \\frac{\\alpha^2}{\\pi[(\\mathbf{n} \\cdot \\mathbf{h})^2(\\
 
 > "默认性能。" - Unity Technologies
     `
-  }
-];
-
-export const PROJECTS: Project[] = [
-  {
-    id: 'p1',
-    title: '自定义体素引擎',
-    description: '一个用 C++ 和 Vulkan 编写的类 Minecraft 体素引擎。支持无限地形生成和动态光照。',
-    image: 'https://picsum.photos/600/400?random=1',
-    tech: ['C++', 'Vulkan', '计算着色器']
-  },
-  {
-    id: 'p2',
-    title: '旋律魔女',
-    description: '一款用 Unity 制作的节奏游戏，通过弹奏钢琴和弦来施放咒语。',
-    image: 'https://picsum.photos/600/400?random=2',
-    tech: ['Unity', 'C#', 'MIDI']
-  },
-  {
-    id: 'p3',
-    title: '数字速写本',
-    description: '专注于动漫背景和环境的数字绘画作品集。',
-    image: 'https://picsum.photos/600/400?random=3',
-    tech: ['Photoshop', 'Blender']
   }
 ];

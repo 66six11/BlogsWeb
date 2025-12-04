@@ -1,29 +1,101 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Note } from '../types';
-import { Play, Square, Trash2, Plus } from 'lucide-react';
+import { Play, Square, Trash2, Upload, FileText } from 'lucide-react';
+import { MEDIA_CONFIG } from '../config';
 
 const TOTAL_STEPS = 32; // 2 bars of 16th notes
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
 const OCTAVES = [5, 4]; // 2 Octaves range
 
+// Note name to pitch value mapping
+const NOTE_TO_PITCH: Record<string, number> = {
+  'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
+  'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11
+};
+
 interface PianoEditorProps {
   className?: string;
+  onNotePlay?: (frequency: number, intensity: number) => void;
 }
 
-const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
+const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
+  const [availableScores, setAvailableScores] = useState<string[]>([]);
+  const [selectedScore, setSelectedScore] = useState<string>('');
   const audioContextRef = useRef<AudioContext | null>(null);
   
   // Initialize notes with a simple melody
   useEffect(() => {
     setNotes([
-      { pitch: 7, octave: 4, startTime: 0, duration: 2 }, // E
-      { pitch: 3, octave: 4, startTime: 2, duration: 2 }, // G#
-      { pitch: 0, octave: 4, startTime: 4, duration: 4 }, // B
+      { pitch: 4, octave: 4, startTime: 0, duration: 2 }, // E
+      { pitch: 8, octave: 4, startTime: 2, duration: 2 }, // G#
+      { pitch: 11, octave: 4, startTime: 4, duration: 4 }, // B
     ]);
+    
+    // Load available scores
+    loadAvailableScores();
   }, []);
+
+  const loadAvailableScores = async () => {
+    // For now, we'll provide a static list. In production, you could scan the folder
+    setAvailableScores(['sample.txt']);
+  };
+
+  const parseScoreFile = (content: string): Note[] => {
+    const lines = content.split('\n');
+    const parsedNotes: Note[] = [];
+    let currentTime = 0;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // Skip comments and empty lines
+      if (!trimmed || trimmed.startsWith('#')) continue;
+
+      const parts = trimmed.split(/\s+/);
+      if (parts.length >= 3) {
+        const noteName = parts[0].toUpperCase();
+        const octave = parseInt(parts[1], 10);
+        const duration = parseInt(parts[2], 10);
+
+        const pitch = NOTE_TO_PITCH[noteName];
+        
+        if (pitch !== undefined && !isNaN(octave) && !isNaN(duration)) {
+          parsedNotes.push({
+            pitch,
+            octave,
+            startTime: currentTime,
+            duration
+          });
+          currentTime += duration;
+        }
+      }
+    }
+
+    return parsedNotes;
+  };
+
+  const loadScore = async (scoreName: string) => {
+    try {
+      const response = await fetch(`${MEDIA_CONFIG.scoresFolder}/${scoreName}`);
+      if (!response.ok) {
+        console.error('Failed to load score:', scoreName);
+        return;
+      }
+      
+      const content = await response.text();
+      const parsedNotes = parseScoreFile(content);
+      
+      if (parsedNotes.length > 0) {
+        setNotes(parsedNotes);
+        setSelectedScore(scoreName);
+      }
+    } catch (e) {
+      console.error('Error loading score:', e);
+    }
+  };
 
   const toggleNote = (octaveIndex: number, pitchIndex: number, step: number) => {
     // Pitch calc: PITCHES array index 0 is high (B), 11 is low (C).
@@ -72,7 +144,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
 
     osc.start();
     osc.stop(ctx.currentTime + duration);
-  }, []);
+    
+    // Notify parent for particle effects
+    if (onNotePlay) {
+      onNotePlay(frequency, 0.5);
+    }
+  }, [onNotePlay]);
 
   const getFrequency = (pitch: number, octave: number) => {
     // A4 = 440Hz. A4 is octave 4, pitch 9 (A).
@@ -113,7 +190,20 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
           <span className="text-2xl">♪</span> 魔法乐谱编辑器
         </h3>
         <div className="flex gap-2">
-           <button 
+          {/* Score loader */}
+          {availableScores.length > 0 && (
+            <select
+              value={selectedScore}
+              onChange={(e) => loadScore(e.target.value)}
+              className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-sm"
+            >
+              <option value="">加载乐谱...</option>
+              {availableScores.map(score => (
+                <option key={score} value={score}>{score}</option>
+              ))}
+            </select>
+          )}
+          <button 
             onClick={() => setNotes([])}
             className="p-2 rounded-full hover:bg-red-500/20 text-red-400 transition-colors"
             title="清除"
@@ -183,7 +273,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
                               `}
                             >
                               {isActive && (
-                                <div className="absolute inset-0.5 rounded-sm bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.6)] animate-pulse" />
+                                <div className={`absolute inset-0.5 rounded-sm bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.6)] ${isPlaying && currentStep === step ? 'animate-pulse scale-110' : ''}`} />
                               )}
                             </div>
                           );
@@ -197,7 +287,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
           </div>
         </div>
       </div>
-      <p className="text-xs text-slate-500 mt-2 text-right">点击网格添加/移除音符。需要先进行用户交互才能播放音频。</p>
+      <p className="text-xs text-slate-500 mt-2 text-right">点击网格添加/移除音符。选择乐谱文件加载预设旋律。</p>
     </div>
   );
 };

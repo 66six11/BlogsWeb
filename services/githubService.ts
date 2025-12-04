@@ -214,6 +214,39 @@ export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFile
     }
 };
 
+// Fetch last commit date for a file
+const fetchLastCommitDate = async (path: string): Promise<string | null> => {
+    try {
+        const cacheKey = `commit_${path}`;
+        const cached = getCache<string>(cacheKey);
+        if (cached) return cached;
+
+        const response = await fetch(
+            `/api/github/commits?owner=${encodeURIComponent(GITHUB_USERNAME)}&repo=${encodeURIComponent(GITHUB_REPO)}&path=${encodeURIComponent(path)}`,
+            { headers: getHeaders() }
+        );
+
+        if (!response.ok) {
+            console.warn(`Failed to fetch commit date for ${path}: ${response.status}`);
+            return null;
+        }
+
+        const data = await response.json();
+        
+        if (Array.isArray(data) && data.length > 0 && data[0].commit?.author?.date) {
+            const date = new Date(data[0].commit.author.date);
+            const formattedDate = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+            setCache(cacheKey, formattedDate);
+            return formattedDate;
+        }
+        
+        return null;
+    } catch (e) {
+        console.error("Failed to fetch commit date", e);
+        return null;
+    }
+};
+
 export const fetchPostContent = async (path: string): Promise<BlogPost | null> => {
     try {
          const cacheKey = `post_${path}`;
@@ -232,10 +265,13 @@ export const fetchPostContent = async (path: string): Promise<BlogPost | null> =
          const pathParts = path.split('/');
          const fileName = pathParts[pathParts.length - 1].replace('.md', '');
          
+         // Fetch the last commit date from Git
+         const gitDate = await fetchLastCommitDate(path);
+         
          const post = {
              id: path, 
              title: metadata.title || fileName,
-             date: metadata.date || 'Unknown Date',
+             date: gitDate || metadata.date || 'Unknown Date',
              category: metadata.category || pathParts[0],
              tags: metadata.tags || [],
              excerpt: metadata.excerpt || body.substring(0, 100) + '...',

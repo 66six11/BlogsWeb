@@ -1,28 +1,43 @@
 import path from 'path';
 import React from 'react';
+import { ICON_COLORS } from '../config';
 
-export const CustomSparkleIcon = ({className, size = 24}: { className?: string, size?: number | string }) => (
+interface IconProps {
+    className?: string;
+    size?: number | string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    accentColor?: string;
+}
+
+export const CustomSparkleIcon = ({
+    className, 
+    size = 24,
+    primaryColor = ICON_COLORS.primary,
+    secondaryColor = ICON_COLORS.secondary,
+    accentColor = ICON_COLORS.accent,
+}: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg"
          className={className}>
         <g clipPath="url(#clip0_2005_83)">
             <path
                 d="M15 2.88C20.0368 2.88 24.12 6.96316 24.12 12C24.12 14.2974 23.2705 16.3964 21.8685 18H25.3946C26.4156 16.235 27 14.1857 27 12C27 5.37258 21.6275 0 15.0001 0C8.3727 0 3 5.37258 3 12C3 14.1857 3.58437 16.235 4.60539 18H8.13147C6.72948 16.3964 5.88 14.2974 5.88 12C5.88 6.96316 9.96316 2.88 15 2.88Z"
-                fill="#F3D493"/>
+                fill={primaryColor}/>
             <path fillRule="evenodd" clipRule="evenodd"
                   d="M18.4502 6.02441L25.3926 6L21.9004 12L25.3926 18L18.4502 17.9756L15 24L11.5311 18H4.60742L8.0622 12L4.60742 6L11.5498 6.02441L15 0L18.4502 6.02441ZM17.582 7.52734H12.418L9.83594 12L12.428 16.4902L17.582 16.4727L20.1641 12L17.582 7.52734ZM8.96425 10.5025L7.22168 7.50879L10.6856 7.52116L8.96425 10.5025ZM13.2785 6.02441L15 3.01758L16.7215 6.02441H13.2785ZM15 20.9814L13.2926 18H16.7074L15 20.9814ZM22.7773 16.4902L19.3251 16.4786L21.0374 13.5007L22.7773 16.4902ZM19.3179 7.52114L22.7773 7.50879L21.0408 10.4932L19.3179 7.52114ZM7.22168 16.4902L8.94597 13.5286L10.6515 16.4786L7.22168 16.4902Z"
-                  fill="#F3D493"/>
+                  fill={primaryColor}/>
             <path
                 d="M16.44 28.0616C16.44 29.1321 15.7953 30 15 30C14.2047 30 13.56 29.1321 13.56 28.0616C13.56 26.9911 14.2047 24.96 15 24.96C15.7953 24.96 16.44 26.9911 16.44 28.0616Z"
-                fill="#6979D9"/>
+                fill={secondaryColor}/>
             <path
                 d="M25.8 22.0616C25.8 23.1322 25.1553 24 24.36 24C23.5647 24 22.92 23.1322 22.92 22.0616C22.92 20.9911 23.5647 18.96 24.36 18.96C25.1553 18.96 25.8 20.9911 25.8 22.0616Z"
-                fill="#6979D9"/>
+                fill={secondaryColor}/>
             <path
                 d="M7.32002 22.0617C7.32002 23.1322 6.67531 24 5.88002 24C5.08473 24 4.44002 23.1322 4.44002 22.0617C4.44002 20.9911 5.08473 18.96 5.88002 18.96C6.67531 18.96 7.32002 20.9911 7.32002 22.0617Z"
-                fill="#6979D9"/>
-            <ellipse cx="5.87999" cy="6.71999" rx="1.2" ry="1.2" fill="#F00608"/>
-            <ellipse cx="15" cy="1.43996" rx="1.2" ry="1.2" fill="#F00608"/>
-            <ellipse cx="24.12" cy="6.71999" rx="1.2" ry="1.2" fill="#F00608"/>
+                fill={secondaryColor}/>
+            <ellipse cx="5.87999" cy="6.71999" rx="1.2" ry="1.2" fill={accentColor}/>
+            <ellipse cx="15" cy="1.43996" rx="1.2" ry="1.2" fill={accentColor}/>
+            <ellipse cx="24.12" cy="6.71999" rx="1.2" ry="1.2" fill={accentColor}/>
         </g>
         <defs>
             <clipPath id="clip0_2005_83">
@@ -32,7 +47,13 @@ export const CustomSparkleIcon = ({className, size = 24}: { className?: string, 
     </svg>
 );
 
-export const CustomWitchIcon = ({className, size = 48}: { className?: string, size?: number | string }) => (
+export const CustomWitchIcon = ({
+    className, 
+    size = 48,
+    primaryColor = ICON_COLORS.primary,
+    secondaryColor = ICON_COLORS.secondary,
+    accentColor = ICON_COLORS.accent,
+}: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"
          className={className}>
         <g clipPath="url(#clip0_2008_68)">
@@ -43,28 +64,28 @@ export const CustomWitchIcon = ({className, size = 48}: { className?: string, si
             <g mask="url(#mask0_2008_68)">
                 <path
                     d="M24 4.608C32.0589 4.608 38.592 11.1411 38.592 19.2C38.592 22.8758 37.2328 26.2342 34.9896 28.8H40.6313C42.2649 25.976 43.2 22.6971 43.2 19.2C43.2 8.59613 34.604 0 24.0001 0C13.3963 0 4.79999 8.59613 4.79999 19.2C4.79999 22.6971 5.73498 25.976 7.36861 28.8H13.0103C10.7672 26.2342 9.40799 22.8758 9.40799 19.2C9.40799 11.1411 15.941 4.608 24 4.608Z"
-                    fill="#F3D493"/>
+                    fill={primaryColor}/>
                 <path fillRule="evenodd" clipRule="evenodd"
                       d="M29.5203 9.63906L40.6282 9.6L35.0407 19.2L40.6282 28.8L29.5203 28.761L24 38.4L18.4498 28.8H7.37189L12.8995 19.2L7.37189 9.6L18.4797 9.63906L24 0L29.5203 9.63906ZM28.1312 12.0437H19.8688L15.7375 19.2L19.8848 26.3843L28.1312 26.3563L32.2626 19.2L28.1312 12.0437ZM14.3428 16.804L11.5547 12.0141L17.097 12.0339L14.3428 16.804ZM21.2456 9.63906L24 4.82813L26.7544 9.63906H21.2456ZM24 33.5702L21.2682 28.8H26.7319L24 33.5702ZM36.4437 26.3843L30.9202 26.3658L33.6599 21.6011L36.4437 26.3843ZM30.9087 12.0338L36.4437 12.0141L33.6653 16.7891L30.9087 12.0338ZM11.5547 26.3843L14.3136 21.6458L17.0424 26.3658L11.5547 26.3843Z"
-                      fill="#F3D493"/>
+                      fill={primaryColor}/>
                 <path
                     d="M26.304 44.8986C26.304 46.6114 25.2725 48 24 48C22.7275 48 21.696 46.6114 21.696 44.8986C21.696 43.1858 22.7275 39.936 24 39.936C25.2725 39.936 26.304 43.1858 26.304 44.8986Z"
-                    fill="#6979D9"/>
+                    fill={secondaryColor}/>
                 <path
                     d="M41.28 35.2986C41.28 37.0115 40.2485 38.4 38.976 38.4C37.7035 38.4 36.672 37.0115 36.672 35.2986C36.672 33.5858 37.7035 30.336 38.976 30.336C40.2485 30.336 41.28 33.5858 41.28 35.2986Z"
-                    fill="#6979D9"/>
+                    fill={secondaryColor}/>
                 <path
                     d="M11.712 35.2987C11.712 37.0115 10.6805 38.4 9.408 38.4C8.13554 38.4 7.104 37.0115 7.104 35.2987C7.104 33.5858 8.13554 30.336 9.408 30.336C10.6805 30.336 11.712 33.5858 11.712 35.2987Z"
-                    fill="#6979D9"/>
+                    fill={secondaryColor}/>
                 <path
                     d="M9.40798 12.672C10.4684 12.672 11.328 11.8124 11.328 10.752C11.328 9.69158 10.4684 8.83197 9.40798 8.83197C8.34759 8.83197 7.48798 9.69158 7.48798 10.752C7.48798 11.8124 8.34759 12.672 9.40798 12.672Z"
-                    fill="#F00608"/>
+                    fill={accentColor}/>
                 <path
                     d="M24 4.22391C25.0604 4.22391 25.92 3.3643 25.92 2.30391C25.92 1.24352 25.0604 0.383911 24 0.383911C22.9396 0.383911 22.08 1.24352 22.08 2.30391C22.08 3.3643 22.9396 4.22391 24 4.22391Z"
-                    fill="#F00608"/>
+                    fill={accentColor}/>
                 <path
                     d="M38.592 12.672C39.6524 12.672 40.512 11.8124 40.512 10.752C40.512 9.69158 39.6524 8.83197 38.592 8.83197C37.5316 8.83197 36.672 9.69158 36.672 10.752C36.672 11.8124 37.5316 12.672 38.592 12.672Z"
-                    fill="#F00608"/>
+                    fill={accentColor}/>
             </g>
             <path
                 d="M7.12985 17.7003C7.46966 17.7977 7.58758 17.8603 7.76981 18.1618C7.8127 18.3821 7.81426 18.5677 7.80963 18.795C7.73544 18.8792 7.73544 18.8792 7.54868 18.9108C7.33964 18.9041 7.33964 18.9041 7.19025 18.8191C7.0554 18.639 7.05833 18.5069 7.06234 18.2857C6.93337 18.32 6.80439 18.3544 6.67151 18.3898C6.73355 18.7374 6.85964 18.9168 7.11709 19.1565C7.25376 19.2278 7.39063 19.2988 7.52782 19.3691C7.55887 19.4458 7.58992 19.5225 7.62192 19.6016C7.55022 19.7253 7.55022 19.7253 7.39936 19.854C7.23967 19.8666 7.07978 19.8787 6.91962 19.882C6.73014 19.8966 6.60976 19.9575 6.45939 20.072C6.22878 19.8887 6.07372 19.7621 6.02377 19.4636C6.09795 19.3795 6.09795 19.3795 6.34007 19.3593C6.45533 19.3545 6.45533 19.3545 6.57292 19.3496C6.56799 19.2713 6.56306 19.1929 6.55798 19.1122C6.46384 19.1009 6.46384 19.1009 6.3678 19.0893C6.15223 18.9787 6.15223 18.9787 6.08111 18.8301C5.9795 18.4885 5.92338 18.1589 5.91925 17.8013C6.26326 17.6013 6.74562 17.6487 7.12985 17.7003Z"
@@ -160,10 +181,17 @@ export const CustomWitchIcon = ({className, size = 48}: { className?: string, si
     </svg>
 );
 // 六芒星图标 - 基于 loading.io/icon/f5eull
-export const HexagramIcon: React.FC<{ size?: number; className?: string }> = ({
-                                                                                  size = 24,
-                                                                                  className = ''
-                                                                              }) => {
+export const HexagramIcon: React.FC<{ 
+    size?: number; 
+    className?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+}> = ({
+    size = 24,
+    className = '',
+    primaryColor = 'rgb(251, 191, 36)',
+    secondaryColor = 'rgb(251, 143, 36)',
+}) => {
     // 修复后的CSS动画
     const animationStyles = `
     @keyframes animate {
@@ -216,7 +244,7 @@ export const HexagramIcon: React.FC<{ size?: number; className?: string }> = ({
                     }}>
                         <path
                             d="M56.5 33.3l-2.7-4.5H13.2l10.7 18.5 2.7-4.6-5.4-9.4z"
-                            fill="rgb(251, 191, 36)"
+                            fill={primaryColor}
                         />
                     </g>
 
@@ -227,7 +255,7 @@ export const HexagramIcon: React.FC<{ size?: number; className?: string }> = ({
                     }}>
                         <path
                             d="M50 83.3L32.3 52.7l-2.6 4.6L50 92.5 60.7 74l-5.3-.1z"
-                            fill="rgb(251, 191, 36)"
+                            fill={primaryColor}
                         />
                     </g>
 
@@ -238,7 +266,7 @@ export const HexagramIcon: React.FC<{ size?: number; className?: string }> = ({
                     }}>
                         <path
                             d="M65.4 28.7l2.6 4.6h10.8L61.2 64h5.3l20.3-35.2z"
-                            fill="rgb(251, 191, 36)"
+                            fill={primaryColor}
                         />
                     </g>
 
@@ -249,7 +277,7 @@ export const HexagramIcon: React.FC<{ size?: number; className?: string }> = ({
                     }}>
                         <path
                             d="M33.5 36L13.2 71.2l21.4.1-2.6-4.6H21.2L38.8 36z"
-                            fill="rgb(251, 143, 36)"
+                            fill={secondaryColor}
                         />
                     </g>
 
@@ -260,7 +288,7 @@ export const HexagramIcon: React.FC<{ size?: number; className?: string }> = ({
                     }}>
                         <path
                             d="M76.1 52.7l-2.7 4.6 5.4 9.4H43.5l2.7 4.5h40.6z"
-                            fill="rgb(251, 143, 36)"
+                            fill={secondaryColor}
                         />
                     </g>
 
@@ -271,7 +299,7 @@ export const HexagramIcon: React.FC<{ size?: number; className?: string }> = ({
                     }}>
                         <path
                             d="M50 16.7l17.7 30.6 2.6-4.6L50 7.5 39.3 26l5.3.1z"
-                            fill="rgb(251, 143, 36)"
+                            fill={secondaryColor}
                         />
                     </g>
                 </g>
