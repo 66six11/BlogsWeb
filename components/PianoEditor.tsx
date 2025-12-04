@@ -7,6 +7,7 @@ const MIN_STEPS = 32; // Minimum 2 bars of 16th notes
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
 const OCTAVES = [5, 4, 3]; // 3 Octaves range for more range
 const KEY_LABEL_WIDTH = 64; // w-16 = 4rem = 64px
+const CELL_WIDTH = 25; // Width of each cell in pixels
 const DEFAULT_BPM = 120;
 
 // Note name to pitch value mapping
@@ -36,7 +37,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
   const [selectedScore, setSelectedScore] = useState<string>('');
   const [bpm, setBpm] = useState<number>(DEFAULT_BPM);
   const [scoreMetadata, setScoreMetadata] = useState<ScoreMetadata>({ bpm: DEFAULT_BPM });
+  const [isDraggingProgress, setIsDraggingProgress] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
   
   // Calculate interval based on BPM (16th note duration in ms)
   const stepInterval = useMemo(() => {
@@ -306,10 +310,33 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
 
   useEffect(() => {
     let interval: number;
-    if (isPlaying) {
-      let step = 0;
+    if (isPlaying && !isDraggingProgress) {
+      let step = currentStep >= 0 ? currentStep : 0;
       interval = window.setInterval(() => {
         setCurrentStep(step);
+        
+        // Auto-scroll to follow playhead
+        if (scrollContainerRef.current) {
+          const container = scrollContainerRef.current;
+          const playheadPosition = step * CELL_WIDTH;
+          const containerWidth = container.clientWidth;
+          const scrollLeft = container.scrollLeft;
+          
+          // If playhead is about to go out of view on the right, scroll
+          if (playheadPosition > scrollLeft + containerWidth - CELL_WIDTH * 4) {
+            container.scrollTo({
+              left: playheadPosition - containerWidth / 2,
+              behavior: 'smooth'
+            });
+          }
+          // If playhead is out of view on the left, scroll
+          else if (playheadPosition < scrollLeft) {
+            container.scrollTo({
+              left: Math.max(0, playheadPosition - CELL_WIDTH * 4),
+              behavior: 'smooth'
+            });
+          }
+        }
         
         // Find notes at this step
         const notesToPlay = notes.filter(n => n.startTime === step);
@@ -327,11 +354,50 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
           setCurrentStep(-1);
         }
       }, stepInterval); // Use dynamic interval based on BPM
-    } else {
+    } else if (!isPlaying && !isDraggingProgress) {
       setCurrentStep(-1);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, notes, playTone, lastNoteEndTime, stepInterval]);
+  }, [isPlaying, notes, playTone, lastNoteEndTime, stepInterval, isDraggingProgress]);
+
+  // Handle progress bar click/drag
+  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressBarRef.current || lastNoteEndTime === 0) return;
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, x / rect.width));
+    const newStep = Math.floor(percentage * lastNoteEndTime);
+    setCurrentStep(newStep);
+  }, [lastNoteEndTime]);
+
+  const handleProgressMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    setIsDraggingProgress(true);
+    handleProgressClick(e);
+  }, [handleProgressClick]);
+
+  const handleProgressMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDraggingProgress || !progressBarRef.current || lastNoteEndTime === 0) return;
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, x / rect.width));
+    const newStep = Math.floor(percentage * lastNoteEndTime);
+    setCurrentStep(newStep);
+  }, [isDraggingProgress, lastNoteEndTime]);
+
+  const handleProgressMouseUp = useCallback(() => {
+    setIsDraggingProgress(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDraggingProgress) {
+      document.addEventListener('mousemove', handleProgressMouseMove);
+      document.addEventListener('mouseup', handleProgressMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleProgressMouseMove);
+      document.removeEventListener('mouseup', handleProgressMouseUp);
+    };
+  }, [isDraggingProgress, handleProgressMouseMove, handleProgressMouseUp]);
 
   // Custom scrollbar styles for piano editor
   const scrollbarStyles = `
@@ -461,10 +527,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
 
         {/* Scrollable grid area */}
         <div 
+          ref={scrollContainerRef}
           className="piano-scroll overflow-x-auto" 
           style={{ marginLeft: `${KEY_LABEL_WIDTH}px` }}
         >
-          <div style={{ minWidth: `${totalSteps * 25}px` }}>
+          <div style={{ minWidth: `${totalSteps * CELL_WIDTH}px` }}>
             {/* Grid Header - beat numbers */}
             <div className="flex h-6 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)' }}>
               {Array.from({ length: totalSteps }).map((_, i) => (
@@ -472,7 +539,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
                   key={i} 
                   className={`text-[10px] text-center flex items-center justify-center ${i % 4 === 0 ? 'font-bold' : ''}`} 
                   style={{ 
-                    width: '25px', 
+                    width: `${CELL_WIDTH}px`, 
                     flexShrink: 0,
                     color: i % 4 === 0 ? 'var(--accent-1, #deb99a)' : 'var(--text-secondary, #475569)',
                     borderRight: i % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
@@ -500,8 +567,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
                           <div 
                             className="absolute top-0 bottom-0 z-10 pointer-events-none transition-all duration-100"
                             style={{ 
-                              width: '25px',
-                              left: `${currentStep * 25}px`,
+                              width: `${CELL_WIDTH}px`,
+                              left: `${currentStep * CELL_WIDTH}px`,
                               backgroundColor: 'rgba(251, 191, 36, 0.3)'
                             }}
                           />
@@ -519,7 +586,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
                               onClick={() => toggleNote(oIdx, pIdx, step)}
                               className="cursor-pointer transition-colors relative hover:bg-white/5"
                               style={{ 
-                                width: '25px', 
+                                width: `${CELL_WIDTH}px`, 
                                 flexShrink: 0,
                                 borderRight: step % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
                               }}
@@ -542,8 +609,48 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
           </div>
         </div>
       </div>
+      
+      {/* Progress bar */}
+      {lastNoteEndTime > 0 && (
+        <div className="mt-3 px-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono" style={{ color: 'var(--text-secondary, #94a3b8)' }}>
+              {currentStep >= 0 ? Math.floor((currentStep / 4) + 1) : 0}
+            </span>
+            <div 
+              ref={progressBarRef}
+              className="flex-1 h-2 rounded-full cursor-pointer relative"
+              style={{ backgroundColor: 'var(--bg-secondary, #1e293b)' }}
+              onMouseDown={handleProgressMouseDown}
+            >
+              {/* Progress fill */}
+              <div 
+                className="absolute left-0 top-0 bottom-0 rounded-full transition-all"
+                style={{ 
+                  width: `${currentStep >= 0 ? (currentStep / lastNoteEndTime) * 100 : 0}%`,
+                  backgroundColor: 'var(--accent-3, #7C85EB)',
+                  transition: isDraggingProgress ? 'none' : 'width 0.1s ease-out'
+                }}
+              />
+              {/* Progress handle */}
+              <div 
+                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-lg transition-all hover:scale-110"
+                style={{ 
+                  left: `calc(${currentStep >= 0 ? (currentStep / lastNoteEndTime) * 100 : 0}% - 8px)`,
+                  backgroundColor: 'var(--accent-1, #deb99a)',
+                  transition: isDraggingProgress ? 'none' : 'left 0.1s ease-out'
+                }}
+              />
+            </div>
+            <span className="text-xs font-mono" style={{ color: 'var(--text-secondary, #94a3b8)' }}>
+              {Math.floor((lastNoteEndTime / 4) + 1)}
+            </span>
+          </div>
+        </div>
+      )}
+      
       <p className="text-xs mt-2 text-right" style={{ color: 'var(--text-secondary, #64748b)' }}>
-        点击网格添加/移除音符。网格会自动延长。播放将在最后一个音符结束后停止。
+        点击网格添加/移除音符。拖拽进度条可跳转播放位置。播放时视窗自动跟随。
       </p>
     </div>
   );
