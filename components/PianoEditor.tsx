@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Note } from '../types';
-import { Play, Square, Trash2, Plus, Minus, Loader2, SkipBack, Pause } from 'lucide-react';
+import { Play, Square, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
 import { parseScore, ScoreMetadata } from './ScoreParser';
 
@@ -86,6 +86,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const [scoreMetadata, setScoreMetadata] = useState<ScoreMetadata>({ bpm: DEFAULT_BPM });
   const [isLoading, setIsLoading] = useState(false);
   const [sustain, setSustain] = useState(true); // Sustain/延音 toggle, default on
+  const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
   
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -93,6 +94,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const animationFrameRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioPoolRef = useRef<AudioNodePool | null>(null);
+  const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
   
   // Virtual scroll state
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: MIN_STEPS });
@@ -147,15 +150,29 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     setVisibleRange({ start: startStep, end: endStep });
   }, [totalSteps]);
 
+  // Handle user scroll - stop auto-follow when user manually scrolls
+  const handleUserScroll = useCallback(() => {
+    if (isPlaying) {
+      setIsUserScrolling(true);
+      isUserScrollingRef.current = true;
+      
+      // Clear existing timeout
+      if (userScrollTimeoutRef.current) {
+        clearTimeout(userScrollTimeoutRef.current);
+      }
+    }
+    updateVisibleRange();
+  }, [isPlaying, updateVisibleRange]);
+
   // Listen to scroll events
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
     
     updateVisibleRange();
-    container.addEventListener('scroll', updateVisibleRange);
-    return () => container.removeEventListener('scroll', updateVisibleRange);
-  }, [updateVisibleRange]);
+    container.addEventListener('scroll', handleUserScroll);
+    return () => container.removeEventListener('scroll', handleUserScroll);
+  }, [handleUserScroll, updateVisibleRange]);
 
   // Update visible range when totalSteps changes
   useEffect(() => {
@@ -200,11 +217,23 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     }
     setCurrentStep(0);
     setPlayheadPosition(0);
+    setIsUserScrolling(false);
+    isUserScrollingRef.current = false;
     // Scroll to start
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollLeft = 0;
     }
   }, [isPlaying, pausePlayback]);
+
+  // Jump to current playhead position
+  const jumpToPlayhead = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const c = scrollContainerRef.current;
+      c.scrollLeft = Math.max(0, playheadPosition - c.clientWidth / 2);
+      setIsUserScrolling(false);
+      isUserScrollingRef.current = false;
+    }
+  }, [playheadPosition]);
 
   // Play using Web Audio with object pool - works for both ABC and manual notes
   const startPlayback = useCallback(async () => {
@@ -279,6 +308,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     }
     
     setIsPlaying(true);
+    setIsUserScrolling(false); // Reset user scrolling state when starting playback
+    isUserScrollingRef.current = false;
     
     // Animate playhead smoothly
     const updatePlayhead = () => {
@@ -290,12 +321,23 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       setPlayheadPosition(pos * CELL_WIDTH);
       setCurrentStep(Math.floor(pos));
       
-      // Auto-scroll
+      // Auto-scroll only if user hasn't manually scrolled
       if (scrollContainerRef.current) {
         const c = scrollContainerRef.current;
         const px = pos * CELL_WIDTH;
-        if (px > c.scrollLeft + c.clientWidth - CELL_WIDTH * 4 || px < c.scrollLeft) {
-          c.scrollLeft = Math.max(0, px - c.clientWidth / 2);
+        const isPlayheadVisible = px >= c.scrollLeft && px <= c.scrollLeft + c.clientWidth - CELL_WIDTH * 2;
+        
+        // If playhead re-enters visible area after user scroll, resume following
+        if (isPlayheadVisible && isUserScrollingRef.current) {
+          setIsUserScrolling(false);
+          isUserScrollingRef.current = false;
+        }
+        
+        // Only auto-scroll if not user scrolling
+        if (!isUserScrollingRef.current) {
+          if (px > c.scrollLeft + c.clientWidth - CELL_WIDTH * 4 || px < c.scrollLeft) {
+            c.scrollLeft = Math.max(0, px - c.clientWidth / 2);
+          }
         }
       }
       
@@ -392,21 +434,24 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
          style={{ backgroundColor: 'var(--bg-tertiary, rgba(15, 23, 42, 0.8))' }}>
       <style>{scrollbarStyles}</style>
       
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-3">
-          <h3 className="text-xl font-serif flex items-center gap-2" style={{ color: 'var(--accent-3, #a78bfa)' }}>
+      {/* Header - fixed layout */}
+      <div className="flex flex-col gap-3 mb-4">
+        {/* Title row */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <h3 className="text-xl font-serif flex items-center gap-2 shrink-0" style={{ color: 'var(--accent-3, #a78bfa)' }}>
             <span className="text-2xl">♪</span> 魔法乐谱编辑器
           </h3>
           {scoreMetadata.title && (
-            <span className="text-sm px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--accent-1, #deb99a)' }}>
+            <span className="text-sm px-2 py-0.5 rounded shrink-0" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--accent-1, #deb99a)' }}>
               {scoreMetadata.title}
             </span>
           )}
-          <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--text-secondary, #94a3b8)' }}>
+          <span className="text-xs px-2 py-0.5 rounded shrink-0" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--text-secondary, #94a3b8)' }}>
             {notes.length} 音符
           </span>
         </div>
+        
+        {/* Controls row */}
         <div className="flex gap-2 items-center flex-wrap">
           {/* Sustain toggle */}
           <button
@@ -456,6 +501,18 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
           >
             <SkipBack size={20} />
           </button>
+          
+          {/* Jump to playhead button - show when user has scrolled away */}
+          {isUserScrolling && isPlaying && (
+            <button
+              onClick={jumpToPlayhead}
+              className="p-2 rounded-full hover:bg-white/10 animate-pulse"
+              style={{ color: 'var(--accent-3, #7C85EB)' }}
+              title="跳转到播放位置"
+            >
+              <Crosshair size={20} />
+            </button>
+          )}
           
           <button 
             onClick={togglePlayback}
