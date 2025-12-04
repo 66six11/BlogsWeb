@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Note } from '../types';
-import { Play, Square, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair } from 'lucide-react';
+import { Play, Square, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair, Music } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
-import { parseScore, ScoreMetadata } from './ScoreParser';
+import { parseScore, ScoreMetadata, NOTE_DURATION_STEPS, NoteDurationType } from './ScoreParser';
 
 const MIN_STEPS = 32;
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
@@ -29,7 +29,7 @@ class AudioNodePool {
     for (let i = 0; i < this.poolSize; i++) {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      osc.type = 'triangle';
+      osc.type = 'sine'; // Use sine for piano-like sound
       gain.gain.value = 0;
       this.oscillatorPool.push(osc);
       this.gainPool.push(gain);
@@ -43,7 +43,7 @@ class AudioNodePool {
     
     if (!osc || osc.context !== this.ctx) {
       osc = this.ctx.createOscillator();
-      osc.type = 'triangle';
+      osc.type = 'sine'; // Piano-like sine wave
     }
     if (!gain || gain.context !== this.ctx) {
       gain = this.ctx.createGain();
@@ -69,6 +69,15 @@ class AudioNodePool {
   }
 }
 
+// Duration options for note editor
+const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number }[] = [
+  { value: 'sixteenth', label: '16分', steps: 1 },
+  { value: 'eighth', label: '8分', steps: 2 },
+  { value: 'quarter', label: '4分', steps: 4 },
+  { value: 'half', label: '2分', steps: 8 },
+  { value: 'whole', label: '全音符', steps: 16 },
+];
+
 interface PianoEditorProps {
   className?: string;
 }
@@ -88,7 +97,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const [sustain, setSustain] = useState(true); // Sustain/延音 toggle, default on
   const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
   const [selectedVoice, setSelectedVoice] = useState<string>('all'); // Voice filter
-  const [noteDuration, setNoteDuration] = useState<number>(2); // Default duration for new notes (eighth note)
+  const [selectedDuration, setSelectedDuration] = useState<NoteDurationType>('eighth'); // Default to 8th note
   
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -136,23 +145,25 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   }, [activeNoteMap]);
 
   // Check if a cell is part of a sustained note (for visual display)
-  const isPartOfNote = useCallback((octave: number, pitch: number, step: number): { isStart: boolean; isMiddle: boolean; note?: Note } => {
+  const isPartOfNote = useCallback((octave: number, pitch: number, step: number): { isStart: boolean; isMiddle: boolean; isEnd: boolean; note?: Note } => {
     // Check if this is the start of a note
     const startNote = activeNoteMap.get(`${octave}-${pitch}-${step}`);
     if (startNote) {
-      return { isStart: true, isMiddle: false, note: startNote };
+      const isEnd = startNote.duration <= 1;
+      return { isStart: true, isMiddle: false, isEnd, note: startNote };
     }
     
     // Check if this step is part of a longer note that started earlier
     for (const note of filteredNotes) {
       if (note.octave === octave && note.pitch === pitch) {
         if (step > note.startTime && step < note.startTime + note.duration) {
-          return { isStart: false, isMiddle: true, note };
+          const isEnd = step === note.startTime + note.duration - 1;
+          return { isStart: false, isMiddle: true, isEnd, note };
         }
       }
     }
     
-    return { isStart: false, isMiddle: false };
+    return { isStart: false, isMiddle: false, isEnd: false };
   }, [activeNoteMap, filteredNotes]);
 
   // Check if a note is active at a specific position (for grid display)
@@ -307,7 +318,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       notesByStep.get(note.startTime)!.push(note);
     }
     
-    // Schedule all notes at once
+    // Schedule all notes at once with piano-like ADSR envelope
     const useSustain = sustain;
     for (let step = startStep; step <= lastNoteEndTime; step++) {
       const notesAtStep = notesByStep.get(step);
@@ -318,25 +329,42 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
           const freq = 440 * Math.pow(2, (midi - 69) / 12);
           const dur = note.duration * stepDurationSec;
           
-          const osc = ctx.createOscillator();
+          // Create multiple oscillators for richer piano sound
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
           const gain = ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(freq, stepTime);
+          
+          // Use sine and triangle for piano-like timbre
+          osc1.type = 'sine';
+          osc2.type = 'triangle';
+          osc1.frequency.setValueAtTime(freq, stepTime);
+          osc2.frequency.setValueAtTime(freq * 2, stepTime); // Harmonic
+          
+          // Piano-like ADSR envelope
+          const attackTime = 0.005; // Very fast attack
+          const decayTime = 0.1;
+          const sustainLevel = useSustain ? 0.3 : 0.1;
+          const releaseTime = useSustain ? dur * 0.8 : 0.1;
+          
           gain.gain.setValueAtTime(0, stepTime);
-          gain.gain.linearRampToValueAtTime(0.25, stepTime + 0.01);
+          gain.gain.linearRampToValueAtTime(0.4, stepTime + attackTime); // Attack
+          gain.gain.exponentialRampToValueAtTime(sustainLevel, stepTime + attackTime + decayTime); // Decay
           
           if (useSustain) {
-            // Sustain mode - smooth decay over note duration
+            // Sustain mode - gradual decay over note duration
             gain.gain.exponentialRampToValueAtTime(0.001, stepTime + dur);
           } else {
-            // No sustain - quick attack and release
-            gain.gain.linearRampToValueAtTime(0.25, stepTime + 0.05);
-            gain.gain.linearRampToValueAtTime(0.001, stepTime + 0.1);
+            // No sustain - quick release after decay
+            gain.gain.exponentialRampToValueAtTime(0.001, stepTime + attackTime + decayTime + 0.15);
           }
-          osc.connect(gain);
+          
+          osc1.connect(gain);
+          osc2.connect(gain);
           gain.connect(ctx.destination);
-          osc.start(stepTime);
-          osc.stop(stepTime + dur + 0.1);
+          osc1.start(stepTime);
+          osc2.start(stepTime);
+          osc1.stop(stepTime + dur + 0.2);
+          osc2.stop(stepTime + dur + 0.2);
         }
       }
     }
@@ -423,19 +451,22 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     }
   }, [stopPlayback]);
 
-  // Toggle note in grid
+  // Toggle note in grid - uses selected duration
   const toggleNote = useCallback((octaveIndex: number, pitchIndex: number, step: number) => {
     const pitchVal = 11 - pitchIndex;
     const octaveVal = OCTAVES[octaveIndex];
+    const duration = NOTE_DURATION_STEPS[selectedDuration];
 
     setNotes(prev => {
-      const existing = prev.find(n => 
-        n.octave === octaveVal && n.pitch === pitchVal && n.startTime === step
+      // Check if clicking on any part of an existing note
+      const existingNote = prev.find(n => 
+        n.octave === octaveVal && n.pitch === pitchVal && 
+        step >= n.startTime && step < n.startTime + n.duration
       );
-      if (existing) return prev.filter(n => n !== existing);
-      return [...prev, { pitch: pitchVal, octave: octaveVal, startTime: step, duration: 2 }];
+      if (existingNote) return prev.filter(n => n !== existingNote);
+      return [...prev, { pitch: pitchVal, octave: octaveVal, startTime: step, duration }];
     });
-  }, []);
+  }, [selectedDuration]);
 
   const togglePlayback = useCallback(() => {
     if (isPlaying) {
@@ -487,6 +518,22 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
         
         {/* Controls row */}
         <div className="flex gap-2 items-center flex-wrap">
+          {/* Note duration selector */}
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)' }}>
+            <Music size={14} style={{ color: 'var(--accent-3, #7C85EB)' }} />
+            <select
+              value={selectedDuration}
+              onChange={(e) => setSelectedDuration(e.target.value as NoteDurationType)}
+              className="text-xs bg-transparent border-none outline-none cursor-pointer"
+              style={{ color: 'var(--accent-1, #deb99a)' }}
+              title="音符时值"
+            >
+              {DURATION_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          
           {/* Sustain toggle */}
           <button
             onClick={() => setSustain(prev => !prev)}
@@ -495,7 +542,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
               backgroundColor: sustain ? 'var(--accent-3, #7C85EB)' : 'var(--bg-secondary, #1e293b)',
               color: sustain ? 'white' : 'var(--text-secondary, #94a3b8)'
             }}
-            title={sustain ? '延音开启' : '延音关闭'}
+            title={sustain ? '延音开启 - 音符会自然衰减' : '延音关闭 - 音符快速停止'}
           >
             {sustain ? '延音 ✓' : '延音'}
           </button>
@@ -649,7 +696,20 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
                       <div className="absolute flex h-full" style={{ left: `${visibleRange.start * CELL_WIDTH}px` }}>
                         {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
                           const step = visibleRange.start + idx;
-                          const isActive = isNoteActive(octave, 11 - pIdx, step);
+                          const noteInfo = isPartOfNote(octave, 11 - pIdx, step);
+                          const { isStart, isMiddle, isEnd, note } = noteInfo;
+                          const isActive = isStart || isMiddle;
+                          
+                          // Determine border radius for unified note block appearance
+                          let borderRadius = '0';
+                          if (isStart && isEnd) {
+                            borderRadius = '4px'; // Single cell note
+                          } else if (isStart) {
+                            borderRadius = '4px 0 0 4px'; // Start of multi-cell note
+                          } else if (isEnd) {
+                            borderRadius = '0 4px 4px 0'; // End of multi-cell note
+                          }
+                          
                           return (
                             <div 
                               key={step} 
@@ -661,7 +721,19 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
                               }}
                             >
                               {isActive && (
-                                <div className="absolute inset-0.5 rounded-sm shadow-[0_0_10px_rgba(168,85,247,0.6)]" style={{ backgroundColor: 'var(--accent-3, #a855f7)' }} />
+                                <div 
+                                  className="absolute shadow-[0_0_10px_rgba(168,85,247,0.6)]" 
+                                  style={{ 
+                                    backgroundColor: isStart ? 'var(--accent-3, #a855f7)' : 'var(--accent-3, #9333ea)',
+                                    borderRadius,
+                                    top: '2px',
+                                    bottom: '2px',
+                                    left: isStart ? '2px' : '0',
+                                    right: isEnd ? '2px' : '0',
+                                    // Add visual indicator for note start
+                                    borderLeft: isStart ? '3px solid rgba(255,255,255,0.5)' : 'none'
+                                  }} 
+                                />
                               )}
                             </div>
                           );
