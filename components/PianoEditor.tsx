@@ -71,10 +71,9 @@ interface ScoreMetadata {
 
 interface PianoEditorProps {
   className?: string;
-  onNotePlay?: (frequency: number, intensity: number) => void;
 }
 
-const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
+const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
@@ -144,7 +143,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
 
   // Parse ABC notation following ABC v2.1 standard (https://abcnotation.com/wiki/abc:standard:v2.1)
   const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMetadata } => {
-    const lines = content.split('\n');
+    const rawLines = content.split('\n');
     const parsedNotes: Note[] = [];
     const metadata: ScoreMetadata = { bpm: DEFAULT_BPM, defaultNoteLength: '1/8' };
     
@@ -161,13 +160,30 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
     // Per-bar accidentals (reset at each bar line per ABC v2.1 standard)
     let barAccidentals: Map<string, number> = new Map();
 
+    // Pre-process: join lines ending with backslash (line continuation per ABC v2.1)
+    const lines: string[] = [];
+    let pendingLine = '';
+    for (const rawLine of rawLines) {
+      const trimmed = rawLine.trimEnd();
+      if (trimmed.endsWith('\\')) {
+        // Line continuation - append without the backslash
+        pendingLine += trimmed.slice(0, -1);
+      } else {
+        lines.push(pendingLine + trimmed);
+        pendingLine = '';
+      }
+    }
+    if (pendingLine) {
+      lines.push(pendingLine);
+    }
+
     for (const line of lines) {
       let trimmed = line.trim();
       
       // Skip empty lines
       if (!trimmed) continue;
       
-      // Skip ABC comments (% at start of line per v2.1)
+      // Skip ABC comments (% at start of line per v2.1) and %% directives
       if (trimmed.startsWith('%')) continue;
       
       // Parse ABC header fields (before K: field ends header)
@@ -332,31 +348,34 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
         
         // Handle chords [CEG] per ABC v2.1
         if (char === '[') {
-          // Check if this is not an inline field [X:]
-          if (i + 2 < musicContent.length && musicContent[i + 2] !== ':') {
-            const chordEnd = musicContent.indexOf(']', i);
-            if (chordEnd > i) {
-              const chordContent = musicContent.substring(i + 1, chordEnd);
-              const { chordNotes, maxDuration } = parseABCChordV2(chordContent, baseNoteDuration, currentTime, keySignature, barAccidentals);
-              parsedNotes.push(...chordNotes);
-              
-              // Check for duration after chord
-              let durationStr = '';
-              let j = chordEnd + 1;
-              while (j < musicContent.length && (/\d|\/|>|</.test(musicContent[j]))) {
-                durationStr += musicContent[j];
-                j++;
-              }
-              
-              let duration = parseABCDurationV2(durationStr, baseNoteDuration);
-              if (durationStr === '') duration = maxDuration || baseNoteDuration;
-              
-              // Update all chord notes with the proper duration
-              chordNotes.forEach(n => n.duration = duration);
-              currentTime += duration;
-              i = j;
-              continue;
+          // Check if this is an inline field [X:...] - look for single letter followed by colon
+          const closeBracket = musicContent.indexOf(']', i);
+          const colonPos = musicContent.indexOf(':', i);
+          const isInlineField = colonPos > i && colonPos < closeBracket && 
+                               (colonPos - i) <= 2 && // Single letter before colon
+                               /^[A-Za-z]$/.test(musicContent[i + 1]);
+          
+          if (!isInlineField && closeBracket > i) {
+            const chordContent = musicContent.substring(i + 1, closeBracket);
+            const { chordNotes, maxDuration } = parseABCChordV2(chordContent, baseNoteDuration, currentTime, keySignature, barAccidentals);
+            parsedNotes.push(...chordNotes);
+            
+            // Check for duration after chord
+            let durationStr = '';
+            let j = closeBracket + 1;
+            while (j < musicContent.length && (/\d|\/|>|</.test(musicContent[j]))) {
+              durationStr += musicContent[j];
+              j++;
             }
+            
+            let duration = parseABCDurationV2(durationStr, baseNoteDuration);
+            if (durationStr === '') duration = maxDuration || baseNoteDuration;
+            
+            // Update all chord notes with the proper duration
+            chordNotes.forEach(n => n.duration = duration);
+            currentTime += duration;
+            i = j;
+            continue;
           }
           i++;
           continue;
@@ -879,15 +898,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
     osc1.stop(now + duration + 0.1);
     osc2.stop(now + duration + 0.1);
     osc3.stop(now + duration + 0.1);
-    
-    // Notify parent for particle effects (throttled to avoid performance issues)
-    if (onNotePlay) {
-      // Use requestAnimationFrame to avoid blocking
-      requestAnimationFrame(() => {
-        onNotePlay(frequency, 0.5);
-      });
-    }
-  }, [onNotePlay]);
+  }, []);
 
   const getFrequency = (pitch: number, octave: number) => {
     // A4 = 440Hz. A4 is octave 4, pitch 9 (A).
@@ -1151,14 +1162,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
                     >
                       {/* Note cells */}
                       <div className="flex-1 flex relative">
-                        {/* Playhead */}
+                        {/* Playhead - thin vertical line at the left edge of current step */}
                         {currentStep >= 0 && (
                           <div 
-                            className="absolute top-0 bottom-0 z-10 pointer-events-none transition-all duration-100"
+                            className="absolute top-0 bottom-0 z-10 pointer-events-none"
                             style={{ 
-                              width: `${CELL_WIDTH}px`,
+                              width: '2px',
                               left: `${currentStep * CELL_WIDTH}px`,
-                              backgroundColor: 'rgba(251, 191, 36, 0.3)'
+                              backgroundColor: 'rgba(251, 191, 36, 0.9)',
+                              boxShadow: '0 0 8px rgba(251, 191, 36, 0.6)'
                             }}
                           />
                         )}
@@ -1199,39 +1211,85 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
         </div>
       </div>
       
-      {/* Progress bar */}
+      {/* Ruler for quick navigation */}
       {lastNoteEndTime > 0 && (
         <div className="mt-3 px-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono" style={{ color: 'var(--text-secondary, #94a3b8)' }}>
+            <span className="text-xs font-mono" style={{ color: 'var(--text-secondary, #94a3b8)', minWidth: '24px' }}>
               {currentStep >= 0 ? Math.floor((currentStep / 4) + 1) : 0}
             </span>
             <div 
               ref={progressBarRef}
-              className="flex-1 h-2 rounded-full cursor-pointer relative"
-              style={{ backgroundColor: 'var(--bg-secondary, #1e293b)' }}
+              className="flex-1 cursor-pointer relative"
+              style={{ height: '24px' }}
               onMouseDown={handleProgressMouseDown}
             >
-              {/* Progress fill */}
+              {/* Ruler background */}
               <div 
-                className="absolute left-0 top-0 bottom-0 rounded-full transition-all"
+                className="absolute left-0 right-0 bottom-0 h-1.5 rounded-full"
+                style={{ backgroundColor: 'var(--bg-secondary, #1e293b)' }}
+              />
+              
+              {/* Ruler tick marks */}
+              {Array.from({ length: Math.ceil(lastNoteEndTime / 4) + 1 }).map((_, i) => {
+                const isMeasure = i % 4 === 0; // Major tick every 4 beats (measure)
+                const position = (i * 4 / lastNoteEndTime) * 100;
+                if (position > 100) return null;
+                return (
+                  <div
+                    key={i}
+                    className="absolute bottom-0"
+                    style={{
+                      left: `${position}%`,
+                      width: isMeasure ? '2px' : '1px',
+                      height: isMeasure ? '16px' : '8px',
+                      backgroundColor: isMeasure ? 'var(--accent-1, #deb99a)' : 'var(--text-secondary, #64748b)',
+                      transform: 'translateX(-50%)'
+                    }}
+                  >
+                    {/* Beat number label for measures */}
+                    {isMeasure && (
+                      <span 
+                        className="absolute text-[10px] font-mono"
+                        style={{ 
+                          top: '-14px', 
+                          left: '50%', 
+                          transform: 'translateX(-50%)',
+                          color: 'var(--accent-1, #deb99a)'
+                        }}
+                      >
+                        {i + 1}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+              
+              {/* Progress indicator line */}
+              <div 
+                className="absolute bottom-0 w-0.5 rounded-full"
                 style={{ 
-                  width: `${currentStep >= 0 ? (currentStep / lastNoteEndTime) * 100 : 0}%`,
+                  left: `${currentStep >= 0 ? (currentStep / lastNoteEndTime) * 100 : 0}%`,
+                  height: '20px',
                   backgroundColor: 'var(--accent-3, #7C85EB)',
-                  transition: isDraggingProgress ? 'none' : 'width 0.1s ease-out'
+                  boxShadow: '0 0 6px var(--accent-3, #7C85EB)',
+                  transform: 'translateX(-50%)',
+                  transition: isDraggingProgress ? 'none' : 'left 0.1s ease-out'
                 }}
               />
-              {/* Progress handle */}
+              
+              {/* Draggable handle */}
               <div 
-                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-lg transition-all hover:scale-110"
+                className="absolute bottom-0 w-3 h-3 rounded-full shadow-lg cursor-grab active:cursor-grabbing hover:scale-125"
                 style={{ 
-                  left: `calc(${currentStep >= 0 ? (currentStep / lastNoteEndTime) * 100 : 0}% - 8px)`,
+                  left: `${currentStep >= 0 ? (currentStep / lastNoteEndTime) * 100 : 0}%`,
+                  transform: 'translate(-50%, 25%)',
                   backgroundColor: 'var(--accent-1, #deb99a)',
                   transition: isDraggingProgress ? 'none' : 'left 0.1s ease-out'
                 }}
               />
             </div>
-            <span className="text-xs font-mono" style={{ color: 'var(--text-secondary, #94a3b8)' }}>
+            <span className="text-xs font-mono" style={{ color: 'var(--text-secondary, #94a3b8)', minWidth: '24px', textAlign: 'right' }}>
               {Math.floor((lastNoteEndTime / 4) + 1)}
             </span>
           </div>
@@ -1239,7 +1297,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
       )}
       
       <p className="text-xs mt-2 text-right" style={{ color: 'var(--text-secondary, #64748b)' }}>
-        点击网格添加/移除音符。拖拽进度条可跳转播放位置。播放时视窗自动跟随。
+        点击网格添加/移除音符。点击标尺可快速跳转播放位置。播放时视窗自动跟随。
       </p>
     </div>
   );
