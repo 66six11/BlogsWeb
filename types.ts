@@ -31,6 +31,7 @@ export interface Note {
   octave: number; // 3-5
   startTime: number; // 16th note steps
   duration: number; // 16th note steps
+  voice?: string; // Track/voice identifier for multi-track scores
 }
 
 export interface ChatMessage {

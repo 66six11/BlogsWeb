@@ -1,1189 +1,798 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Note } from '../types';
-import { Play, Square, Trash2, Upload, FileText, Plus, Minus } from 'lucide-react';
+import { Play, Square, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair, Music } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
+import { parseScore, ScoreMetadata, NOTE_DURATION_STEPS, NoteDurationType } from './ScoreParser';
+import * as Tone from 'tone';
 
-const MIN_STEPS = 32; // Minimum 2 bars of 16th notes
+const MIN_STEPS = 32;
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
-const OCTAVES = [5, 4, 3]; // 3 Octaves range for more range
-const KEY_LABEL_WIDTH = 64; // w-16 = 4rem = 64px
-const CELL_WIDTH = 25; // Width of each cell in pixels
+// Full 88-key piano range: A0 to C8 (octaves 0-8, but octave 0 only has A, A#, B, and octave 8 only has C)
+// For simplicity, we use octaves 0-8 with all 12 notes, and the ABC parser will handle edge cases
+const OCTAVES = [8, 7, 6, 5, 4, 3, 2, 1, 0];
+const KEY_LABEL_WIDTH = 64;
+
+// Octave colors - gradient from red (high) to blue (low)
+const OCTAVE_COLORS: Record<number, string> = {
+  8: '#ef4444', // C8 - highest - red
+  7: '#f97316', // Orange
+  6: '#eab308', // Yellow
+  5: '#84cc16', // Lime
+  4: '#22c55e', // Green (middle C)
+  3: '#14b8a6', // Teal
+  2: '#3b82f6', // Blue
+  1: '#6366f1', // Indigo
+  0: '#8b5cf6', // Purple - lowest - violet
+};
+const DURATION_PALETTE_WIDTH = 48; // Width for duration selector on left
+const CELL_WIDTH = 25;
 const DEFAULT_BPM = 120;
+const VISIBLE_STEP_BUFFER = 10; // Extra steps to render beyond visible area
+const MAX_CONCURRENT_NOTES = 32; // Limit concurrent oscillators for large scores
 
-// Note name to pitch value mapping (for legacy format)
-const NOTE_TO_PITCH: Record<string, number> = {
-  'C': 0, 'C#': 1, 'DB': 1, 'D': 2, 'D#': 3, 'EB': 3, 'E': 4, 'F': 5,
-  'F#': 6, 'GB': 6, 'G': 7, 'G#': 8, 'AB': 8, 'A': 9, 'A#': 10, 'BB': 10, 'B': 11
+// Note colors by pitch - rainbow spectrum for different pitches
+const PITCH_COLORS: Record<number, string> = {
+  11: '#ef4444', // B - red
+  10: '#f97316', // A# - orange
+  9: '#f59e0b',  // A - amber
+  8: '#eab308',  // G# - yellow
+  7: '#84cc16',  // G - lime
+  6: '#22c55e',  // F# - green
+  5: '#14b8a6',  // F - teal
+  4: '#06b6d4',  // E - cyan
+  3: '#3b82f6',  // D# - blue
+  2: '#6366f1',  // D - indigo
+  1: '#8b5cf6',  // C# - violet
+  0: '#a855f7',  // C - purple
 };
 
-// ABC notation note to pitch mapping (based on ABC v2.1 standard)
-// In ABC: C D E F G A B c d e f g a b
-// Uppercase notes are in octave 4, lowercase in octave 5
-// Apostrophes (') raise one octave, commas (,) lower one octave
-const ABC_NOTE_TO_SEMITONE: Record<string, number> = {
-  'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11
-};
+// Duration options with visual icons
+const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number; icon: string }[] = [
+  { value: 'sixteenth', label: '16分', steps: 1, icon: '𝅘𝅥𝅯' },
+  { value: 'eighth', label: '8分', steps: 2, icon: '𝅘𝅥𝅮' },
+  { value: 'quarter', label: '4分', steps: 4, icon: '𝅘𝅥' },
+  { value: 'half', label: '2分', steps: 8, icon: '𝅗𝅥' },
+  { value: 'whole', label: '全', steps: 16, icon: '𝅝' },
+];
 
-// Key signature accidentals (sharps/flats applied automatically per ABC v2.1)
-const KEY_SIGNATURES: Record<string, Record<string, number>> = {
-  // Major keys
-  'C': {},
-  'G': { 'F': 1 },
-  'D': { 'F': 1, 'C': 1 },
-  'A': { 'F': 1, 'C': 1, 'G': 1 },
-  'E': { 'F': 1, 'C': 1, 'G': 1, 'D': 1 },
-  'B': { 'F': 1, 'C': 1, 'G': 1, 'D': 1, 'A': 1 },
-  'F#': { 'F': 1, 'C': 1, 'G': 1, 'D': 1, 'A': 1, 'E': 1 },
-  'C#': { 'F': 1, 'C': 1, 'G': 1, 'D': 1, 'A': 1, 'E': 1, 'B': 1 },
-  'F': { 'B': -1 },
-  'Bb': { 'B': -1, 'E': -1 },
-  'Eb': { 'B': -1, 'E': -1, 'A': -1 },
-  'Ab': { 'B': -1, 'E': -1, 'A': -1, 'D': -1 },
-  'Db': { 'B': -1, 'E': -1, 'A': -1, 'D': -1, 'G': -1 },
-  'Gb': { 'B': -1, 'E': -1, 'A': -1, 'D': -1, 'G': -1, 'C': -1 },
-  'Cb': { 'B': -1, 'E': -1, 'A': -1, 'D': -1, 'G': -1, 'C': -1, 'F': -1 },
-  // Minor keys (same accidentals as relative major)
-  'Am': {},
-  'Em': { 'F': 1 },
-  'Bm': { 'F': 1, 'C': 1 },
-  'F#m': { 'F': 1, 'C': 1, 'G': 1 },
-  'C#m': { 'F': 1, 'C': 1, 'G': 1, 'D': 1 },
-  'G#m': { 'F': 1, 'C': 1, 'G': 1, 'D': 1, 'A': 1 },
-  'D#m': { 'F': 1, 'C': 1, 'G': 1, 'D': 1, 'A': 1, 'E': 1 },
-  'A#m': { 'F': 1, 'C': 1, 'G': 1, 'D': 1, 'A': 1, 'E': 1, 'B': 1 },
-  'Dm': { 'B': -1 },
-  'Gm': { 'B': -1, 'E': -1 },
-  'Cm': { 'B': -1, 'E': -1, 'A': -1 },
-  'Fm': { 'B': -1, 'E': -1, 'A': -1, 'D': -1 },
-  'Bbm': { 'B': -1, 'E': -1, 'A': -1, 'D': -1, 'G': -1 },
-  'Ebm': { 'B': -1, 'E': -1, 'A': -1, 'D': -1, 'G': -1, 'C': -1 },
-  'Abm': { 'B': -1, 'E': -1, 'A': -1, 'D': -1, 'G': -1, 'C': -1, 'F': -1 },
-};
-
-// Score metadata interface
-interface ScoreMetadata {
-  title?: string;
-  bpm: number;
-  timeSignature?: string;
-  key?: string;
-  defaultNoteLength?: string;
+// Audio node object pool for performance
+class AudioNodePool {
+  private oscillatorPool: OscillatorNode[] = [];
+  private gainPool: GainNode[] = [];
+  private ctx: AudioContext;
+  private poolSize = 50;
+  
+  constructor(ctx: AudioContext) {
+    this.ctx = ctx;
+    this.prewarm();
+  }
+  
+  prewarm() {
+    // Pre-create nodes for pool
+    for (let i = 0; i < this.poolSize; i++) {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine'; // Use sine for piano-like sound
+      gain.gain.value = 0;
+      this.oscillatorPool.push(osc);
+      this.gainPool.push(gain);
+    }
+  }
+  
+  getNodes(): { osc: OscillatorNode; gain: GainNode } {
+    // Reuse or create new
+    let osc = this.oscillatorPool.pop();
+    let gain = this.gainPool.pop();
+    
+    if (!osc || osc.context !== this.ctx) {
+      osc = this.ctx.createOscillator();
+      osc.type = 'sine'; // Piano-like sine wave
+    }
+    if (!gain || gain.context !== this.ctx) {
+      gain = this.ctx.createGain();
+    }
+    
+    return { osc, gain };
+  }
+  
+  // Return nodes to pool after use (for future reuse)
+  returnNodes(osc: OscillatorNode, gain: GainNode) {
+    // Can't reuse stopped oscillators, but gains can be reused
+    if (this.gainPool.length < this.poolSize) {
+      try {
+        gain.disconnect();
+        this.gainPool.push(gain);
+      } catch (e) {}
+    }
+  }
+  
+  clear() {
+    this.oscillatorPool = [];
+    this.gainPool = [];
+  }
 }
 
 interface PianoEditorProps {
   className?: string;
-  onNotePlay?: (frequency: number, intensity: number) => void;
+  isVisible?: boolean; // Stop playback when not visible (page switched)
 }
 
-const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
+const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }) => {
+  // Core state - Note[] displayed in grid, ABC used for playback
   const [notes, setNotes] = useState<Note[]>([]);
+  const [currentStep, setCurrentStep] = useState(0); // Start at 0, always visible
+  const [playheadPosition, setPlayheadPosition] = useState(0); // Always visible at step 0
+  const [abcContent, setAbcContent] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentStep, setCurrentStep] = useState(-1);
   const [availableScores, setAvailableScores] = useState<string[]>([]);
   const [selectedScore, setSelectedScore] = useState<string>('');
   const [bpm, setBpm] = useState<number>(DEFAULT_BPM);
   const [scoreMetadata, setScoreMetadata] = useState<ScoreMetadata>({ bpm: DEFAULT_BPM });
-  const [isDraggingProgress, setIsDraggingProgress] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sustain, setSustain] = useState(true); // Sustain/延音 toggle, default on
+  const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
+  const [selectedVoice, setSelectedVoice] = useState<string>('all'); // Voice filter
+  const [selectedDuration, setSelectedDuration] = useState<NoteDurationType>('eighth'); // Default to 8th note
+  const [selectedPitch, setSelectedPitch] = useState<{ octave: number; pitch: number } | null>(null); // Selected pitch for editing
+  
+  // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const progressBarRef = useRef<HTMLDivElement>(null);
+  const playbackIdRef = useRef<number>(0);
+  const animationFrameRef = useRef<number>(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioPoolRef = useRef<AudioNodePool | null>(null);
+  const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
+  const toneSynthRef = useRef<Tone.PolySynth | null>(null); // Tone.js synth
   
-  // Calculate interval based on BPM (16th note duration in ms)
-  const stepInterval = useMemo(() => {
-    // BPM is beats per minute, a beat is a quarter note = 4 sixteenth notes
-    // 60000ms / BPM = ms per quarter note
-    // Divide by 4 for 16th note
-    return Math.round(60000 / bpm / 4);
-  }, [bpm]);
+  // Virtual scroll state
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: MIN_STEPS });
   
-  // Calculate total steps dynamically based on notes
+  // Derived values
+  const stepInterval = useMemo(() => Math.round(60000 / bpm / 4), [bpm]);
+  
   const totalSteps = useMemo(() => {
     if (notes.length === 0) return MIN_STEPS;
     const maxEndTime = Math.max(...notes.map(n => n.startTime + n.duration));
-    // Round up to nearest 4 steps (quarter note) and add some buffer
     return Math.max(MIN_STEPS, Math.ceil(maxEndTime / 4) * 4 + 8);
   }, [notes]);
 
-  // Calculate the last note end time for playback
   const lastNoteEndTime = useMemo(() => {
     if (notes.length === 0) return 0;
     return Math.max(...notes.map(n => n.startTime + n.duration));
   }, [notes]);
+
+  // Filter notes by selected voice
+  const filteredNotes = useMemo(() => {
+    if (selectedVoice === 'all') return notes;
+    return notes.filter(n => (n.voice || 'V1') === selectedVoice);
+  }, [notes, selectedVoice]);
+
+  // O(1) note lookup for grid - includes duration info
+  const activeNoteMap = useMemo(() => {
+    const map = new Map<string, Note>();
+    for (const note of filteredNotes) {
+      map.set(`${note.octave}-${note.pitch}-${note.startTime}`, note);
+    }
+    return map;
+  }, [filteredNotes]);
+
+  const getNoteAt = useCallback((octave: number, pitch: number, step: number): Note | undefined => {
+    return activeNoteMap.get(`${octave}-${pitch}-${step}`);
+  }, [activeNoteMap]);
+
+  // Check if a cell is part of a sustained note (for visual display)
+  const isPartOfNote = useCallback((octave: number, pitch: number, step: number): { isStart: boolean; isMiddle: boolean; isEnd: boolean; note?: Note } => {
+    // Check if this is the start of a note
+    const startNote = activeNoteMap.get(`${octave}-${pitch}-${step}`);
+    if (startNote) {
+      const isEnd = startNote.duration <= 1;
+      return { isStart: true, isMiddle: false, isEnd, note: startNote };
+    }
+    
+    // Check if this step is part of a longer note that started earlier
+    for (const note of filteredNotes) {
+      if (note.octave === octave && note.pitch === pitch) {
+        if (step > note.startTime && step < note.startTime + note.duration) {
+          const isEnd = step === note.startTime + note.duration - 1;
+          return { isStart: false, isMiddle: true, isEnd, note };
+        }
+      }
+    }
+    
+    return { isStart: false, isMiddle: false, isEnd: false };
+  }, [activeNoteMap, filteredNotes]);
+
+  // Check if a note is active at a specific position (for grid display)
+  const isNoteActive = useCallback((octave: number, pitch: number, step: number): boolean => {
+    const result = isPartOfNote(octave, pitch, step);
+    return result.isStart || result.isMiddle;
+  }, [isPartOfNote]);
   
-  // Initialize notes with a simple melody
+  // Initialize
   useEffect(() => {
     setNotes([
-      { pitch: 4, octave: 4, startTime: 0, duration: 2 }, // E
-      { pitch: 8, octave: 4, startTime: 2, duration: 2 }, // G#
-      { pitch: 11, octave: 4, startTime: 4, duration: 4 }, // B
+      { pitch: 4, octave: 4, startTime: 0, duration: 2 },
+      { pitch: 8, octave: 4, startTime: 2, duration: 2 },
+      { pitch: 11, octave: 4, startTime: 4, duration: 4 },
     ]);
-    
-    // Load available scores from config
-    loadAvailableScores();
+    setAvailableScores(MEDIA_CONFIG.scores.files);
   }, []);
 
-  const loadAvailableScores = async () => {
-    // Load scores from configuration
-    setAvailableScores(MEDIA_CONFIG.scores.files);
-  };
+  // Update visible range on scroll for virtual scrolling
+  const updateVisibleRange = useCallback(() => {
+    if (!scrollContainerRef.current) return;
+    const container = scrollContainerRef.current;
+    const scrollLeft = container.scrollLeft;
+    const clientWidth = container.clientWidth;
+    
+    const startStep = Math.max(0, Math.floor(scrollLeft / CELL_WIDTH) - VISIBLE_STEP_BUFFER);
+    const endStep = Math.min(totalSteps, Math.ceil((scrollLeft + clientWidth) / CELL_WIDTH) + VISIBLE_STEP_BUFFER);
+    
+    setVisibleRange({ start: startStep, end: endStep });
+  }, [totalSteps]);
 
-  // Detect if content is ABC notation (starts with X: or has ABC headers)
-  const isABCNotation = (content: string): boolean => {
-    const lines = content.split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      // ABC files typically start with X: (tune number) or have header fields like T:, M:, K:
-      if (/^[XTMKLCQP]:/.test(trimmed)) return true;
-      // Skip empty lines and comments
-      if (trimmed && !trimmed.startsWith('%')) {
-        // If first non-empty, non-comment line is not ABC header, it's likely not ABC
-        break;
+  // Handle user scroll - stop auto-follow when user manually scrolls
+  const handleUserScroll = useCallback(() => {
+    if (isPlaying) {
+      setIsUserScrolling(true);
+      isUserScrollingRef.current = true;
+      
+      // Clear existing timeout
+      if (userScrollTimeoutRef.current) {
+        clearTimeout(userScrollTimeoutRef.current);
       }
     }
-    return false;
-  };
+    updateVisibleRange();
+  }, [isPlaying, updateVisibleRange]);
 
-  // Parse ABC notation following ABC v2.1 standard (https://abcnotation.com/wiki/abc:standard:v2.1)
-  const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMetadata } => {
-    const lines = content.split('\n');
-    const parsedNotes: Note[] = [];
-    const metadata: ScoreMetadata = { bpm: DEFAULT_BPM, defaultNoteLength: '1/8' };
+  // Listen to scroll events
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
     
-    let defaultNoteLength = 1/8; // L:1/8 default (eighth note = 2 in our 16th note system)
-    let baseNoteDuration = 2; // Default duration in 16th notes for L:1/8
-    let inBody = false;
-    let keySignature: Record<string, number> = {}; // Current key signature accidentals
-    
-    // Voice/track management for multi-voice ABC
-    const voicePositions: Map<string, number> = new Map();
-    let currentVoice = 'default';
-    voicePositions.set(currentVoice, 0);
-    
-    // Per-bar accidentals (reset at each bar line per ABC v2.1 standard)
-    let barAccidentals: Map<string, number> = new Map();
+    updateVisibleRange();
+    container.addEventListener('scroll', handleUserScroll);
+    return () => container.removeEventListener('scroll', handleUserScroll);
+  }, [handleUserScroll, updateVisibleRange]);
 
-    for (const line of lines) {
-      let trimmed = line.trim();
-      
-      // Skip empty lines
-      if (!trimmed) continue;
-      
-      // Skip ABC comments (% at start of line per v2.1)
-      if (trimmed.startsWith('%')) continue;
-      
-      // Parse ABC header fields (before K: field ends header)
-      if (!inBody && /^[A-Za-z]:/.test(trimmed)) {
-        const colonIdx = trimmed.indexOf(':');
-        const field = trimmed.substring(0, colonIdx).trim();
-        const value = trimmed.substring(colonIdx + 1).trim();
-        
-        switch (field.toUpperCase()) {
-          case 'T': // Title
-            metadata.title = value;
-            break;
-          case 'M': // Meter/Time signature
-            metadata.timeSignature = value;
-            break;
-          case 'L': // Default note length (unit note length per v2.1)
-            metadata.defaultNoteLength = value;
-            // Parse fraction like 1/8, 1/4, 1/16
-            const lengthMatch = value.match(/(\d+)\/(\d+)/);
-            if (lengthMatch) {
-              defaultNoteLength = parseInt(lengthMatch[1]) / parseInt(lengthMatch[2]);
-              // Convert to 16th notes: 1/16=1, 1/8=2, 1/4=4, 1/2=8, 1=16
-              baseNoteDuration = Math.round(defaultNoteLength * 16);
-            }
-            break;
-          case 'Q': // Tempo
-            // ABC v2.1 tempo format: Q:1/4=120 or Q:120 or Q:"allegro" 1/4=120
-            const tempoMatch = value.match(/(\d+)\/(\d+)\s*=\s*(\d+)/);
-            if (tempoMatch) {
-              // e.g., Q:1/4=120 means 120 quarter notes per minute
-              const tempoNoteLength = parseInt(tempoMatch[1]) / parseInt(tempoMatch[2]);
-              const tempoBpm = parseInt(tempoMatch[3], 10);
-              // Convert to BPM relative to quarter note
-              metadata.bpm = Math.round(tempoBpm * tempoNoteLength * 4) || DEFAULT_BPM;
-            } else {
-              const simpleTempo = value.match(/(\d+)/);
-              if (simpleTempo) {
-                metadata.bpm = parseInt(simpleTempo[1], 10) || DEFAULT_BPM;
-              }
-            }
-            break;
-          case 'K': // Key signature (marks end of header, start of tune body per v2.1)
-            metadata.key = value;
-            // Parse key to get accidentals
-            const keyMatch = value.match(/^([A-G][b#]?)(m|min|maj|major|minor|mix|dor|phr|lyd|loc)?/i);
-            if (keyMatch) {
-              let keyName = keyMatch[1];
-              const mode = keyMatch[2]?.toLowerCase() || '';
-              // Handle minor mode
-              if (mode === 'm' || mode === 'min' || mode === 'minor') {
-                keyName += 'm';
-              }
-              keySignature = KEY_SIGNATURES[keyName] || {};
-            }
-            inBody = true;
-            break;
-          case 'V': // Voice definition
-            currentVoice = value.split(/\s+/)[0]; // First word is voice ID
-            if (!voicePositions.has(currentVoice)) {
-              voicePositions.set(currentVoice, 0);
-            }
-            break;
-        }
-        continue;
-      }
-      
-      if (!inBody) continue;
-      
-      // Check for inline field [X:value] per ABC v2.1
-      // Handle voice switch [V:name] and other inline fields
-      let musicContent = trimmed;
-      const inlineFieldRegex = /\[([A-Za-z]):([^\]]*)\]/g;
-      let match;
-      while ((match = inlineFieldRegex.exec(trimmed)) !== null) {
-        const field = match[1].toUpperCase();
-        const value = match[2];
-        if (field === 'V') {
-          currentVoice = value.split(/\s+/)[0];
-          if (!voicePositions.has(currentVoice)) {
-            voicePositions.set(currentVoice, 0);
-          }
-        } else if (field === 'K') {
-          // Inline key change
-          const keyMatch = value.match(/^([A-G][b#]?)(m|min|maj|major|minor)?/i);
-          if (keyMatch) {
-            let keyName = keyMatch[1];
-            const mode = keyMatch[2]?.toLowerCase() || '';
-            if (mode === 'm' || mode === 'min' || mode === 'minor') {
-              keyName += 'm';
-            }
-            keySignature = KEY_SIGNATURES[keyName] || {};
-          }
-        }
-      }
-      // Remove inline fields from music content
-      musicContent = musicContent.replace(/\[[A-Za-z]:[^\]]*\]/g, '');
-      
-      // Parse music body
-      let currentTime = voicePositions.get(currentVoice) || 0;
-      
-      // Process the music line character by character
-      let i = 0;
-      while (i < musicContent.length) {
-        const char = musicContent[i];
-        
-        // Skip whitespace
-        if (/\s/.test(char)) {
-          i++;
-          continue;
-        }
-        
-        // Bar line - reset bar accidentals per ABC v2.1
-        if (char === '|' || char === ':') {
-          barAccidentals.clear();
-          i++;
-          // Skip multi-character bar lines like |], |:, :|, etc.
-          while (i < musicContent.length && /[\|\]:1-9\[]/.test(musicContent[i])) {
-            i++;
-          }
-          continue;
-        }
-        
-        // Skip decorations and grace notes per v2.1 (~, ., H, L, M, O, P, S, T, u, v, !)
-        if ('~.HLMOPSTuv!+'.includes(char)) {
-          if (char === '!' || char === '+') {
-            // Skip to closing ! or +
-            i++;
-            while (i < musicContent.length && musicContent[i] !== char) i++;
-          }
-          i++;
-          continue;
-        }
-        
-        // Skip slurs, ties, and beaming
-        if ('()-'.includes(char)) {
-          // Check for tuplet notation (3 for triplet, etc.
-          if (char === '(' && i + 1 < musicContent.length && /\d/.test(musicContent[i + 1])) {
-            // Skip tuplet notation for now (3CDE)
-            i++;
-            while (i < musicContent.length && /\d/.test(musicContent[i])) i++;
-            continue;
-          }
-          i++;
-          continue;
-        }
-        
-        // Handle chord symbols enclosed in quotes (skip them)
-        if (char === '"') {
-          i++;
-          while (i < musicContent.length && musicContent[i] !== '"') i++;
-          i++;
-          continue;
-        }
-        
-        // Handle guitar chords and annotations in quotes
-        if (char === '"') {
-          i++;
-          while (i < musicContent.length && musicContent[i] !== '"') i++;
-          i++;
-          continue;
-        }
-        
-        // Handle chords [CEG] per ABC v2.1
-        if (char === '[') {
-          // Check if this is not an inline field [X:]
-          if (i + 2 < musicContent.length && musicContent[i + 2] !== ':') {
-            const chordEnd = musicContent.indexOf(']', i);
-            if (chordEnd > i) {
-              const chordContent = musicContent.substring(i + 1, chordEnd);
-              const { chordNotes, maxDuration } = parseABCChordV2(chordContent, baseNoteDuration, currentTime, keySignature, barAccidentals);
-              parsedNotes.push(...chordNotes);
-              
-              // Check for duration after chord
-              let durationStr = '';
-              let j = chordEnd + 1;
-              while (j < musicContent.length && (/\d|\/|>|</.test(musicContent[j]))) {
-                durationStr += musicContent[j];
-                j++;
-              }
-              
-              let duration = parseABCDurationV2(durationStr, baseNoteDuration);
-              if (durationStr === '') duration = maxDuration || baseNoteDuration;
-              
-              // Update all chord notes with the proper duration
-              chordNotes.forEach(n => n.duration = duration);
-              currentTime += duration;
-              i = j;
-              continue;
-            }
-          }
-          i++;
-          continue;
-        }
-        
-        // Rest (z or Z per ABC v2.1)
-        if (char === 'z' || char === 'Z' || char === 'x' || char === 'X') {
-          let durationStr = '';
-          i++;
-          while (i < musicContent.length && (/\d|\//.test(musicContent[i]))) {
-            durationStr += musicContent[i];
-            i++;
-          }
-          const duration = char === 'Z' ? baseNoteDuration * 4 : parseABCDurationV2(durationStr, baseNoteDuration);
-          currentTime += duration;
-          continue;
-        }
-        
-        // Accidentals before note per ABC v2.1 standard: ^=sharp, ^^=double sharp, _=flat, __=double flat, ==natural
-        let accidental = 0;
-        let hasExplicitAccidental = false;
-        while (i < musicContent.length && (musicContent[i] === '^' || musicContent[i] === '_' || musicContent[i] === '=')) {
-          hasExplicitAccidental = true;
-          if (musicContent[i] === '^') accidental++;
-          else if (musicContent[i] === '_') accidental--;
-          else if (musicContent[i] === '=') accidental = 0; // Natural cancels key signature
-          i++;
-        }
-        
-        // Note (A-G or a-g)
-        if (i < musicContent.length && /[A-Ga-g]/.test(musicContent[i])) {
-          const noteResult = parseABCSingleNote(
-            musicContent, i, baseNoteDuration, currentTime, 
-            keySignature, barAccidentals, accidental, hasExplicitAccidental
-          );
-          if (noteResult.note) {
-            parsedNotes.push(noteResult.note);
-            currentTime += noteResult.note.duration;
-          }
-          i = noteResult.nextIndex;
-          continue;
-        }
-        
-        i++;
-      }
-      
-      voicePositions.set(currentVoice, currentTime);
-    }
+  // Update visible range when totalSteps changes
+  useEffect(() => {
+    updateVisibleRange();
+  }, [totalSteps, updateVisibleRange]);
 
-    return { notes: parsedNotes, metadata };
-  };
-
-  // Parse a single ABC note starting at position i (after any accidentals have been parsed)
-  const parseABCSingleNote = (
-    line: string, 
-    startIdx: number, 
-    baseNoteDuration: number, 
-    startTime: number,
-    keySignature: Record<string, number>,
-    barAccidentals: Map<string, number>,
-    accidental: number,
-    hasExplicitAccidental: boolean
-  ): { note: Note | null; nextIndex: number } => {
-    let i = startIdx;
+  // Pause playback - keep position
+  const pausePlayback = useCallback(() => {
+    playbackIdRef.current++;
     
-    // Get note letter
-    const noteChar = line[i];
-    if (!/[A-Ga-g]/.test(noteChar)) {
-      return { note: null, nextIndex: i + 1 };
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = 0;
     }
     
-    // Determine base octave from case per ABC v2.1
-    // Uppercase (C D E F G A B) = octave 4 (middle octave)
-    // Lowercase (c d e f g a b) = octave 5 (one octave higher)
-    let octave = noteChar === noteChar.toUpperCase() ? 4 : 5;
-    const baseNote = noteChar.toUpperCase();
-    i++;
-    
-    // Check for octave modifiers per ABC v2.1
-    // ' (apostrophe) raises pitch by one octave
-    // , (comma) lowers pitch by one octave
-    while (i < line.length && (line[i] === "'" || line[i] === ',')) {
-      if (line[i] === "'") octave++;
-      else if (line[i] === ',') octave--;
-      i++;
+    if (audioPoolRef.current) {
+      audioPoolRef.current.clear();
+      audioPoolRef.current = null;
     }
     
-    // Get base pitch from note name
-    let pitch = ABC_NOTE_TO_SEMITONE[baseNote];
-    if (pitch === undefined) {
-      return { note: null, nextIndex: i };
+    if (audioContextRef.current) {
+      try { audioContextRef.current.close(); } catch (e) {}
+      audioContextRef.current = null;
     }
     
-    // Apply accidental per ABC v2.1 rules
-    if (hasExplicitAccidental) {
-      // Explicit accidental - use it and remember for rest of bar
-      pitch = (pitch + accidental + 12) % 12;
-      barAccidentals.set(baseNote + octave, accidental);
-    } else {
-      // Check bar accidentals first (applies to specific note+octave per v2.1)
-      const barAcc = barAccidentals.get(baseNote + octave);
-      if (barAcc !== undefined) {
-        pitch = (pitch + barAcc + 12) % 12;
-      } else {
-        // Apply key signature accidental (applies to all octaves)
-        const keyAcc = keySignature[baseNote];
-        if (keyAcc !== undefined) {
-          pitch = (pitch + keyAcc + 12) % 12;
-        }
-      }
-    }
-    
-    // Clamp octave to supported range
-    octave = Math.max(3, Math.min(5, octave));
-    
-    // Parse duration multiplier per ABC v2.1
-    let durationStr = '';
-    while (i < line.length && (/\d|\/|>|</.test(line[i]))) {
-      durationStr += line[i];
-      i++;
-    }
-    
-    const duration = parseABCDurationV2(durationStr, baseNoteDuration);
-    
-    return {
-      note: {
-        pitch,
-        octave,
-        startTime,
-        duration
-      },
-      nextIndex: i
-    };
-  };
-
-  // Parse ABC chord content (without brackets) per ABC v2.1
-  const parseABCChordV2 = (
-    content: string, 
-    baseNoteDuration: number, 
-    startTime: number,
-    keySignature: Record<string, number>,
-    barAccidentals: Map<string, number>
-  ): { chordNotes: Note[], maxDuration: number } => {
-    const chordNotes: Note[] = [];
-    let maxDuration = baseNoteDuration;
-    let i = 0;
-    
-    while (i < content.length) {
-      const char = content[i];
-      
-      // Skip whitespace
-      if (/\s/.test(char)) {
-        i++;
-        continue;
-      }
-      
-      // Handle accidental prefix per ABC v2.1
-      let accidental = 0;
-      let hasExplicitAccidental = false;
-      while (i < content.length && (content[i] === '^' || content[i] === '_' || content[i] === '=')) {
-        hasExplicitAccidental = true;
-        if (content[i] === '^') accidental++;
-        else if (content[i] === '_') accidental--;
-        else if (content[i] === '=') accidental = 0;
-        i++;
-      }
-      
-      if (i >= content.length) break;
-      
-      const noteChar = content[i];
-      if (!/[A-Ga-g]/.test(noteChar)) {
-        i++;
-        continue;
-      }
-      
-      let octave = noteChar === noteChar.toUpperCase() ? 4 : 5;
-      const baseNote = noteChar.toUpperCase();
-      let pitch = ABC_NOTE_TO_SEMITONE[baseNote];
-      
-      if (pitch !== undefined) {
-        i++;
-        
-        // Check for octave modifiers
-        while (i < content.length && (content[i] === "'" || content[i] === ',')) {
-          if (content[i] === "'") octave++;
-          else if (content[i] === ',') octave--;
-          i++;
-        }
-        
-        // Apply accidentals
-        if (hasExplicitAccidental) {
-          pitch = (pitch + accidental + 12) % 12;
-          barAccidentals.set(baseNote + octave, accidental);
-        } else {
-          const barAcc = barAccidentals.get(baseNote + octave);
-          if (barAcc !== undefined) {
-            pitch = (pitch + barAcc + 12) % 12;
-          } else {
-            const keyAcc = keySignature[baseNote];
-            if (keyAcc !== undefined) {
-              pitch = (pitch + keyAcc + 12) % 12;
-            }
-          }
-        }
-        
-        octave = Math.max(3, Math.min(5, octave));
-        
-        // Parse individual note duration within chord
-        let noteDurationStr = '';
-        while (i < content.length && /\d|\//.test(content[i])) {
-          noteDurationStr += content[i];
-          i++;
-        }
-        const noteDuration = noteDurationStr ? parseABCDurationV2(noteDurationStr, baseNoteDuration) : baseNoteDuration;
-        maxDuration = Math.max(maxDuration, noteDuration);
-        
-        chordNotes.push({
-          pitch,
-          octave,
-          startTime,
-          duration: noteDuration
-        });
-      } else {
-        i++;
-      }
-    }
-    
-    return { chordNotes, maxDuration };
-  };
-
-  // Parse ABC duration string per ABC v2.1 standard
-  // Handles: 2 (double), /2 (half), 3/2 (1.5x), / (half), // (quarter), > (dotted, following note halved), < (reverse)
-  const parseABCDurationV2 = (durationStr: string, baseNoteDuration: number): number => {
-    if (!durationStr) return baseNoteDuration;
-    
-    // Remove broken rhythm markers for now (>, <)
-    const cleanStr = durationStr.replace(/[><]/g, '');
-    if (!cleanStr) return baseNoteDuration;
-    
-    // Handle / alone = /2, // = /4, etc.
-    if (/^\/+$/.test(cleanStr)) {
-      const slashCount = cleanStr.length;
-      return Math.max(1, Math.round(baseNoteDuration / Math.pow(2, slashCount)));
-    }
-    
-    // Handle fractions like /2, /4, 3/2
-    if (cleanStr.includes('/')) {
-      const parts = cleanStr.split('/');
-      const numerator = parts[0] ? parseInt(parts[0], 10) : 1;
-      const denominator = parts[1] ? parseInt(parts[1], 10) : 2;
-      return Math.max(1, Math.round(baseNoteDuration * numerator / denominator));
-    }
-    
-    // Simple multiplier like 2, 4
-    const multiplier = parseInt(cleanStr, 10);
-    if (!isNaN(multiplier) && multiplier > 0) {
-      return baseNoteDuration * multiplier;
-    }
-    
-    return baseNoteDuration;
-  };
-
-  const parseScoreFile = (content: string): { notes: Note[], metadata: ScoreMetadata } => {
-    // Check if this is ABC notation
-    if (isABCNotation(content)) {
-      return parseABCNotation(content);
-    }
-    
-    // Legacy format parsing
-    const lines = content.split('\n');
-    const parsedNotes: Note[] = [];
-    const metadata: ScoreMetadata = { bpm: DEFAULT_BPM };
-    
-    // Track management for multi-track support
-    const trackPositions: Map<string, number> = new Map();
-    let currentTrack = 'default';
-    trackPositions.set(currentTrack, 0);
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      
-      // Skip empty lines
-      if (!trimmed) continue;
-      
-      // Parse metadata comments (special format: #@ key: value)
-      if (trimmed.startsWith('#@')) {
-        const metaMatch = trimmed.match(/^#@\s*(\w+)\s*:\s*(.+)$/i);
-        if (metaMatch) {
-          const [, key, value] = metaMatch;
-          switch (key.toLowerCase()) {
-            case 'bpm':
-            case 'tempo':
-              metadata.bpm = parseInt(value, 10) || DEFAULT_BPM;
-              break;
-            case 'title':
-              metadata.title = value.trim();
-              break;
-            case 'time':
-            case 'timesignature':
-              metadata.timeSignature = value.trim();
-              break;
-            case 'key':
-              metadata.key = value.trim();
-              break;
-          }
-        }
-        continue;
-      }
-      
-      // Skip regular comments
-      if (trimmed.startsWith('#')) continue;
-      
-      // Track switch command: [TrackName] or [TrackName:position]
-      const trackMatch = trimmed.match(/^\[(\w+)(?::(\d+))?\]$/);
-      if (trackMatch) {
-        currentTrack = trackMatch[1];
-        if (!trackPositions.has(currentTrack)) {
-          const startPos = trackMatch[2] ? parseInt(trackMatch[2], 10) : 0;
-          trackPositions.set(currentTrack, startPos);
-        } else if (trackMatch[2]) {
-          trackPositions.set(currentTrack, parseInt(trackMatch[2], 10));
-        }
-        continue;
-      }
-      
-      // Sync command: @position
-      const syncMatch = trimmed.match(/^@(\d+)$/);
-      if (syncMatch) {
-        trackPositions.set(currentTrack, parseInt(syncMatch[1], 10));
-        continue;
-      }
-      
-      const currentTime = trackPositions.get(currentTrack) || 0;
-
-      // Check if this is a chord (multiple notes joined by +)
-      if (trimmed.includes('+')) {
-        const chordParts = trimmed.split('+').map(p => p.trim());
-        const chordNotes: { noteName: string; octave: number }[] = [];
-        let chordDuration = 4;
-
-        for (let i = 0; i < chordParts.length; i++) {
-          const parts = chordParts[i].split(/\s+/);
-          if (parts.length >= 2) {
-            const noteName = parts[0].toUpperCase();
-            const octave = parseInt(parts[1], 10);
-            const pitch = NOTE_TO_PITCH[noteName];
-            
-            if (pitch !== undefined && !isNaN(octave)) {
-              chordNotes.push({ noteName, octave });
-              if (parts.length >= 3) {
-                chordDuration = parseInt(parts[2], 10) || 4;
-              }
-            }
-          }
-        }
-
-        for (const cn of chordNotes) {
-          const pitch = NOTE_TO_PITCH[cn.noteName];
-          if (pitch !== undefined) {
-            parsedNotes.push({
-              pitch,
-              octave: cn.octave,
-              startTime: currentTime,
-              duration: chordDuration
-            });
-          }
-        }
-        trackPositions.set(currentTrack, currentTime + chordDuration);
-      } else {
-        const parts = trimmed.split(/\s+/);
-        if (parts.length >= 3) {
-          const noteName = parts[0].toUpperCase();
-          const octave = parseInt(parts[1], 10);
-          const duration = parseInt(parts[2], 10);
-
-          const pitch = NOTE_TO_PITCH[noteName];
-          
-          if (pitch !== undefined && !isNaN(octave) && !isNaN(duration)) {
-            parsedNotes.push({
-              pitch,
-              octave,
-              startTime: currentTime,
-              duration
-            });
-            trackPositions.set(currentTrack, currentTime + duration);
-          }
-        }
-      }
-    }
-
-    return { notes: parsedNotes, metadata };
-  };
-
-  const loadScore = async (scoreName: string) => {
+    // Stop Tone.js transport and synth
     try {
-      // Reset playback state when loading new score
-      setIsPlaying(false);
-      setCurrentStep(-1);
-      setIsDraggingProgress(false);
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
+      if (toneSynthRef.current) {
+        toneSynthRef.current.releaseAll();
+      }
+    } catch (e) {}
+    
+    setIsPlaying(false);
+    // Keep currentStep and playheadPosition - don't reset
+  }, []);
+
+  // Stop and reset to beginning
+  const stopPlayback = useCallback(() => {
+    pausePlayback();
+    setCurrentStep(0);
+    setPlayheadPosition(0);
+  }, [pausePlayback]);
+
+  // Jump to beginning
+  const jumpToStart = useCallback(() => {
+    const wasPlaying = isPlaying;
+    if (wasPlaying) {
+      pausePlayback();
+    }
+    setCurrentStep(0);
+    setPlayheadPosition(0);
+    setIsUserScrolling(false);
+    isUserScrollingRef.current = false;
+    // Scroll to start
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = 0;
+    }
+  }, [isPlaying, pausePlayback]);
+
+  // Jump to current playhead position
+  const jumpToPlayhead = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const c = scrollContainerRef.current;
+      c.scrollLeft = Math.max(0, playheadPosition - c.clientWidth / 2);
+      setIsUserScrolling(false);
+      isUserScrollingRef.current = false;
+    }
+  }, [playheadPosition]);
+
+  // Play using Tone.js for professional piano sound - can start from any step
+  const startPlaybackFromStep = useCallback(async (fromStep?: number) => {
+    if (notes.length === 0) return;
+    
+    // Stop any existing playback
+    pausePlayback();
+    
+    // Start Tone.js
+    await Tone.start();
+    
+    // Create piano-like synth with PolySynth for polyphony
+    const synth = new Tone.PolySynth(Tone.Synth, {
+      maxPolyphony: MAX_CONCURRENT_NOTES,
+      voice: Tone.Synth,
+      options: {
+        oscillator: { type: 'triangle' },
+        envelope: {
+          attack: 0.005,
+          decay: 0.3,
+          sustain: sustain ? 0.4 : 0.1,
+          release: sustain ? 1.0 : 0.3,
+        },
+      }
+    }).toDestination();
+    toneSynthRef.current = synth;
+    
+    const stepDurationSec = stepInterval / 1000;
+    const startStep = fromStep !== undefined ? fromStep : (currentStep >= 0 ? currentStep : 0);
+    const currentPlaybackId = ++playbackIdRef.current;
+    
+    // Set BPM
+    Tone.Transport.bpm.value = bpm;
+    
+    // Schedule notes with Tone.js Transport
+    const now = Tone.now();
+    for (const note of notes) {
+      if (note.startTime >= startStep) {
+        const midi = (note.octave + 1) * 12 + note.pitch;
+        const freq = Tone.Frequency(midi, "midi").toFrequency();
+        const offsetSec = (note.startTime - startStep) * stepDurationSec;
+        const durSec = Math.max(0.05, note.duration * stepDurationSec);
+        
+        synth.triggerAttackRelease(freq, durSec, now + offsetSec);
+      }
+    }
+    
+    setIsPlaying(true);
+    setIsUserScrolling(false);
+    isUserScrollingRef.current = false;
+    
+    // Animate playhead smoothly using requestAnimationFrame
+    const playStartTime = performance.now();
+    const updatePlayhead = () => {
+      if (playbackIdRef.current !== currentPlaybackId) return;
+      
+      const elapsed = (performance.now() - playStartTime) / 1000;
+      const pos = startStep + (elapsed / stepDurationSec);
+      
+      setPlayheadPosition(pos * CELL_WIDTH);
+      setCurrentStep(Math.floor(pos));
+      
+      // Auto-scroll
+      if (scrollContainerRef.current) {
+        const c = scrollContainerRef.current;
+        const px = pos * CELL_WIDTH;
+        const isPlayheadVisible = px >= c.scrollLeft && px <= c.scrollLeft + c.clientWidth - CELL_WIDTH * 2;
+        
+        if (isPlayheadVisible && isUserScrollingRef.current) {
+          setIsUserScrolling(false);
+          isUserScrollingRef.current = false;
+        }
+        
+        if (!isUserScrollingRef.current) {
+          if (px > c.scrollLeft + c.clientWidth - CELL_WIDTH * 4 || px < c.scrollLeft) {
+            c.scrollLeft = Math.max(0, px - c.clientWidth / 2);
+          }
+        }
+      }
+      
+      if (pos > lastNoteEndTime) {
+        pausePlayback();
+        return;
+      }
+      
+      animationFrameRef.current = requestAnimationFrame(updatePlayhead);
+    };
+    
+    animationFrameRef.current = requestAnimationFrame(updatePlayhead);
+  }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, pausePlayback, bpm]);
+
+  // Wrapper for normal playback (from current position)
+  const startPlayback = useCallback(() => {
+    startPlaybackFromStep();
+  }, [startPlaybackFromStep]);
+
+  // Handle ruler click - move playhead, and if playing, restart from that position
+  const handleRulerClick = useCallback((step: number) => {
+    setCurrentStep(step);
+    setPlayheadPosition(step * CELL_WIDTH);
+    setIsUserScrolling(false);
+    isUserScrollingRef.current = false;
+    
+    // If currently playing, restart from this position
+    if (isPlaying) {
+      startPlaybackFromStep(step);
+    }
+  }, [isPlaying, startPlaybackFromStep]);
+
+  // Load score - always parse to Note[] for grid display
+  const loadScore = useCallback(async (scoreName: string) => {
+    pausePlayback();
+    setCurrentStep(0);
+    setPlayheadPosition(0);
+    
+    if (!scoreName) {
+      setAbcContent('');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
       
       const response = await fetch(`${MEDIA_CONFIG.scores.folder}/${scoreName}`);
       if (!response.ok) {
-        console.error('Failed to load score:', scoreName);
+        setIsLoading(false);
         return;
       }
       
       const content = await response.text();
-      const { notes: parsedNotes, metadata } = parseScoreFile(content);
       
-      if (parsedNotes.length > 0) {
-        setNotes(parsedNotes);
-        setSelectedScore(scoreName);
-        setScoreMetadata(metadata);
-        setBpm(metadata.bpm);
-      }
+      // Parse to Note[] using ScoreParser - always display in grid
+      const parsed = parseScore(content);
+      setNotes(parsed.notes);
+      setScoreMetadata(parsed.metadata);
+      setBpm(parsed.metadata.bpm);
+      setAbcContent(content);
+      setSelectedScore(scoreName);
+      setIsLoading(false);
     } catch (e) {
       console.error('Error loading score:', e);
+      setIsLoading(false);
     }
-  };
+  }, [stopPlayback]);
 
-  const toggleNote = (octaveIndex: number, pitchIndex: number, step: number) => {
-    // Pitch calc: PITCHES array index 0 is high (B), 11 is low (C).
-    // We need to convert visual row to actual pitch value relative to C.
-    // In PITCHES: B=0 ... C=11. 
-    // Real Pitch value (0-11): C=0, C#=1 ... B=11.
+  // Toggle note in grid - uses selected duration
+  const toggleNote = useCallback((octaveIndex: number, pitchIndex: number, step: number) => {
     const pitchVal = 11 - pitchIndex;
     const octaveVal = OCTAVES[octaveIndex];
+    const duration = NOTE_DURATION_STEPS[selectedDuration];
 
     setNotes(prev => {
-      const existing = prev.find(n => 
-        n.octave === octaveVal && 
-        n.pitch === pitchVal && 
-        n.startTime === step
+      // Check if clicking on any part of an existing note
+      const existingNote = prev.find(n => 
+        n.octave === octaveVal && n.pitch === pitchVal && 
+        step >= n.startTime && step < n.startTime + n.duration
       );
-
-      if (existing) {
-        return prev.filter(n => n !== existing);
-      } else {
-        return [...prev, {
-          pitch: pitchVal,
-          octave: octaveVal,
-          startTime: step,
-          duration: 2 // default duration
-        }];
-      }
+      if (existingNote) return prev.filter(n => n !== existingNote);
+      return [...prev, { pitch: pitchVal, octave: octaveVal, startTime: step, duration }];
     });
-  };
+  }, [selectedDuration]);
 
-  const addMoreSteps = () => {
-    // This is just a visual helper - the grid extends automatically
-    // We can add a dummy note at the end to force extension
-    const newStartTime = totalSteps;
-    setNotes(prev => [...prev, {
-      pitch: 0,
-      octave: 4,
-      startTime: newStartTime,
-      duration: 1
-    }]);
-  };
-
-  // Piano-like sound using multiple oscillators with ADSR envelope
-  const playTone = useCallback((frequency: number, duration: number) => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const togglePlayback = useCallback(() => {
+    if (isPlaying) {
+      pausePlayback(); // Pause instead of stop - keep position
+    } else {
+      startPlayback();
     }
-    const ctx = audioContextRef.current;
-    const now = ctx.currentTime;
-    
-    // Create main oscillator (fundamental)
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const osc3 = ctx.createOscillator();
-    
-    // Create gains for each oscillator
-    const gain1 = ctx.createGain();
-    const gain2 = ctx.createGain();
-    const gain3 = ctx.createGain();
-    const masterGain = ctx.createGain();
-    
-    // Piano-like waveform (fundamental + harmonics)
-    osc1.type = 'triangle'; // Fundamental
-    osc1.frequency.setValueAtTime(frequency, now);
-    
-    osc2.type = 'sine'; // 2nd harmonic (octave)
-    osc2.frequency.setValueAtTime(frequency * 2, now);
-    
-    osc3.type = 'sine'; // 3rd harmonic (fifth)
-    osc3.frequency.setValueAtTime(frequency * 3, now);
-    
-    // Mix harmonics (piano timbre)
-    gain1.gain.setValueAtTime(0.5, now);
-    gain2.gain.setValueAtTime(0.2, now);
-    gain3.gain.setValueAtTime(0.05, now);
-    
-    // ADSR envelope for piano-like attack and decay
-    const attackTime = 0.01;
-    const decayTime = 0.1;
-    const sustainLevel = 0.3;
-    const releaseTime = Math.min(duration * 0.7, 0.5);
-    
-    masterGain.gain.setValueAtTime(0, now);
-    masterGain.gain.linearRampToValueAtTime(0.4, now + attackTime); // Attack
-    masterGain.gain.linearRampToValueAtTime(sustainLevel, now + attackTime + decayTime); // Decay to sustain
-    masterGain.gain.setValueAtTime(sustainLevel, now + duration - releaseTime); // Hold
-    masterGain.gain.exponentialRampToValueAtTime(0.001, now + duration); // Release
-    
-    // Connect
-    osc1.connect(gain1);
-    osc2.connect(gain2);
-    osc3.connect(gain3);
-    gain1.connect(masterGain);
-    gain2.connect(masterGain);
-    gain3.connect(masterGain);
-    masterGain.connect(ctx.destination);
-    
-    // Start and stop
-    osc1.start(now);
-    osc2.start(now);
-    osc3.start(now);
-    osc1.stop(now + duration + 0.1);
-    osc2.stop(now + duration + 0.1);
-    osc3.stop(now + duration + 0.1);
-    
-    // Notify parent for particle effects (throttled to avoid performance issues)
-    if (onNotePlay) {
-      // Use requestAnimationFrame to avoid blocking
-      requestAnimationFrame(() => {
-        onNotePlay(frequency, 0.5);
-      });
-    }
-  }, [onNotePlay]);
+  }, [isPlaying, pausePlayback, startPlayback]);
 
-  const getFrequency = (pitch: number, octave: number) => {
-    // A4 = 440Hz. A4 is octave 4, pitch 9 (A).
-    // Midi Note Number: (Octave + 1) * 12 + Pitch
-    const midi = (octave + 1) * 12 + pitch;
-    return 440 * Math.pow(2, (midi - 69) / 12);
-  };
+  const clearAll = useCallback(() => {
+    pausePlayback();
+    setCurrentStep(0);
+    setPlayheadPosition(0);
+    setNotes([]);
+    setAbcContent('');
+    setSelectedScore('');
+  }, [pausePlayback]);
 
+  // Cleanup on unmount
+  useEffect(() => () => pausePlayback(), [pausePlayback]);
+
+  // Stop playback when page/view changes (isVisible becomes false)
   useEffect(() => {
-    let interval: number;
-    if (isPlaying && !isDraggingProgress) {
-      let step = currentStep >= 0 ? currentStep : 0;
-      interval = window.setInterval(() => {
-        // Find notes at this step and play them FIRST, then update step display
-        const notesToPlay = notes.filter(n => n.startTime === step);
-        notesToPlay.forEach(n => {
-          const freq = getFrequency(n.pitch, n.octave);
-          // Duration based on note's duration in 16th notes
-          const durationSec = (n.duration * stepInterval) / 1000;
-          playTone(freq, Math.min(durationSec, 0.8)); // Slightly longer for piano sound
-        });
-        
-        // Update step display AFTER playing notes
-        setCurrentStep(step);
-        
-        // Auto-scroll to follow playhead
-        if (scrollContainerRef.current) {
-          const container = scrollContainerRef.current;
-          const playheadPosition = step * CELL_WIDTH;
-          const containerWidth = container.clientWidth;
-          const scrollLeft = container.scrollLeft;
-          
-          // If playhead is about to go out of view on the right, scroll
-          if (playheadPosition > scrollLeft + containerWidth - CELL_WIDTH * 4) {
-            container.scrollTo({
-              left: playheadPosition - containerWidth / 2,
-              behavior: 'smooth'
-            });
-          }
-          // If playhead is out of view on the left, scroll
-          else if (playheadPosition < scrollLeft) {
-            container.scrollTo({
-              left: Math.max(0, playheadPosition - CELL_WIDTH * 4),
-              behavior: 'smooth'
-            });
-          }
-        }
-
-        step++;
-        // Stop playback after the last note ends (not loop)
-        if (step > lastNoteEndTime) {
-          setIsPlaying(false);
-          setCurrentStep(-1);
-        }
-      }, stepInterval); // Use dynamic interval based on BPM
-    } else if (!isPlaying && !isDraggingProgress) {
-      setCurrentStep(-1);
+    if (!isVisible && isPlaying) {
+      pausePlayback();
     }
-    return () => clearInterval(interval);
-  }, [isPlaying, notes, playTone, lastNoteEndTime, stepInterval, isDraggingProgress]);
+  }, [isVisible, isPlaying, pausePlayback]);
 
-  // Handle progress bar click/drag
-  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressBarRef.current || lastNoteEndTime === 0) return;
-    const rect = progressBarRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, x / rect.width));
-    const newStep = Math.floor(percentage * lastNoteEndTime);
-    setCurrentStep(newStep);
-  }, [lastNoteEndTime]);
-
-  const handleProgressMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    setIsDraggingProgress(true);
-    handleProgressClick(e);
-  }, [handleProgressClick]);
-
-  const handleProgressMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDraggingProgress || !progressBarRef.current || lastNoteEndTime === 0) return;
-    const rect = progressBarRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, x / rect.width));
-    const newStep = Math.floor(percentage * lastNoteEndTime);
-    setCurrentStep(newStep);
-  }, [isDraggingProgress, lastNoteEndTime]);
-
-  const handleProgressMouseUp = useCallback(() => {
-    setIsDraggingProgress(false);
-  }, []);
-
-  useEffect(() => {
-    if (isDraggingProgress) {
-      document.addEventListener('mousemove', handleProgressMouseMove);
-      document.addEventListener('mouseup', handleProgressMouseUp);
-    }
-    return () => {
-      document.removeEventListener('mousemove', handleProgressMouseMove);
-      document.removeEventListener('mouseup', handleProgressMouseUp);
-    };
-  }, [isDraggingProgress, handleProgressMouseMove, handleProgressMouseUp]);
-
-  // Custom scrollbar styles for piano editor
   const scrollbarStyles = `
-    .piano-scroll::-webkit-scrollbar {
-      height: 8px;
-    }
-    .piano-scroll::-webkit-scrollbar-track {
-      background: var(--bg-secondary, #1e293b);
-      border-radius: 4px;
-    }
-    .piano-scroll::-webkit-scrollbar-thumb {
-      background: var(--accent-3, #7C85EB);
-      border-radius: 4px;
-    }
-    .piano-scroll::-webkit-scrollbar-thumb:hover {
-      background: var(--accent-2, #c493b1);
-    }
+    .piano-scroll::-webkit-scrollbar { height: 8px; }
+    .piano-scroll::-webkit-scrollbar-track { background: var(--bg-secondary, #1e293b); }
+    .piano-scroll::-webkit-scrollbar-thumb { background: var(--accent-3, #7C85EB); border-radius: 4px; }
   `;
 
   return (
     <div className={`piano-editor-container bg-slate-900/80 backdrop-blur-md border border-purple-500/30 rounded-xl p-6 shadow-2xl ${className}`}
          style={{ backgroundColor: 'var(--bg-tertiary, rgba(15, 23, 42, 0.8))' }}>
       <style>{scrollbarStyles}</style>
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-3">
-          <h3 className="text-xl font-serif flex items-center gap-2" style={{ color: 'var(--accent-3, #a78bfa)' }}>
+      
+      {/* Header - fixed layout */}
+      <div className="flex flex-col gap-3 mb-4">
+        {/* Title row */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <h3 className="text-xl font-serif flex items-center gap-2 shrink-0" style={{ color: 'var(--accent-3, #a78bfa)' }}>
             <span className="text-2xl">♪</span> 魔法乐谱编辑器
           </h3>
           {scoreMetadata.title && (
-            <span className="text-sm px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--accent-1, #deb99a)' }}>
+            <span className="text-sm px-2 py-0.5 rounded shrink-0" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--accent-1, #deb99a)' }}>
               {scoreMetadata.title}
             </span>
           )}
+          <span className="text-xs px-2 py-0.5 rounded shrink-0" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--text-secondary, #94a3b8)' }}>
+            {notes.length} 音符
+          </span>
         </div>
+        
+        {/* Controls row */}
         <div className="flex gap-2 items-center flex-wrap">
-          {/* BPM Control */}
+          {/* Note duration selector */}
           <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)' }}>
-            <button
-              onClick={() => setBpm(prev => Math.max(40, prev - 10))}
-              className="p-1 rounded hover:bg-white/10 transition-colors"
-              style={{ color: 'var(--text-secondary, #94a3b8)' }}
-              title="减速"
+            <Music size={14} style={{ color: 'var(--accent-3, #7C85EB)' }} />
+            <select
+              value={selectedDuration}
+              onChange={(e) => setSelectedDuration(e.target.value as NoteDurationType)}
+              className="text-xs bg-transparent border-none outline-none cursor-pointer"
+              style={{ color: 'var(--accent-1, #deb99a)' }}
+              title="音符时值"
             >
+              {DURATION_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Selected pitch indicator */}
+          {selectedPitch && (
+            <div 
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium"
+              style={{ 
+                backgroundColor: OCTAVE_COLORS[selectedPitch.octave] + '33',
+                color: OCTAVE_COLORS[selectedPitch.octave],
+                border: `1px solid ${OCTAVE_COLORS[selectedPitch.octave]}`
+              }}
+            >
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: OCTAVE_COLORS[selectedPitch.octave] }} />
+              {PITCHES[11 - selectedPitch.pitch]}{selectedPitch.octave}
+              <button 
+                onClick={() => setSelectedPitch(null)} 
+                className="ml-1 hover:opacity-70"
+                title="取消选择"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          
+          {/* Sustain toggle */}
+          <button
+            onClick={() => setSustain(prev => !prev)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${sustain ? 'ring-2 ring-purple-400' : ''}`}
+            style={{ 
+              backgroundColor: sustain ? 'var(--accent-3, #7C85EB)' : 'var(--bg-secondary, #1e293b)',
+              color: sustain ? 'white' : 'var(--text-secondary, #94a3b8)'
+            }}
+            title={sustain ? '延音开启 - 音符会自然衰减' : '延音关闭 - 音符快速停止'}
+          >
+            {sustain ? '延音 ✓' : '延音'}
+          </button>
+          
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)' }}>
+            <button onClick={() => setBpm(prev => Math.max(40, prev - 10))} className="p-1 rounded hover:bg-white/10" style={{ color: 'var(--text-secondary, #94a3b8)' }}>
               <Minus size={14} />
             </button>
-            <span className="text-xs font-mono w-16 text-center" style={{ color: 'var(--accent-1, #deb99a)' }}>
-              {bpm} BPM
-            </span>
-            <button
-              onClick={() => setBpm(prev => Math.min(240, prev + 10))}
-              className="p-1 rounded hover:bg-white/10 transition-colors"
-              style={{ color: 'var(--text-secondary, #94a3b8)' }}
-              title="加速"
-            >
+            <span className="text-xs font-mono w-16 text-center" style={{ color: 'var(--accent-1, #deb99a)' }}>{bpm} BPM</span>
+            <button onClick={() => setBpm(prev => Math.min(240, prev + 10))} className="p-1 rounded hover:bg-white/10" style={{ color: 'var(--text-secondary, #94a3b8)' }}>
               <Plus size={14} />
             </button>
           </div>
-          {/* Score loader */}
+          
           {availableScores.length > 0 && (
             <select
               value={selectedScore}
               onChange={(e) => loadScore(e.target.value)}
               className="px-3 py-1.5 rounded-lg border text-sm"
-              style={{ 
-                backgroundColor: 'var(--bg-secondary, #1e293b)', 
-                borderColor: 'var(--bg-tertiary, #334155)',
-                color: 'var(--text-secondary, #94a3b8)'
-              }}
+              style={{ backgroundColor: 'var(--bg-secondary, #1e293b)', borderColor: 'var(--bg-tertiary, #334155)', color: 'var(--text-secondary, #94a3b8)' }}
             >
               <option value="">加载乐谱...</option>
-              {availableScores.map(score => (
-                <option key={score} value={score}>{score}</option>
-              ))}
+              {availableScores.map(score => <option key={score} value={score}>{score}</option>)}
             </select>
           )}
-          <button 
-            onClick={() => setNotes([])}
-            className="p-2 rounded-full hover:bg-red-500/20 text-red-400 transition-colors"
-            title="清除"
-          >
+          
+          <button onClick={clearAll} className="p-2 rounded-full hover:bg-red-500/20 text-red-400" title="清除">
             <Trash2 size={20} />
           </button>
+          
+          {/* Jump to start button */}
+          <button
+            onClick={jumpToStart}
+            className="p-2 rounded-full hover:bg-white/10"
+            style={{ color: 'var(--text-secondary, #94a3b8)' }}
+            title="跳转到开头"
+          >
+            <SkipBack size={20} />
+          </button>
+          
+          {/* Jump to playhead button - show when user has scrolled away */}
+          {isUserScrolling && isPlaying && (
+            <button
+              onClick={jumpToPlayhead}
+              className="p-2 rounded-full hover:bg-white/10 animate-pulse"
+              style={{ color: 'var(--accent-3, #7C85EB)' }}
+              title="跳转到播放位置"
+            >
+              <Crosshair size={20} />
+            </button>
+          )}
+          
           <button 
-            onClick={() => setIsPlaying(!isPlaying)}
+            onClick={togglePlayback}
+            disabled={notes.length === 0}
             className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold transition-all ${
-              isPlaying 
-              ? 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]' 
-              : 'text-white hover:opacity-90'
-            }`}
+              isPlaying ? 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'text-white hover:opacity-90'
+            } ${notes.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
             style={{ backgroundColor: isPlaying ? undefined : 'var(--accent-3, #7C85EB)' }}
           >
-            {isPlaying ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-            {isPlaying ? '停止' : '播放'}
+            {isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />}
+            {isPlaying ? '暂停' : '播放'}
           </button>
         </div>
       </div>
 
-      {/* Main grid container with fixed key labels */}
-      <div className="relative border rounded" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-primary, #0f172a)' }}>
-        {/* Fixed key labels column */}
-        <div className="absolute left-0 top-0 bottom-0 z-20" style={{ width: `${KEY_LABEL_WIDTH}px` }}>
-          {/* Header spacer for key labels */}
-          <div className="h-6 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-secondary, #1e293b)' }}></div>
-          {/* Key labels */}
-          {OCTAVES.map((octave) => (
-            <React.Fragment key={octave}>
-              {PITCHES.map((noteName) => {
-                const isBlackKey = noteName.includes('#');
-                return (
-                  <div 
-                    key={`${octave}-${noteName}`}
-                    className="flex items-center justify-end pr-2 text-xs border-b border-r h-8"
-                    style={{ 
-                      width: `${KEY_LABEL_WIDTH}px`,
-                      backgroundColor: isBlackKey ? 'var(--bg-primary, #0f172a)' : 'var(--bg-secondary, #1e293b)',
-                      color: isBlackKey ? 'var(--text-secondary, #64748b)' : 'var(--text-primary, #e2e8f0)',
-                      borderColor: 'var(--bg-tertiary, #334155)'
-                    }}
-                  >
-                    {noteName}{octave}
-                  </div>
-                );
-              })}
-            </React.Fragment>
-          ))}
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--accent-3, #7C85EB)' }} />
         </div>
+      )}
 
-        {/* Scrollable grid area */}
-        <div 
-          ref={scrollContainerRef}
-          className="piano-scroll overflow-x-auto" 
-          style={{ marginLeft: `${KEY_LABEL_WIDTH}px` }}
-        >
-          <div style={{ minWidth: `${totalSteps * CELL_WIDTH}px` }}>
-            {/* Grid Header - beat numbers */}
-            <div className="flex h-6 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)' }}>
-              {Array.from({ length: totalSteps }).map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`text-[10px] text-center flex items-center justify-center ${i % 4 === 0 ? 'font-bold' : ''}`} 
-                  style={{ 
-                    width: `${CELL_WIDTH}px`, 
-                    flexShrink: 0,
-                    color: i % 4 === 0 ? 'var(--accent-1, #deb99a)' : 'var(--text-secondary, #475569)',
-                    borderRight: i % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
-                  }}
-                >
-                  {i % 4 === 0 ? i / 4 + 1 : ''}
-                </div>
-              ))}
+      {/* Piano Grid - always shown */}
+      {!isLoading && (
+        <div className="relative border rounded" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-primary, #0f172a)' }}>
+          {/* Key labels / Note Palette - clickable to select note for adding */}
+          <div className="absolute left-0 top-0 bottom-0 z-20" style={{ width: `${KEY_LABEL_WIDTH}px` }}>
+            <div className="h-6 border-b flex items-center justify-center text-[10px]" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--text-secondary, #64748b)' }}>
+              音符
             </div>
-
-            {/* Note grid */}
             {OCTAVES.map((octave, oIdx) => (
               <React.Fragment key={octave}>
                 {PITCHES.map((noteName, pIdx) => {
+                  const isBlackKey = noteName.includes('#');
+                  const pitch = 11 - pIdx;
+                  const isSelected = selectedPitch?.octave === octave && selectedPitch?.pitch === pitch;
+                  const octaveColor = OCTAVE_COLORS[octave] || '#8b5cf6';
                   return (
                     <div 
-                      key={`${octave}-${noteName}`} 
-                      className="flex h-8 border-b transition-colors"
-                      style={{ borderColor: 'var(--bg-tertiary, #334155)' }}
+                      key={`${octave}-${noteName}`}
+                      onClick={() => setSelectedPitch(isSelected ? null : { pitch, octave })}
+                      className={`flex items-center justify-between px-1 text-xs border-b border-r h-8 cursor-pointer transition-all hover:opacity-80 ${isSelected ? 'ring-2 ring-inset ring-white' : ''}`}
+                      style={{ 
+                        width: `${KEY_LABEL_WIDTH}px`,
+                        backgroundColor: isBlackKey ? 'var(--bg-primary, #0f172a)' : 'var(--bg-secondary, #1e293b)',
+                        color: isBlackKey ? 'var(--text-secondary, #64748b)' : 'var(--text-primary, #e2e8f0)',
+                        borderColor: 'var(--bg-tertiary, #334155)'
+                      }}
+                      title={`点击选择 ${noteName}${octave}，然后点击网格添加`}
                     >
-                      {/* Note cells */}
-                      <div className="flex-1 flex relative">
-                        {/* Playhead */}
-                        {currentStep >= 0 && (
-                          <div 
-                            className="absolute top-0 bottom-0 z-10 pointer-events-none transition-all duration-100"
-                            style={{ 
-                              width: `${CELL_WIDTH}px`,
-                              left: `${currentStep * CELL_WIDTH}px`,
-                              backgroundColor: 'rgba(251, 191, 36, 0.3)'
-                            }}
-                          />
-                        )}
-                        {Array.from({ length: totalSteps }).map((_, step) => {
-                          const isActive = notes.some(n => 
-                            n.octave === octave && 
-                            n.pitch === (11 - pIdx) &&
-                            n.startTime === step
-                          );
+                      {/* Color indicator for octave */}
+                      <div 
+                        className="w-3 h-3 rounded-full shrink-0" 
+                        style={{ backgroundColor: octaveColor, opacity: isBlackKey ? 0.6 : 1 }} 
+                      />
+                      <span className="text-right">{noteName}{octave}</span>
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Scrollable grid */}
+          <div ref={scrollContainerRef} className="piano-scroll overflow-x-auto" style={{ marginLeft: `${KEY_LABEL_WIDTH}px` }}>
+            <div className="relative" style={{ minWidth: `${totalSteps * CELL_WIDTH}px` }}>
+              {/* Playhead */}
+              {playheadPosition >= 0 && (
+                <div className="absolute top-0 bottom-0 z-30 pointer-events-none"
+                  style={{ width: '2px', left: `${playheadPosition}px`, backgroundColor: 'rgba(251, 191, 36, 0.9)', boxShadow: '0 0 12px rgba(251, 191, 36, 0.8)' }}
+                />
+              )}
+              
+              {/* Ruler - virtual scrolling */}
+              <div className="relative h-6 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)', width: `${totalSteps * CELL_WIDTH}px` }}>
+                {/* Left spacer for virtual scroll */}
+                <div style={{ position: 'absolute', left: 0, width: `${visibleRange.start * CELL_WIDTH}px`, height: '100%' }} />
+                
+                {/* Visible ruler cells */}
+                <div className="absolute flex h-full" style={{ left: `${visibleRange.start * CELL_WIDTH}px` }}>
+                  {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
+                    const i = visibleRange.start + idx;
+                    const isBeatStart = i % 4 === 0;
+                    return (
+                      <div 
+                        key={i} 
+                        onClick={() => { if (!isPlaying) setCurrentStep(i); }}
+                        className={`text-[10px] text-center flex items-center justify-center cursor-pointer hover:bg-white/10 ${isBeatStart ? 'font-bold' : ''}`} 
+                        style={{ 
+                          width: `${CELL_WIDTH}px`, flexShrink: 0,
+                          color: currentStep === i ? 'var(--accent-3, #7C85EB)' : isBeatStart ? 'var(--accent-1, #deb99a)' : 'var(--text-secondary, #475569)',
+                          backgroundColor: currentStep === i ? 'rgba(124, 133, 235, 0.2)' : 'transparent',
+                          borderRight: i % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
+                        }}
+                      >
+                        {isBeatStart ? i / 4 + 1 : '·'}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Note grid - virtual scrolling */}
+              {OCTAVES.map((octave, oIdx) => (
+                <React.Fragment key={octave}>
+                  {PITCHES.map((noteName, pIdx) => (
+                    <div key={`${octave}-${noteName}`} className="relative h-8 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)', width: `${totalSteps * CELL_WIDTH}px` }}>
+                      {/* Left spacer for virtual scroll */}
+                      <div style={{ position: 'absolute', left: 0, width: `${visibleRange.start * CELL_WIDTH}px`, height: '100%' }} />
+                      
+                      {/* Visible grid cells */}
+                      <div className="absolute flex h-full" style={{ left: `${visibleRange.start * CELL_WIDTH}px` }}>
+                        {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
+                          const step = visibleRange.start + idx;
+                          const noteInfo = isPartOfNote(octave, 11 - pIdx, step);
+                          const { isStart, isMiddle, isEnd, note } = noteInfo;
+                          const isActive = isStart || isMiddle;
+                          
+                          // Determine border radius for unified note block appearance
+                          let borderRadius = '0';
+                          if (isStart && isEnd) {
+                            borderRadius = '4px'; // Single cell note
+                          } else if (isStart) {
+                            borderRadius = '4px 0 0 4px'; // Start of multi-cell note
+                          } else if (isEnd) {
+                            borderRadius = '0 4px 4px 0'; // End of multi-cell note
+                          }
                           
                           return (
                             <div 
                               key={step} 
                               onClick={() => toggleNote(oIdx, pIdx, step)}
-                              className="cursor-pointer transition-colors relative hover:bg-white/5"
+                              className="cursor-pointer hover:bg-white/5 relative"
                               style={{ 
-                                width: `${CELL_WIDTH}px`, 
-                                flexShrink: 0,
+                                width: `${CELL_WIDTH}px`, height: '100%', flexShrink: 0,
                                 borderRight: step % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
                               }}
                             >
                               {isActive && (
                                 <div 
-                                  className={`absolute inset-0.5 rounded-sm shadow-[0_0_10px_rgba(168,85,247,0.6)] ${isPlaying && currentStep === step ? 'animate-pulse scale-110' : ''}`}
-                                  style={{ backgroundColor: 'var(--accent-3, #a855f7)' }}
+                                  className="absolute shadow-[0_0_10px_rgba(168,85,247,0.6)]" 
+                                  style={{ 
+                                    backgroundColor: isStart ? 'var(--accent-3, #a855f7)' : 'var(--accent-3, #9333ea)',
+                                    borderRadius,
+                                    top: '2px',
+                                    bottom: '2px',
+                                    left: isStart ? '2px' : '0',
+                                    right: isEnd ? '2px' : '0',
+                                    // Add visual indicator for note start
+                                    borderLeft: isStart ? '3px solid rgba(255,255,255,0.5)' : 'none'
+                                  }} 
                                 />
                               )}
                             </div>
@@ -1191,56 +800,28 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
                         })}
                       </div>
                     </div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      </div>
-      
-      {/* Progress bar */}
-      {lastNoteEndTime > 0 && (
-        <div className="mt-3 px-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono" style={{ color: 'var(--text-secondary, #94a3b8)' }}>
-              {currentStep >= 0 ? Math.floor((currentStep / 4) + 1) : 0}
-            </span>
-            <div 
-              ref={progressBarRef}
-              className="flex-1 h-2 rounded-full cursor-pointer relative"
-              style={{ backgroundColor: 'var(--bg-secondary, #1e293b)' }}
-              onMouseDown={handleProgressMouseDown}
-            >
-              {/* Progress fill */}
-              <div 
-                className="absolute left-0 top-0 bottom-0 rounded-full transition-all"
-                style={{ 
-                  width: `${currentStep >= 0 ? (currentStep / lastNoteEndTime) * 100 : 0}%`,
-                  backgroundColor: 'var(--accent-3, #7C85EB)',
-                  transition: isDraggingProgress ? 'none' : 'width 0.1s ease-out'
-                }}
-              />
-              {/* Progress handle */}
-              <div 
-                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-lg transition-all hover:scale-110"
-                style={{ 
-                  left: `calc(${currentStep >= 0 ? (currentStep / lastNoteEndTime) * 100 : 0}% - 8px)`,
-                  backgroundColor: 'var(--accent-1, #deb99a)',
-                  transition: isDraggingProgress ? 'none' : 'left 0.1s ease-out'
-                }}
-              />
+                  ))}
+                </React.Fragment>
+              ))}
             </div>
-            <span className="text-xs font-mono" style={{ color: 'var(--text-secondary, #94a3b8)' }}>
-              {Math.floor((lastNoteEndTime / 4) + 1)}
-            </span>
           </div>
         </div>
       )}
       
-      <p className="text-xs mt-2 text-right" style={{ color: 'var(--text-secondary, #64748b)' }}>
-        点击网格添加/移除音符。拖拽进度条可跳转播放位置。播放时视窗自动跟随。
-      </p>
+      {/* Position indicator */}
+      {!isLoading && currentStep >= 0 && (
+        <div className="mt-2 flex items-center justify-center">
+          <span className="text-xs font-mono px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--accent-3, #7C85EB)' }}>
+            第 {Math.floor(currentStep / 4) + 1} 拍 · 第 {(currentStep % 4) + 1} 步
+          </span>
+        </div>
+      )}
+      
+      {!isLoading && (
+        <p className="text-xs mt-2 text-right" style={{ color: 'var(--text-secondary, #64748b)' }}>
+          点击网格添加/移除音符。ABC乐谱自动解析为网格显示。
+        </p>
+      )}
     </div>
   );
 };

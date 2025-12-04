@@ -1,10 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { Volume2, VolumeX, SkipBack, SkipForward, Play, Pause } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
 
 interface MusicPlayerProps {
   onAnalyserReady?: (analyser: AnalyserNode) => void;
   className?: string;
+  autoPlayTrigger?: boolean; // When this changes to true, auto-start playing
+}
+
+export interface MusicPlayerRef {
+  play: () => void;
 }
 
 interface MusicTrack {
@@ -12,7 +17,7 @@ interface MusicTrack {
   url: string;
 }
 
-const MusicPlayer: React.FC<MusicPlayerProps> = ({ onAnalyserReady, className = '' }) => {
+const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserReady, className = '', autoPlayTrigger }, ref) => {
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -167,6 +172,40 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ onAnalyserReady, className = 
     }
   };
 
+  // Expose play function to parent via ref
+  useImperativeHandle(ref, () => ({
+    play: async () => {
+      if (!audioRef.current || isPlaying) return;
+      
+      if (!isInitialized) {
+        initializeAudioContext();
+      }
+      
+      if (audioContextRef.current?.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
+      if (gainNodeRef.current) {
+        gainNodeRef.current.gain.value = 0;
+      }
+
+      try {
+        await audioRef.current.play();
+        setIsPlaying(true);
+        fadeVolume(isMuted ? 0 : volume);
+      } catch (e) {
+        console.error("Auto-play failed:", e);
+      }
+    }
+  }), [isPlaying, isInitialized, isMuted, volume, initializeAudioContext, fadeVolume]);
+
+  // Auto-play when trigger changes to true
+  useEffect(() => {
+    if (autoPlayTrigger && !isPlaying && audioRef.current) {
+      togglePlay();
+    }
+  }, [autoPlayTrigger]);
+
   const toggleMute = () => {
     if (!gainNodeRef.current) return;
     
@@ -288,6 +327,6 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ onAnalyserReady, className = 
       )}
     </div>
   );
-};
+});
 
 export default MusicPlayer;
