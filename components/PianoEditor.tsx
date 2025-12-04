@@ -212,10 +212,30 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
     return () => clearInterval(interval);
   }, [isPlaying, notes, playTone, lastNoteEndTime]);
 
+  // Custom scrollbar styles for piano editor
+  const scrollbarStyles = `
+    .piano-scroll::-webkit-scrollbar {
+      height: 8px;
+    }
+    .piano-scroll::-webkit-scrollbar-track {
+      background: var(--bg-secondary, #1e293b);
+      border-radius: 4px;
+    }
+    .piano-scroll::-webkit-scrollbar-thumb {
+      background: var(--accent-3, #7C85EB);
+      border-radius: 4px;
+    }
+    .piano-scroll::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-2, #c493b1);
+    }
+  `;
+
   return (
-    <div className={`bg-slate-900/80 backdrop-blur-md border border-purple-500/30 rounded-xl p-6 shadow-2xl ${className}`}>
+    <div className={`piano-editor-container bg-slate-900/80 backdrop-blur-md border border-purple-500/30 rounded-xl p-6 shadow-2xl ${className}`}
+         style={{ backgroundColor: 'var(--bg-tertiary, rgba(15, 23, 42, 0.8))' }}>
+      <style>{scrollbarStyles}</style>
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-serif text-purple-300 flex items-center gap-2">
+        <h3 className="text-xl font-serif flex items-center gap-2" style={{ color: 'var(--accent-3, #a78bfa)' }}>
           <span className="text-2xl">♪</span> 魔法乐谱编辑器
         </h3>
         <div className="flex gap-2">
@@ -224,7 +244,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
             <select
               value={selectedScore}
               onChange={(e) => loadScore(e.target.value)}
-              className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-sm"
+              className="px-3 py-1.5 rounded-lg border text-sm"
+              style={{ 
+                backgroundColor: 'var(--bg-secondary, #1e293b)', 
+                borderColor: 'var(--bg-tertiary, #334155)',
+                color: 'var(--text-secondary, #94a3b8)'
+              }}
             >
               <option value="">加载乐谱...</option>
               {availableScores.map(score => (
@@ -244,8 +269,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
             className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold transition-all ${
               isPlaying 
               ? 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]' 
-              : 'bg-purple-600 text-white hover:bg-purple-500'
+              : 'text-white hover:opacity-90'
             }`}
+            style={{ backgroundColor: isPlaying ? undefined : 'var(--accent-3, #7C85EB)' }}
           >
             {isPlaying ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
             {isPlaying ? '停止' : '播放'}
@@ -253,48 +279,87 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-2">
-        <div style={{ minWidth: `${KEY_LABEL_WIDTH + totalSteps * 25}px` }}>
-           {/* Grid Header - aligned with note cells, not key labels */}
-           <div className="flex mb-2" style={{ marginLeft: `${KEY_LABEL_WIDTH}px` }}>
-             {Array.from({ length: totalSteps }).map((_, i) => (
-               <div key={i} className={`text-[10px] text-center ${i % 4 === 0 ? 'text-slate-400 font-bold' : 'text-slate-700'}`} style={{ width: '25px', flexShrink: 0 }}>
-                 {i % 4 === 0 ? i / 4 + 1 : ''}
-               </div>
-             ))}
-           </div>
+      {/* Main grid container with fixed key labels */}
+      <div className="relative border rounded" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-primary, #0f172a)' }}>
+        {/* Fixed key labels column */}
+        <div className="absolute left-0 top-0 bottom-0 z-20" style={{ width: `${KEY_LABEL_WIDTH}px` }}>
+          {/* Header spacer for key labels */}
+          <div className="h-6 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-secondary, #1e293b)' }}></div>
+          {/* Key labels */}
+          {OCTAVES.map((octave) => (
+            <React.Fragment key={octave}>
+              {PITCHES.map((noteName) => {
+                const isBlackKey = noteName.includes('#');
+                return (
+                  <div 
+                    key={`${octave}-${noteName}`}
+                    className="flex items-center justify-end pr-2 text-xs border-b border-r h-8"
+                    style={{ 
+                      width: `${KEY_LABEL_WIDTH}px`,
+                      backgroundColor: isBlackKey ? 'var(--bg-primary, #0f172a)' : 'var(--bg-secondary, #1e293b)',
+                      color: isBlackKey ? 'var(--text-secondary, #64748b)' : 'var(--text-primary, #e2e8f0)',
+                      borderColor: 'var(--bg-tertiary, #334155)'
+                    }}
+                  >
+                    {noteName}{octave}
+                  </div>
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </div>
 
-          <div className="relative border border-slate-700 rounded bg-slate-950">
+        {/* Scrollable grid area */}
+        <div 
+          className="piano-scroll overflow-x-auto" 
+          style={{ marginLeft: `${KEY_LABEL_WIDTH}px` }}
+        >
+          <div style={{ minWidth: `${totalSteps * 25}px` }}>
+            {/* Grid Header - beat numbers */}
+            <div className="flex h-6 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)' }}>
+              {Array.from({ length: totalSteps }).map((_, i) => (
+                <div 
+                  key={i} 
+                  className={`text-[10px] text-center flex items-center justify-center ${i % 4 === 0 ? 'font-bold' : ''}`} 
+                  style={{ 
+                    width: '25px', 
+                    flexShrink: 0,
+                    color: i % 4 === 0 ? 'var(--accent-1, #deb99a)' : 'var(--text-secondary, #475569)',
+                    borderRight: i % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
+                  }}
+                >
+                  {i % 4 === 0 ? i / 4 + 1 : ''}
+                </div>
+              ))}
+            </div>
+
+            {/* Note grid */}
             {OCTAVES.map((octave, oIdx) => (
               <React.Fragment key={octave}>
                 {PITCHES.map((noteName, pIdx) => {
-                  const isBlackKey = noteName.includes('#');
                   return (
-                    <div key={`${octave}-${noteName}`} className="flex h-8 border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
-                      {/* Key Label */}
-                      <div 
-                        className={`flex-shrink-0 flex items-center justify-end pr-2 text-xs border-r border-slate-700 ${isBlackKey ? 'bg-slate-900 text-slate-500' : 'bg-slate-800 text-slate-300'}`}
-                        style={{ width: `${KEY_LABEL_WIDTH}px` }}
-                      >
-                        {noteName}{octave}
-                      </div>
-                      
-                      {/* Cells - with playhead inside this container */}
+                    <div 
+                      key={`${octave}-${noteName}`} 
+                      className="flex h-8 border-b transition-colors"
+                      style={{ borderColor: 'var(--bg-tertiary, #334155)' }}
+                    >
+                      {/* Note cells */}
                       <div className="flex-1 flex relative">
-                        {/* Playhead - now inside the cells container */}
+                        {/* Playhead */}
                         {currentStep >= 0 && (
                           <div 
-                            className="absolute top-0 bottom-0 bg-amber-400/30 z-10 pointer-events-none transition-all duration-100"
+                            className="absolute top-0 bottom-0 z-10 pointer-events-none transition-all duration-100"
                             style={{ 
                               width: '25px',
-                              left: `${currentStep * 25}px`
+                              left: `${currentStep * 25}px`,
+                              backgroundColor: 'rgba(251, 191, 36, 0.3)'
                             }}
                           />
                         )}
                         {Array.from({ length: totalSteps }).map((_, step) => {
                           const isActive = notes.some(n => 
                             n.octave === octave && 
-                            n.pitch === (11 - pIdx) && // Convert visual index back to logic pitch
+                            n.pitch === (11 - pIdx) &&
                             n.startTime === step
                           );
                           
@@ -302,13 +367,18 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
                             <div 
                               key={step} 
                               onClick={() => toggleNote(oIdx, pIdx, step)}
-                              className={`cursor-pointer transition-colors relative border-r border-slate-800/30
-                                ${step % 4 === 0 ? 'border-r-slate-700/50' : ''}
-                              `}
-                              style={{ width: '25px', flexShrink: 0 }}
+                              className="cursor-pointer transition-colors relative hover:bg-white/5"
+                              style={{ 
+                                width: '25px', 
+                                flexShrink: 0,
+                                borderRight: step % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
+                              }}
                             >
                               {isActive && (
-                                <div className={`absolute inset-0.5 rounded-sm bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.6)] ${isPlaying && currentStep === step ? 'animate-pulse scale-110' : ''}`} />
+                                <div 
+                                  className={`absolute inset-0.5 rounded-sm shadow-[0_0_10px_rgba(168,85,247,0.6)] ${isPlaying && currentStep === step ? 'animate-pulse scale-110' : ''}`}
+                                  style={{ backgroundColor: 'var(--accent-3, #a855f7)' }}
+                                />
                               )}
                             </div>
                           );
@@ -322,7 +392,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
           </div>
         </div>
       </div>
-      <p className="text-xs text-slate-500 mt-2 text-right">点击网格添加/移除音符。网格会自动延长。播放将在最后一个音符结束后停止。</p>
+      <p className="text-xs mt-2 text-right" style={{ color: 'var(--text-secondary, #64748b)' }}>
+        点击网格添加/移除音符。网格会自动延长。播放将在最后一个音符结束后停止。
+      </p>
     </div>
   );
 };
