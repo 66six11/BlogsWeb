@@ -6,14 +6,16 @@ import {
     AUTHOR_NAME,
     MOCK_POSTS,
     PROJECTS,
-    BGM_URL,
     BG_MEDIA_URL,
     GITHUB_USERNAME,
     GITHUB_REPO
 } from './constants';
+import { SITE_CONFIG } from './config';
 import PianoEditor from './components/PianoEditor';
 import MagicChat from './components/MagicChat';
 import Scene3D from './components/Scene3D';
+import MusicPlayer from './components/MusicPlayer';
+import ThemeToggle from './components/ThemeToggle';
 import {CustomSparkleIcon, CustomWitchIcon,HexagramIcon} from './components/CustomIcons';
 
 import {
@@ -587,15 +589,16 @@ const App: React.FC = () => {
     const [isFetchingContent, setIsFetchingContent] = useState(false);
     const [isRateLimited, setIsRateLimited] = useState(false);
 
-    // Audio State
-    const [isMusicPlaying, setIsMusicPlaying] = useState(false);
-    const audioRef = useRef<HTMLAudioElement | null>(null);
-    const audioContextRef = useRef<AudioContext | null>(null);
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const [analyserReady, setAnalyserReady] = useState(false);
+    // Audio State - managed by MusicPlayer component
+    const [musicAnalyser, setMusicAnalyser] = useState<AnalyserNode | null>(null);
 
     // Video Ref
     const videoRef = useRef<HTMLVideoElement>(null);
+
+    // Callback when music player analyser is ready
+    const handleAnalyserReady = useCallback((analyser: AnalyserNode) => {
+        setMusicAnalyser(analyser);
+    }, []);
 
     // --- Initialization Effects ---
     const loadData = async () => {
@@ -643,21 +646,6 @@ const App: React.FC = () => {
         await loadData();
     };
 
-    // Initialize Audio
-    useEffect(() => {
-        const audio = new Audio(BGM_URL);
-        audio.loop = true;
-        audio.volume = 0.4;
-        audio.crossOrigin = "anonymous";
-        audioRef.current = audio;
-        return () => {
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current = null;
-            }
-        };
-    }, []);
-
     // Ensure video plays
     useEffect(() => {
         if (videoRef.current) {
@@ -673,42 +661,7 @@ const App: React.FC = () => {
         }
     }, []);
 
-    const initializeAudioContext = () => {
-        if (!audioRef.current || audioContextRef.current) return;
-        
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        const ctx = new AudioContextClass();
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 256;
-
-        const source = ctx.createMediaElementSource(audioRef.current);
-        source.connect(analyser);
-        analyser.connect(ctx.destination);
-
-        audioContextRef.current = ctx;
-        analyserRef.current = analyser;
-        setAnalyserReady(true);
-    };
-
-    const toggleMusic = async () => {
-        if (!audioRef.current) return;
-
-        if (isMusicPlaying) {
-            audioRef.current.pause();
-            setIsMusicPlaying(false);
-        } else {
-            initializeAudioContext();
-
-            if (audioContextRef.current?.state === 'suspended') {
-                await audioContextRef.current.resume();
-            }
-
-            audioRef.current.play().catch(e => console.log("Play failed:", e));
-            setIsMusicPlaying(true);
-        }
-    };
-
-    const handleEnterSite = async () => {
+    const handleEnterSite = () => {
         // 开始淡出动画
         setWelcomeFading(true);
         
@@ -717,22 +670,7 @@ const App: React.FC = () => {
             setShowWelcome(false);
             setWelcomeFading(false);
         }, WELCOME_TRANSITION_DURATION);
-        
-        // 自动播放音乐
-        if (audioRef.current) {
-            try {
-                initializeAudioContext();
-
-                if (audioContextRef.current?.state === 'suspended') {
-                    await audioContextRef.current.resume();
-                }
-
-                await audioRef.current.play();
-                setIsMusicPlaying(true);
-            } catch (e) {
-                console.log("Auto-play failed:", e);
-            }
-        }
+        // Music auto-play is now handled by MusicPlayer component
     };
 
     useEffect(() => {
@@ -806,17 +744,10 @@ const App: React.FC = () => {
                         ))}
                     </div>
 
-                    <button
-                        onClick={toggleMusic}
-                        className={`p-2 rounded-full transition-all duration-300 border ${
-                            isMusicPlaying
-                                ? 'bg-amber-500/20 border-amber-500 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.3)] animate-pulse'
-                                : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-200'
-                        }`}
-                        title="背景音乐"
-                    >
-                        {isMusicPlaying ? <Volume2 size={18}/> : <VolumeX size={18}/>}
-                    </button>
+                    <ThemeToggle />
+                    <MusicPlayer 
+                        onAnalyserReady={handleAnalyserReady}
+                    />
                 </div>
             </div>
         </nav>
@@ -827,13 +758,17 @@ const App: React.FC = () => {
             className="flex flex-col items-center justify-center flex-1 text-center px-4 relative overflow-hidden w-full h-full">
             <div
                 className="relative z-10 animate-fade-in-up bg-slate-900/60 backdrop-blur-md p-8 md:p-12 rounded-3xl border border-white/10 shadow-2xl max-w-4xl flex flex-col items-center">
-                <div className="w-32 h-32 mx-auto mb-8 relative group">
+                <div 
+                    className="w-32 h-32 mx-auto mb-8 relative group cursor-pointer"
+                    onClick={() => setCurrentView(View.ABOUT)}
+                    title="关于我"
+                >
                     <div
                         className="absolute inset-0 bg-gradient-to-tr from-purple-500 to-amber-400 rounded-full animate-spin-slow opacity-80 blur-md group-hover:blur-xl transition-all"></div>
                     <img
                         src={userProfile?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=Elaina&clothing=graphicShirt&top=hat&hairColor=silverGray"}
                         alt="Avatar"
-                        className="w-full h-full rounded-full border-4 border-slate-900 relative z-10 bg-slate-800 object-cover"
+                        className="w-full h-full rounded-full border-4 border-slate-900 relative z-10 bg-slate-800 object-cover hover:scale-105 transition-transform"
                     />
                     <div className="absolute top-20 left-[calc(90%)] -translate-x-1/2 z-20">
                         <CustomSparkleIcon size={42}
@@ -1003,7 +938,7 @@ const App: React.FC = () => {
         <div className="max-w-6xl mx-auto py-12 px-4 animate-fade-in-up relative z-10">
             <div className="text-center mb-12 bg-black/30 p-6 rounded-2xl backdrop-blur-sm border border-white/5">
                 <h2 className="text-3xl font-serif font-bold text-white mb-2 flex items-center justify-center gap-2">
-                    <CustomSparkleIcon size={30}/> 魔法作品
+                    <Code size={30} className="text-amber-400"/> 魔法作品
                 </h2>
                 <p className="text-slate-300">用代码和咖啡创造的神器。</p>
             </div>
@@ -1202,7 +1137,7 @@ const App: React.FC = () => {
 
             {/* 2. 3D Particles Layer (Middle) */}
             <div className="fixed inset-0 z-10 pointer-events-none">
-                <Scene3D analyser={analyserRef.current || undefined}/>
+                <Scene3D analyser={musicAnalyser || undefined}/>
             </div>
 
             {/* 3. Dark Overlay (Top of Backgrounds) - Hidden on Home */}
