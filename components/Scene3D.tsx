@@ -3,6 +3,11 @@ import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { defaultTheme } from '../theme';
 
+// Intensity factor applied to piano beats for particle animation
+const PIANO_BEAT_INTENSITY_FACTOR = 0.8;
+// Decay rate for piano beat effect (higher = faster decay)
+const PIANO_BEAT_DECAY_RATE = 0.9;
+
 interface Scene3DProps {
   analyser?: AnalyserNode;
   pianoBeat?: number; // Beat intensity from piano editor (0-1)
@@ -20,7 +25,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ analyser, pianoBeat = 0 }) => {
     // Directly update material if available for immediate response
     if (materialRef.current) {
       const currentBeat = materialRef.current.uniforms.uBeat.value;
-      materialRef.current.uniforms.uBeat.value = Math.max(currentBeat, pianoBeat * 0.8);
+      materialRef.current.uniforms.uBeat.value = Math.max(currentBeat, pianoBeat * PIANO_BEAT_INTENSITY_FACTOR);
     }
   }, [pianoBeat]);
 
@@ -175,7 +180,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ analyser, pianoBeat = 0 }) => {
       );
 
       // Decay piano beat over time
-      pianoBeatRef.current *= 0.9;
+      pianoBeatRef.current *= PIANO_BEAT_DECAY_RATE;
 
       // --- Particle Physics Update ---
       // Accelerate time based on beat (Music makes particles move faster)

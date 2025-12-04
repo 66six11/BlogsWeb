@@ -5,6 +5,7 @@ import { Play, Square, Trash2, FileText, Upload, ChevronDown } from 'lucide-reac
 const TOTAL_STEPS = 32; // 2 bars of 16th notes
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
 const OCTAVES = [5, 4]; // 2 Octaves range
+const PLAYBACK_INTERVAL_MS = 150; // Time between steps in milliseconds
 
 // Pitch name to number conversion
 const PITCH_MAP: { [key: string]: number } = {
@@ -46,6 +47,24 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onBeat, analyserRe
   const audioContextRef = useRef<AudioContext | null>(null);
   const internalAnalyserRef = useRef<AnalyserNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setSheetDropdownOpen(false);
+      }
+    };
+    
+    if (sheetDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [sheetDropdownOpen]);
   
   // Initialize notes with a simple melody
   useEffect(() => {
@@ -140,7 +159,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onBeat, analyserRe
     setLoadingSheet(true);
     try {
       const response = await fetch(`/sheets/${filename}`);
-      if (!response.ok) throw new Error('Failed to load sheet music');
+      if (!response.ok) {
+        throw new Error(`Failed to load sheet music '${filename}': ${response.status} ${response.statusText}`);
+      }
       
       const content = await response.text();
       const sheet = parseSheetMusic(content);
@@ -273,7 +294,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onBeat, analyserRe
         if (step >= TOTAL_STEPS) {
           step = 0;
         }
-      }, 150);
+      }, PLAYBACK_INTERVAL_MS);
     } else {
       setCurrentStep(-1);
     }
@@ -291,7 +312,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onBeat, analyserRe
         </h3>
         <div className="flex gap-2 flex-wrap">
           {/* Sheet Music Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={dropdownRef}>
             <button 
               onClick={() => setSheetDropdownOpen(!sheetDropdownOpen)}
               className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors text-sm border border-slate-600"
