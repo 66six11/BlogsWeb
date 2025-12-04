@@ -3,14 +3,24 @@ import { Note } from '../types';
 import { Play, Square, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair, Music } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
 import { parseScore, ScoreMetadata, NOTE_DURATION_STEPS, NoteDurationType } from './ScoreParser';
+import * as Tone from 'tone';
 
 const MIN_STEPS = 32;
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
 const OCTAVES = [5, 4, 3];
 const KEY_LABEL_WIDTH = 64;
+const NOTE_PALETTE_WIDTH = 36; // Width for note color palette
 const CELL_WIDTH = 25;
 const DEFAULT_BPM = 120;
 const VISIBLE_STEP_BUFFER = 10; // Extra steps to render beyond visible area
+const MAX_CONCURRENT_NOTES = 32; // Limit concurrent oscillators for large scores
+
+// Note color palette - different colors for different octaves
+const OCTAVE_COLORS: Record<number, string> = {
+  5: '#ef4444', // red - high
+  4: '#8b5cf6', // purple - mid
+  3: '#3b82f6', // blue - low
+};
 
 // Audio node object pool for performance
 class AudioNodePool {
@@ -98,6 +108,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
   const [selectedVoice, setSelectedVoice] = useState<string>('all'); // Voice filter
   const [selectedDuration, setSelectedDuration] = useState<NoteDurationType>('eighth'); // Default to 8th note
+  const [selectedPitch, setSelectedPitch] = useState<{ pitch: number; octave: number } | null>(null); // Selected note from palette
   
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -107,6 +118,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const audioPoolRef = useRef<AudioNodePool | null>(null);
   const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
+  const toneSynthRef = useRef<Tone.PolySynth | null>(null); // Tone.js synth
   
   // Virtual scroll state
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: MIN_STEPS });
@@ -243,6 +255,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       audioContextRef.current = null;
     }
     
+    // Stop Tone.js transport and synth
+    try {
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
+      if (toneSynthRef.current) {
+        toneSynthRef.current.releaseAll();
+      }
+    } catch (e) {}
+    
     setIsPlaying(false);
     // Keep currentStep and playheadPosition - don't reset
   }, []);
@@ -280,122 +301,79 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     }
   }, [playheadPosition]);
 
-  // Play using Web Audio with object pool - works for both ABC and manual notes
+  // Play using Tone.js for professional piano sound
   const startPlayback = useCallback(async () => {
     if (notes.length === 0) return;
     
-    // Stop audio but keep position
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = 0;
-    }
-    if (audioPoolRef.current) {
-      audioPoolRef.current.clear();
-      audioPoolRef.current = null;
-    }
-    if (audioContextRef.current) {
-      try { audioContextRef.current.close(); } catch (e) {}
-      audioContextRef.current = null;
-    }
+    // Stop any existing playback
+    pausePlayback();
     
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    audioContextRef.current = ctx;
-    if (ctx.state === 'suspended') await ctx.resume();
+    // Start Tone.js
+    await Tone.start();
     
-    // Create audio pool
-    const pool = new AudioNodePool(ctx);
-    audioPoolRef.current = pool;
+    // Create piano-like synth with PolySynth for polyphony
+    const synth = new Tone.PolySynth(Tone.Synth, {
+      maxPolyphony: MAX_CONCURRENT_NOTES,
+      voice: Tone.Synth,
+      options: {
+        oscillator: { type: 'triangle' },
+        envelope: {
+          attack: 0.005,
+          decay: 0.3,
+          sustain: sustain ? 0.4 : 0.1,
+          release: sustain ? 1.0 : 0.3,
+        },
+      }
+    }).toDestination();
+    toneSynthRef.current = synth;
     
     const stepDurationSec = stepInterval / 1000;
     const startStep = currentStep >= 0 ? currentStep : 0;
-    const startTime = ctx.currentTime;
     const currentPlaybackId = ++playbackIdRef.current;
     
-    // Group notes by step for efficient scheduling
-    const notesByStep = new Map<number, Note[]>();
-    for (const note of notes) {
-      if (!notesByStep.has(note.startTime)) notesByStep.set(note.startTime, []);
-      notesByStep.get(note.startTime)!.push(note);
-    }
+    // Set BPM
+    Tone.Transport.bpm.value = bpm;
     
-    // Schedule all notes at once with piano-like ADSR envelope
-    const useSustain = sustain;
-    for (let step = startStep; step <= lastNoteEndTime; step++) {
-      const notesAtStep = notesByStep.get(step);
-      if (notesAtStep) {
-        const stepTime = startTime + ((step - startStep) * stepDurationSec);
-        for (const note of notesAtStep) {
-          const midi = (note.octave + 1) * 12 + note.pitch;
-          const freq = 440 * Math.pow(2, (midi - 69) / 12);
-          const dur = note.duration * stepDurationSec;
-          
-          // Create multiple oscillators for richer piano sound
-          const osc1 = ctx.createOscillator();
-          const osc2 = ctx.createOscillator();
-          const gain = ctx.createGain();
-          
-          // Use sine and triangle for piano-like timbre
-          osc1.type = 'sine';
-          osc2.type = 'triangle';
-          osc1.frequency.setValueAtTime(freq, stepTime);
-          osc2.frequency.setValueAtTime(freq * 2, stepTime); // Harmonic
-          
-          // Piano-like ADSR envelope
-          const attackTime = 0.005; // Very fast attack
-          const decayTime = 0.1;
-          const sustainLevel = useSustain ? 0.3 : 0.1;
-          const releaseTime = useSustain ? dur * 0.8 : 0.1;
-          
-          gain.gain.setValueAtTime(0, stepTime);
-          gain.gain.linearRampToValueAtTime(0.4, stepTime + attackTime); // Attack
-          gain.gain.exponentialRampToValueAtTime(sustainLevel, stepTime + attackTime + decayTime); // Decay
-          
-          if (useSustain) {
-            // Sustain mode - gradual decay over note duration
-            gain.gain.exponentialRampToValueAtTime(0.001, stepTime + dur);
-          } else {
-            // No sustain - quick release after decay
-            gain.gain.exponentialRampToValueAtTime(0.001, stepTime + attackTime + decayTime + 0.15);
-          }
-          
-          osc1.connect(gain);
-          osc2.connect(gain);
-          gain.connect(ctx.destination);
-          osc1.start(stepTime);
-          osc2.start(stepTime);
-          osc1.stop(stepTime + dur + 0.2);
-          osc2.stop(stepTime + dur + 0.2);
-        }
+    // Schedule notes with Tone.js Transport
+    const now = Tone.now();
+    for (const note of notes) {
+      if (note.startTime >= startStep) {
+        const midi = (note.octave + 1) * 12 + note.pitch;
+        const freq = Tone.Frequency(midi, "midi").toFrequency();
+        const noteName = Tone.Frequency(midi, "midi").toNote();
+        const offsetSec = (note.startTime - startStep) * stepDurationSec;
+        const durSec = Math.max(0.05, note.duration * stepDurationSec);
+        
+        synth.triggerAttackRelease(freq, durSec, now + offsetSec);
       }
     }
     
     setIsPlaying(true);
-    setIsUserScrolling(false); // Reset user scrolling state when starting playback
+    setIsUserScrolling(false);
     isUserScrollingRef.current = false;
     
-    // Animate playhead smoothly
+    // Animate playhead smoothly using requestAnimationFrame
+    const playStartTime = performance.now();
     const updatePlayhead = () => {
-      if (playbackIdRef.current !== currentPlaybackId || !audioContextRef.current) return;
+      if (playbackIdRef.current !== currentPlaybackId) return;
       
-      const elapsed = audioContextRef.current.currentTime - startTime;
+      const elapsed = (performance.now() - playStartTime) / 1000;
       const pos = startStep + (elapsed / stepDurationSec);
       
       setPlayheadPosition(pos * CELL_WIDTH);
       setCurrentStep(Math.floor(pos));
       
-      // Auto-scroll only if user hasn't manually scrolled
+      // Auto-scroll
       if (scrollContainerRef.current) {
         const c = scrollContainerRef.current;
         const px = pos * CELL_WIDTH;
         const isPlayheadVisible = px >= c.scrollLeft && px <= c.scrollLeft + c.clientWidth - CELL_WIDTH * 2;
         
-        // If playhead re-enters visible area after user scroll, resume following
         if (isPlayheadVisible && isUserScrollingRef.current) {
           setIsUserScrolling(false);
           isUserScrollingRef.current = false;
         }
         
-        // Only auto-scroll if not user scrolling
         if (!isUserScrollingRef.current) {
           if (px > c.scrollLeft + c.clientWidth - CELL_WIDTH * 4 || px < c.scrollLeft) {
             c.scrollLeft = Math.max(0, px - c.clientWidth / 2);
@@ -404,7 +382,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       }
       
       if (pos > lastNoteEndTime) {
-        // Playback finished - pause but keep at end position
         pausePlayback();
         return;
       }
@@ -413,7 +390,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     };
     
     animationFrameRef.current = requestAnimationFrame(updatePlayhead);
-  }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, pausePlayback]);
+  }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, pausePlayback, bpm]);
 
   // Load score - always parse to Note[] for grid display
   const loadScore = useCallback(async (scoreName: string) => {
@@ -534,6 +511,28 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
             </select>
           </div>
           
+          {/* Selected pitch indicator */}
+          {selectedPitch && (
+            <div 
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium"
+              style={{ 
+                backgroundColor: OCTAVE_COLORS[selectedPitch.octave] + '33',
+                color: OCTAVE_COLORS[selectedPitch.octave],
+                border: `1px solid ${OCTAVE_COLORS[selectedPitch.octave]}`
+              }}
+            >
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: OCTAVE_COLORS[selectedPitch.octave] }} />
+              {PITCHES[11 - selectedPitch.pitch]}{selectedPitch.octave}
+              <button 
+                onClick={() => setSelectedPitch(null)} 
+                className="ml-1 hover:opacity-70"
+                title="取消选择"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          
           {/* Sustain toggle */}
           <button
             onClick={() => setSustain(prev => !prev)}
@@ -619,25 +618,37 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       {/* Piano Grid - always shown */}
       {!isLoading && (
         <div className="relative border rounded" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-primary, #0f172a)' }}>
-          {/* Key labels */}
+          {/* Key labels / Note Palette - clickable to select note for adding */}
           <div className="absolute left-0 top-0 bottom-0 z-20" style={{ width: `${KEY_LABEL_WIDTH}px` }}>
-            <div className="h-6 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-secondary, #1e293b)' }}></div>
-            {OCTAVES.map((octave) => (
+            <div className="h-6 border-b flex items-center justify-center text-[10px]" style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-secondary, #1e293b)', color: 'var(--text-secondary, #64748b)' }}>
+              音符
+            </div>
+            {OCTAVES.map((octave, oIdx) => (
               <React.Fragment key={octave}>
-                {PITCHES.map((noteName) => {
+                {PITCHES.map((noteName, pIdx) => {
                   const isBlackKey = noteName.includes('#');
+                  const pitch = 11 - pIdx;
+                  const isSelected = selectedPitch?.octave === octave && selectedPitch?.pitch === pitch;
+                  const octaveColor = OCTAVE_COLORS[octave] || '#8b5cf6';
                   return (
                     <div 
                       key={`${octave}-${noteName}`}
-                      className="flex items-center justify-end pr-2 text-xs border-b border-r h-8"
+                      onClick={() => setSelectedPitch(isSelected ? null : { pitch, octave })}
+                      className={`flex items-center justify-between px-1 text-xs border-b border-r h-8 cursor-pointer transition-all hover:opacity-80 ${isSelected ? 'ring-2 ring-inset ring-white' : ''}`}
                       style={{ 
                         width: `${KEY_LABEL_WIDTH}px`,
                         backgroundColor: isBlackKey ? 'var(--bg-primary, #0f172a)' : 'var(--bg-secondary, #1e293b)',
                         color: isBlackKey ? 'var(--text-secondary, #64748b)' : 'var(--text-primary, #e2e8f0)',
                         borderColor: 'var(--bg-tertiary, #334155)'
                       }}
+                      title={`点击选择 ${noteName}${octave}，然后点击网格添加`}
                     >
-                      {noteName}{octave}
+                      {/* Color indicator for octave */}
+                      <div 
+                        className="w-3 h-3 rounded-full shrink-0" 
+                        style={{ backgroundColor: octaveColor, opacity: isBlackKey ? 0.6 : 1 }} 
+                      />
+                      <span className="text-right">{noteName}{octave}</span>
                     </div>
                   );
                 })}
