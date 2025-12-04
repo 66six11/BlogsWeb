@@ -34,13 +34,13 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
       { pitch: 11, octave: 4, startTime: 4, duration: 4 }, // B
     ]);
     
-    // Load available scores
+    // Load available scores from config
     loadAvailableScores();
   }, []);
 
   const loadAvailableScores = async () => {
-    // For now, we'll provide a static list. In production, you could scan the folder
-    setAvailableScores(['sample.txt']);
+    // Load scores from configuration
+    setAvailableScores(MEDIA_CONFIG.scores.files);
   };
 
   const parseScoreFile = (content: string): Note[] => {
@@ -79,7 +79,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
 
   const loadScore = async (scoreName: string) => {
     try {
-      const response = await fetch(`${MEDIA_CONFIG.scoresFolder}/${scoreName}`);
+      const response = await fetch(`${MEDIA_CONFIG.scores.folder}/${scoreName}`);
       if (!response.ok) {
         console.error('Failed to load score:', scoreName);
         return;

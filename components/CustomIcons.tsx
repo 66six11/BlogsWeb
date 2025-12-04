@@ -1,4 +1,3 @@
-import path from 'path';
 import React from 'react';
 import { ICON_COLORS } from '../config';
 

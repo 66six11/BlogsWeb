@@ -127,6 +127,10 @@ export const MEDIA_CONFIG = {
   music: {
     // Folder path for music files (relative to public folder)
     folder: "/music",
+    // List of music tracks - add more tracks here
+    tracks: [
+      { name: '文学', file: '上田麗奈 - リテラチュア (文学) (Anime Size)_H.mp3' }
+    ],
     // Default volume (0-1)
     defaultVolume: 0.4,
     // Enable shuffle
@@ -136,8 +140,12 @@ export const MEDIA_CONFIG = {
     // Volume fade duration in milliseconds
     fadeDuration: 500,
   },
-  // Scores folder for sheet music
-  scoresFolder: "/scores",
+  // Scores configuration for sheet music
+  scores: {
+    folder: "/scores",
+    // List of available score files
+    files: ['sample.txt']
+  },
 };
 
 // =================================================================================

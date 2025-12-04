@@ -42,7 +42,10 @@ export const GITHUB_BLOG_PATH = GITHUB_CONFIG.blogPath;
 
 // Assets
 export const BG_MEDIA_URL = MEDIA_CONFIG.backgroundMedia; 
-export const BGM_URL = MEDIA_CONFIG.music.folder + "/上田麗奈 - リテラチュア (文学) (Anime Size)_H.mp3"; 
+// BGM_URL is deprecated - use MEDIA_CONFIG.music.tracks instead
+export const BGM_URL = MEDIA_CONFIG.music.tracks.length > 0 
+  ? `${MEDIA_CONFIG.music.folder}/${MEDIA_CONFIG.music.tracks[0].file}` 
+  : ''; 
 
 // Re-export projects from config
 export const PROJECTS = PORTFOLIO_PROJECTS;

@@ -29,13 +29,11 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ onAnalyserReady, className = 
   
   // Initialize tracks from config
   useEffect(() => {
-    // For now, we'll use a static list. In production, you could scan the folder
-    const musicTracks: MusicTrack[] = [
-      {
-        name: '文学',
-        url: `${MEDIA_CONFIG.music.folder}/上田麗奈 - リテラチュア (文学) (Anime Size)_H.mp3`
-      }
-    ];
+    // Load tracks from configuration
+    const musicTracks: MusicTrack[] = MEDIA_CONFIG.music.tracks.map(track => ({
+      name: track.name,
+      url: `${MEDIA_CONFIG.music.folder}/${track.file}`
+    }));
     setTracks(musicTracks);
   }, []);
 
