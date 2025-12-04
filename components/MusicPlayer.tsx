@@ -10,6 +10,9 @@ interface MusicPlayerProps {
 
 export interface MusicPlayerRef {
   play: () => void;
+  pause: () => void;
+  resume: () => void;
+  isPlaying: () => boolean;
 }
 
 interface MusicTrack {
