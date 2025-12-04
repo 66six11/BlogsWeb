@@ -1,0 +1,25 @@
+X:1
+T:Canon in D (Pachelbel)
+C:Johann Pachelbel
+M:4/4
+L:1/8
+Q:1/4=60
+K:D
+
+% Voice 1: Bass line (Ground bass)
+V:1 clef=bass name="Bass"
+D,4 A,4 | B,4 F,4 | G,4 D,4 | G,4 A,4 |
+D,4 A,4 | B,4 F,4 | G,4 D,4 | G,4 A,4 |
+
+% Voice 2: Chord accompaniment  
+V:2 name="Chords"
+[D,FA]4 [A,CE]4 | [B,DF]4 [F,AC]4 | [G,BD]4 [D,FA]4 | [G,BD]4 [A,CE]4 |
+[D,FA]4 [A,CE]4 | [B,DF]4 [F,AC]4 | [G,BD]4 [D,FA]4 | [G,BD]4 [A,CE]4 |
+
+% Voice 3: Melody
+V:3 name="Melody"
+f2e2 | d2c2 | B2A2 | B2c2 |
+d2c2 | B2A2 | G2F2 | G2E2 |
+% More elaborate melody
+fd ec | dB cA | BG AF | GB A2 |
+df' ag' | f'd' f'e' | d'B d'A | GB AG |

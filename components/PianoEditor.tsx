@@ -10,10 +10,18 @@ const KEY_LABEL_WIDTH = 64; // w-16 = 4rem = 64px
 const CELL_WIDTH = 25; // Width of each cell in pixels
 const DEFAULT_BPM = 120;
 
-// Note name to pitch value mapping
+// Note name to pitch value mapping (for legacy format)
 const NOTE_TO_PITCH: Record<string, number> = {
   'C': 0, 'C#': 1, 'DB': 1, 'D': 2, 'D#': 3, 'EB': 3, 'E': 4, 'F': 5,
   'F#': 6, 'GB': 6, 'G': 7, 'G#': 8, 'AB': 8, 'A': 9, 'A#': 10, 'BB': 10, 'B': 11
+};
+
+// ABC notation note to pitch mapping
+// ABC uses: C D E F G A B for middle octave, c d e f g a b for octave above
+// Lowercase = octave 5, Uppercase = octave 4, C, = octave 3
+const ABC_NOTE_TO_PITCH: Record<string, number> = {
+  'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11,
+  'c': 0, 'd': 2, 'e': 4, 'f': 5, 'g': 7, 'a': 9, 'b': 11
 };
 
 // Score metadata interface
@@ -22,6 +30,7 @@ interface ScoreMetadata {
   bpm: number;
   timeSignature?: string;
   key?: string;
+  defaultNoteLength?: string;
 }
 
 interface PianoEditorProps {
@@ -81,13 +90,365 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
     setAvailableScores(MEDIA_CONFIG.scores.files);
   };
 
+  // Detect if content is ABC notation (starts with X: or has ABC headers)
+  const isABCNotation = (content: string): boolean => {
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // ABC files typically start with X: (tune number) or have header fields like T:, M:, K:
+      if (/^[XTMKLCQP]:/.test(trimmed)) return true;
+      // Skip empty lines and comments
+      if (trimmed && !trimmed.startsWith('%')) {
+        // If first non-empty, non-comment line is not ABC header, it's likely not ABC
+        break;
+      }
+    }
+    return false;
+  };
+
+  // Parse ABC notation
+  const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMetadata } => {
+    const lines = content.split('\n');
+    const parsedNotes: Note[] = [];
+    const metadata: ScoreMetadata = { bpm: DEFAULT_BPM, defaultNoteLength: '1/8' };
+    
+    let currentTime = 0;
+    let defaultNoteLength = 1/8; // L:1/8 default (eighth note = 2 in our 16th note system)
+    let baseNoteDuration = 2; // Default duration in 16th notes for L:1/8
+    let inBody = false;
+    
+    // Voice/track management for multi-voice ABC
+    const voicePositions: Map<string, number> = new Map();
+    let currentVoice = 'default';
+    voicePositions.set(currentVoice, 0);
+
+    for (const line of lines) {
+      let trimmed = line.trim();
+      
+      // Skip empty lines
+      if (!trimmed) continue;
+      
+      // Skip ABC comments (%)
+      if (trimmed.startsWith('%')) continue;
+      
+      // Parse ABC header fields
+      if (trimmed.includes(':') && !inBody) {
+        const colonIdx = trimmed.indexOf(':');
+        const field = trimmed.substring(0, colonIdx).trim().toUpperCase();
+        const value = trimmed.substring(colonIdx + 1).trim();
+        
+        switch (field) {
+          case 'T': // Title
+            metadata.title = value;
+            break;
+          case 'M': // Meter/Time signature
+            metadata.timeSignature = value;
+            break;
+          case 'L': // Default note length
+            metadata.defaultNoteLength = value;
+            // Parse fraction like 1/8, 1/4, 1/16
+            const lengthMatch = value.match(/(\d+)\/(\d+)/);
+            if (lengthMatch) {
+              defaultNoteLength = parseInt(lengthMatch[1]) / parseInt(lengthMatch[2]);
+              // Convert to 16th notes: 1/16=1, 1/8=2, 1/4=4, 1/2=8, 1=16
+              baseNoteDuration = Math.round(defaultNoteLength * 16);
+            }
+            break;
+          case 'Q': // Tempo (e.g., Q:1/4=120 means 120 quarter notes per minute)
+            const tempoMatch = value.match(/(?:\d+\/\d+=)?(\d+)/);
+            if (tempoMatch) {
+              metadata.bpm = parseInt(tempoMatch[1], 10) || DEFAULT_BPM;
+            }
+            break;
+          case 'K': // Key (marks end of header, start of body)
+            metadata.key = value;
+            inBody = true;
+            break;
+          case 'V': // Voice definition
+            currentVoice = value.split(/\s+/)[0]; // First word is voice ID
+            if (!voicePositions.has(currentVoice)) {
+              voicePositions.set(currentVoice, 0);
+            }
+            break;
+        }
+        continue;
+      }
+      
+      // After K: field, everything is music body
+      if (!inBody && trimmed.match(/^K:/i)) {
+        inBody = true;
+        trimmed = trimmed.replace(/^K:\s*\S*\s*/i, '');
+      }
+      
+      if (!inBody) continue;
+      
+      // Check for inline voice switch [V:name]
+      const inlineVoiceMatch = trimmed.match(/\[V:(\w+)\]/);
+      if (inlineVoiceMatch) {
+        currentVoice = inlineVoiceMatch[1];
+        if (!voicePositions.has(currentVoice)) {
+          voicePositions.set(currentVoice, 0);
+        }
+        trimmed = trimmed.replace(/\[V:\w+\]/g, '');
+      }
+      
+      // Parse music body
+      currentTime = voicePositions.get(currentVoice) || 0;
+      
+      // Remove bar lines and other non-note elements
+      let musicLine = trimmed
+        .replace(/\|:?:?\|?/g, '') // Remove bar lines
+        .replace(/\[\d\./g, '')    // Remove repeat endings like [1.
+        .replace(/:\|/g, '')       // Remove repeat ends
+        .replace(/\|:/g, '');      // Remove repeat starts
+      
+      // Process each character/token for notes
+      let i = 0;
+      while (i < musicLine.length) {
+        const char = musicLine[i];
+        
+        // Skip whitespace
+        if (/\s/.test(char)) {
+          i++;
+          continue;
+        }
+        
+        // Skip decoration marks and special chars
+        if ('!~.HLMOPSTuv'.includes(char) || char === '(' || char === ')') {
+          i++;
+          continue;
+        }
+        
+        // Handle chords [CEG]
+        if (char === '[') {
+          const chordEnd = musicLine.indexOf(']', i);
+          if (chordEnd > i) {
+            const chordContent = musicLine.substring(i + 1, chordEnd);
+            const chordNotes = parseABCChord(chordContent, baseNoteDuration, currentTime);
+            parsedNotes.push(...chordNotes);
+            
+            // Find duration after chord
+            let durationStr = '';
+            let j = chordEnd + 1;
+            while (j < musicLine.length && (/\d|\//.test(musicLine[j]))) {
+              durationStr += musicLine[j];
+              j++;
+            }
+            
+            const duration = parseABCDuration(durationStr, baseNoteDuration);
+            // Update time based on chord duration
+            if (chordNotes.length > 0) {
+              // Update all chord notes with the proper duration
+              chordNotes.forEach(n => n.duration = duration);
+            }
+            currentTime += duration;
+            i = j;
+            continue;
+          }
+        }
+        
+        // Rest (z or Z)
+        if (char === 'z' || char === 'Z') {
+          let durationStr = '';
+          i++;
+          while (i < musicLine.length && (/\d|\//.test(musicLine[i]))) {
+            durationStr += musicLine[i];
+            i++;
+          }
+          const duration = parseABCDuration(durationStr, baseNoteDuration);
+          currentTime += duration;
+          continue;
+        }
+        
+        // Note (A-G or a-g)
+        if (/[A-Ga-g]/.test(char)) {
+          const noteResult = parseABCNote(musicLine, i, baseNoteDuration, currentTime);
+          if (noteResult.note) {
+            parsedNotes.push(noteResult.note);
+            currentTime += noteResult.note.duration;
+          }
+          i = noteResult.nextIndex;
+          continue;
+        }
+        
+        i++;
+      }
+      
+      voicePositions.set(currentVoice, currentTime);
+    }
+
+    return { notes: parsedNotes, metadata };
+  };
+
+  // Parse a single ABC note starting at position i
+  const parseABCNote = (
+    line: string, 
+    startIdx: number, 
+    baseNoteDuration: number, 
+    startTime: number
+  ): { note: Note | null; nextIndex: number } => {
+    let i = startIdx;
+    
+    // Get note letter
+    const noteChar = line[i];
+    if (!/[A-Ga-g]/.test(noteChar)) {
+      return { note: null, nextIndex: i + 1 };
+    }
+    
+    // Determine base octave from case
+    // ABC: C D E F G A B = octave 4, c d e f g a b = octave 5
+    let octave = noteChar === noteChar.toUpperCase() ? 4 : 5;
+    const baseNote = noteChar.toUpperCase();
+    i++;
+    
+    // Check for accidentals (before the note in ABC, but we already passed it)
+    // In standard ABC, accidentals come before: ^C (C#), _C (Cb), =C (C natural)
+    // Let's look back if needed, or handle inline
+    let pitch = ABC_NOTE_TO_PITCH[baseNote];
+    if (pitch === undefined) {
+      return { note: null, nextIndex: i };
+    }
+    
+    // Check for sharp/flat/natural after note letter (some ABC variants)
+    // Or look for previous accidental marker
+    // For simplicity, check if previous char was ^ or _
+    if (startIdx > 0) {
+      const prevChar = line[startIdx - 1];
+      if (prevChar === '^') {
+        pitch = (pitch + 1) % 12;
+      } else if (prevChar === '_') {
+        pitch = (pitch + 11) % 12;
+      }
+    }
+    
+    // Check for inline accidentals
+    while (i < line.length && (line[i] === '^' || line[i] === '_' || line[i] === '=')) {
+      if (line[i] === '^') pitch = (pitch + 1) % 12;
+      else if (line[i] === '_') pitch = (pitch + 11) % 12;
+      i++;
+    }
+    
+    // Check for octave modifiers (', ,)
+    while (i < line.length && (line[i] === "'" || line[i] === ',')) {
+      if (line[i] === "'") octave++;
+      else if (line[i] === ',') octave--;
+      i++;
+    }
+    
+    // Clamp octave to supported range
+    octave = Math.max(3, Math.min(5, octave));
+    
+    // Parse duration multiplier
+    let durationStr = '';
+    while (i < line.length && (/\d|\//.test(line[i]))) {
+      durationStr += line[i];
+      i++;
+    }
+    
+    const duration = parseABCDuration(durationStr, baseNoteDuration);
+    
+    return {
+      note: {
+        pitch,
+        octave,
+        startTime,
+        duration
+      },
+      nextIndex: i
+    };
+  };
+
+  // Parse ABC chord content (without brackets)
+  const parseABCChord = (content: string, baseNoteDuration: number, startTime: number): Note[] => {
+    const notes: Note[] = [];
+    let i = 0;
+    
+    while (i < content.length) {
+      const char = content[i];
+      
+      // Skip non-note characters
+      if (!/[A-Ga-g^_=]/.test(char)) {
+        i++;
+        continue;
+      }
+      
+      // Handle accidental prefix
+      let accidental = 0;
+      if (char === '^') { accidental = 1; i++; }
+      else if (char === '_') { accidental = -1; i++; }
+      else if (char === '=') { i++; } // Natural, no change
+      
+      if (i >= content.length) break;
+      
+      const noteChar = content[i];
+      if (!/[A-Ga-g]/.test(noteChar)) {
+        i++;
+        continue;
+      }
+      
+      let octave = noteChar === noteChar.toUpperCase() ? 4 : 5;
+      let pitch = ABC_NOTE_TO_PITCH[noteChar.toUpperCase()];
+      
+      if (pitch !== undefined) {
+        pitch = (pitch + accidental + 12) % 12;
+        i++;
+        
+        // Check for octave modifiers
+        while (i < content.length && (content[i] === "'" || content[i] === ',')) {
+          if (content[i] === "'") octave++;
+          else if (content[i] === ',') octave--;
+          i++;
+        }
+        
+        octave = Math.max(3, Math.min(5, octave));
+        
+        notes.push({
+          pitch,
+          octave,
+          startTime,
+          duration: baseNoteDuration // Will be updated by caller if chord has duration
+        });
+      } else {
+        i++;
+      }
+    }
+    
+    return notes;
+  };
+
+  // Parse ABC duration string (e.g., "2", "/2", "3/2", "")
+  const parseABCDuration = (durationStr: string, baseNoteDuration: number): number => {
+    if (!durationStr) return baseNoteDuration;
+    
+    // Handle fractions like /2, /4, 3/2
+    if (durationStr.includes('/')) {
+      const parts = durationStr.split('/');
+      const numerator = parts[0] ? parseInt(parts[0], 10) : 1;
+      const denominator = parts[1] ? parseInt(parts[1], 10) : 2;
+      return Math.max(1, Math.round(baseNoteDuration * numerator / denominator));
+    }
+    
+    // Simple multiplier like 2, 4
+    const multiplier = parseInt(durationStr, 10);
+    if (!isNaN(multiplier)) {
+      return baseNoteDuration * multiplier;
+    }
+    
+    return baseNoteDuration;
+  };
+
   const parseScoreFile = (content: string): { notes: Note[], metadata: ScoreMetadata } => {
+    // Check if this is ABC notation
+    if (isABCNotation(content)) {
+      return parseABCNotation(content);
+    }
+    
+    // Legacy format parsing
     const lines = content.split('\n');
     const parsedNotes: Note[] = [];
     const metadata: ScoreMetadata = { bpm: DEFAULT_BPM };
     
     // Track management for multi-track support
-    // Key: track name, Value: current time position for that track
     const trackPositions: Map<string, number> = new Map();
     let currentTrack = 'default';
     trackPositions.set(currentTrack, 0);
@@ -131,17 +492,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
       if (trackMatch) {
         currentTrack = trackMatch[1];
         if (!trackPositions.has(currentTrack)) {
-          // If position specified, use it; otherwise start at 0
           const startPos = trackMatch[2] ? parseInt(trackMatch[2], 10) : 0;
           trackPositions.set(currentTrack, startPos);
         } else if (trackMatch[2]) {
-          // Reset track to specified position
           trackPositions.set(currentTrack, parseInt(trackMatch[2], 10));
         }
         continue;
       }
       
-      // Sync command: @position - sets current track to absolute position
+      // Sync command: @position
       const syncMatch = trimmed.match(/^@(\d+)$/);
       if (syncMatch) {
         trackPositions.set(currentTrack, parseInt(syncMatch[1], 10));
@@ -152,10 +511,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
 
       // Check if this is a chord (multiple notes joined by +)
       if (trimmed.includes('+')) {
-        // Parse chord: "C 4 + E 4 + G 4 4" - last number is duration for all
         const chordParts = trimmed.split('+').map(p => p.trim());
         const chordNotes: { noteName: string; octave: number }[] = [];
-        let chordDuration = 4; // default duration
+        let chordDuration = 4;
 
         for (let i = 0; i < chordParts.length; i++) {
           const parts = chordParts[i].split(/\s+/);
@@ -166,7 +524,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
             
             if (pitch !== undefined && !isNaN(octave)) {
               chordNotes.push({ noteName, octave });
-              // Check if this part has a duration (last note in chord should have it)
               if (parts.length >= 3) {
                 chordDuration = parseInt(parts[2], 10) || 4;
               }
@@ -174,7 +531,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
           }
         }
 
-        // Add all chord notes at the same start time
         for (const cn of chordNotes) {
           const pitch = NOTE_TO_PITCH[cn.noteName];
           if (pitch !== undefined) {
@@ -188,7 +544,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
         }
         trackPositions.set(currentTrack, currentTime + chordDuration);
       } else {
-        // Single note parsing
         const parts = trimmed.split(/\s+/);
         if (parts.length >= 3) {
           const noteName = parts[0].toUpperCase();

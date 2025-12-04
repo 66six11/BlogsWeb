@@ -143,8 +143,8 @@ export const MEDIA_CONFIG = {
   // Scores configuration for sheet music
   scores: {
     folder: "/scores",
-    // List of available score files
-    files: ['sample.txt', 'chords-demo.txt', 'canon-in-d.txt']
+    // List of available score files (supports both ABC notation and legacy format)
+    files: ['canon-in-d.abc', 'twinkle.abc', 'sample.txt', 'chords-demo.txt', 'canon-in-d.txt']
   },
 };
 
