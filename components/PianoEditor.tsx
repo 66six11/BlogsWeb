@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Note } from '../types';
-import { Play, Square, Trash2, Plus, Minus, Loader2 } from 'lucide-react';
+import { Play, Square, Trash2, Plus, Minus, Loader2, SkipBack, Pause } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
 import { parseScore, ScoreMetadata } from './ScoreParser';
 
@@ -76,8 +76,8 @@ interface PianoEditorProps {
 const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   // Core state - Note[] displayed in grid, ABC used for playback
   const [notes, setNotes] = useState<Note[]>([]);
-  const [currentStep, setCurrentStep] = useState(-1);
-  const [playheadPosition, setPlayheadPosition] = useState(-1);
+  const [currentStep, setCurrentStep] = useState(0); // Start at 0, always visible
+  const [playheadPosition, setPlayheadPosition] = useState(0); // Always visible at step 0
   const [abcContent, setAbcContent] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [availableScores, setAvailableScores] = useState<string[]>([]);
@@ -85,6 +85,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const [bpm, setBpm] = useState<number>(DEFAULT_BPM);
   const [scoreMetadata, setScoreMetadata] = useState<ScoreMetadata>({ bpm: DEFAULT_BPM });
   const [isLoading, setIsLoading] = useState(false);
+  const [sustain, setSustain] = useState(true); // Sustain/延音 toggle, default on
   
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -161,8 +162,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     updateVisibleRange();
   }, [totalSteps, updateVisibleRange]);
 
-  // Stop playback
-  const stopPlayback = useCallback(() => {
+  // Pause playback - keep position
+  const pausePlayback = useCallback(() => {
     playbackIdRef.current++;
     
     if (animationFrameRef.current) {
@@ -181,15 +182,47 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     }
     
     setIsPlaying(false);
-    setCurrentStep(-1);
-    setPlayheadPosition(-1);
+    // Keep currentStep and playheadPosition - don't reset
   }, []);
+
+  // Stop and reset to beginning
+  const stopPlayback = useCallback(() => {
+    pausePlayback();
+    setCurrentStep(0);
+    setPlayheadPosition(0);
+  }, [pausePlayback]);
+
+  // Jump to beginning
+  const jumpToStart = useCallback(() => {
+    const wasPlaying = isPlaying;
+    if (wasPlaying) {
+      pausePlayback();
+    }
+    setCurrentStep(0);
+    setPlayheadPosition(0);
+    // Scroll to start
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = 0;
+    }
+  }, [isPlaying, pausePlayback]);
 
   // Play using Web Audio with object pool - works for both ABC and manual notes
   const startPlayback = useCallback(async () => {
     if (notes.length === 0) return;
     
-    stopPlayback();
+    // Stop audio but keep position
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = 0;
+    }
+    if (audioPoolRef.current) {
+      audioPoolRef.current.clear();
+      audioPoolRef.current = null;
+    }
+    if (audioContextRef.current) {
+      try { audioContextRef.current.close(); } catch (e) {}
+      audioContextRef.current = null;
+    }
     
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     audioContextRef.current = ctx;
@@ -212,6 +245,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     }
     
     // Schedule all notes at once
+    const useSustain = sustain;
     for (let step = startStep; step <= lastNoteEndTime; step++) {
       const notesAtStep = notesByStep.get(step);
       if (notesAtStep) {
@@ -227,7 +261,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
           osc.frequency.setValueAtTime(freq, stepTime);
           gain.gain.setValueAtTime(0, stepTime);
           gain.gain.linearRampToValueAtTime(0.25, stepTime + 0.01);
-          gain.gain.exponentialRampToValueAtTime(0.001, stepTime + dur);
+          
+          if (useSustain) {
+            // Sustain mode - smooth decay over note duration
+            gain.gain.exponentialRampToValueAtTime(0.001, stepTime + dur);
+          } else {
+            // No sustain - quick attack and release
+            gain.gain.linearRampToValueAtTime(0.25, stepTime + 0.05);
+            gain.gain.linearRampToValueAtTime(0.001, stepTime + 0.1);
+          }
           osc.connect(gain);
           gain.connect(ctx.destination);
           osc.start(stepTime);
@@ -258,7 +300,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       }
       
       if (pos > lastNoteEndTime) {
-        stopPlayback();
+        // Playback finished - pause but keep at end position
+        pausePlayback();
         return;
       }
       
@@ -266,11 +309,13 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     };
     
     animationFrameRef.current = requestAnimationFrame(updatePlayhead);
-  }, [notes, currentStep, lastNoteEndTime, stepInterval, stopPlayback]);
+  }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, pausePlayback]);
 
   // Load score - always parse to Note[] for grid display
   const loadScore = useCallback(async (scoreName: string) => {
-    stopPlayback();
+    pausePlayback();
+    setCurrentStep(0);
+    setPlayheadPosition(0);
     
     if (!scoreName) {
       setAbcContent('');
@@ -318,21 +363,23 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
 
   const togglePlayback = useCallback(() => {
     if (isPlaying) {
-      stopPlayback();
+      pausePlayback(); // Pause instead of stop - keep position
     } else {
       startPlayback();
     }
-  }, [isPlaying, stopPlayback, startPlayback]);
+  }, [isPlaying, pausePlayback, startPlayback]);
 
   const clearAll = useCallback(() => {
-    stopPlayback();
+    pausePlayback();
+    setCurrentStep(0);
+    setPlayheadPosition(0);
     setNotes([]);
     setAbcContent('');
     setSelectedScore('');
-  }, [stopPlayback]);
+  }, [pausePlayback]);
 
   // Cleanup
-  useEffect(() => () => stopPlayback(), [stopPlayback]);
+  useEffect(() => () => pausePlayback(), [pausePlayback]);
 
   const scrollbarStyles = `
     .piano-scroll::-webkit-scrollbar { height: 8px; }
@@ -361,6 +408,19 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
           </span>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
+          {/* Sustain toggle */}
+          <button
+            onClick={() => setSustain(prev => !prev)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${sustain ? 'ring-2 ring-purple-400' : ''}`}
+            style={{ 
+              backgroundColor: sustain ? 'var(--accent-3, #7C85EB)' : 'var(--bg-secondary, #1e293b)',
+              color: sustain ? 'white' : 'var(--text-secondary, #94a3b8)'
+            }}
+            title={sustain ? '延音开启' : '延音关闭'}
+          >
+            {sustain ? '延音 ✓' : '延音'}
+          </button>
+          
           <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary, #1e293b)' }}>
             <button onClick={() => setBpm(prev => Math.max(40, prev - 10))} className="p-1 rounded hover:bg-white/10" style={{ color: 'var(--text-secondary, #94a3b8)' }}>
               <Minus size={14} />
@@ -387,6 +447,16 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
             <Trash2 size={20} />
           </button>
           
+          {/* Jump to start button */}
+          <button
+            onClick={jumpToStart}
+            className="p-2 rounded-full hover:bg-white/10"
+            style={{ color: 'var(--text-secondary, #94a3b8)' }}
+            title="跳转到开头"
+          >
+            <SkipBack size={20} />
+          </button>
+          
           <button 
             onClick={togglePlayback}
             disabled={notes.length === 0}
@@ -395,8 +465,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
             } ${notes.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
             style={{ backgroundColor: isPlaying ? undefined : 'var(--accent-3, #7C85EB)' }}
           >
-            {isPlaying ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-            {isPlaying ? '停止' : '播放'}
+            {isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />}
+            {isPlaying ? '暂停' : '播放'}
           </button>
         </div>
       </div>
