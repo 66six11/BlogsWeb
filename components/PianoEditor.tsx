@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Note } from '../types';
-import { Play, Square, Trash2, Upload, FileText } from 'lucide-react';
+import { Play, Square, Trash2, Upload, FileText, Plus } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
 
-const TOTAL_STEPS = 32; // 2 bars of 16th notes
+const MIN_STEPS = 32; // Minimum 2 bars of 16th notes
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
 const OCTAVES = [5, 4]; // 2 Octaves range
+const KEY_LABEL_WIDTH = 64; // w-16 = 4rem = 64px
 
 // Note name to pitch value mapping
 const NOTE_TO_PITCH: Record<string, number> = {
@@ -25,6 +26,20 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
   const [availableScores, setAvailableScores] = useState<string[]>([]);
   const [selectedScore, setSelectedScore] = useState<string>('');
   const audioContextRef = useRef<AudioContext | null>(null);
+  
+  // Calculate total steps dynamically based on notes
+  const totalSteps = useMemo(() => {
+    if (notes.length === 0) return MIN_STEPS;
+    const maxEndTime = Math.max(...notes.map(n => n.startTime + n.duration));
+    // Round up to nearest 4 steps (quarter note) and add some buffer
+    return Math.max(MIN_STEPS, Math.ceil(maxEndTime / 4) * 4 + 8);
+  }, [notes]);
+
+  // Calculate the last note end time for playback
+  const lastNoteEndTime = useMemo(() => {
+    if (notes.length === 0) return 0;
+    return Math.max(...notes.map(n => n.startTime + n.duration));
+  }, [notes]);
   
   // Initialize notes with a simple melody
   useEffect(() => {
@@ -125,6 +140,18 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
     });
   };
 
+  const addMoreSteps = () => {
+    // This is just a visual helper - the grid extends automatically
+    // We can add a dummy note at the end to force extension
+    const newStartTime = totalSteps;
+    setNotes(prev => [...prev, {
+      pitch: 0,
+      octave: 4,
+      startTime: newStartTime,
+      duration: 1
+    }]);
+  };
+
   const playTone = useCallback((frequency: number, duration: number) => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -173,15 +200,17 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
         });
 
         step++;
-        if (step >= TOTAL_STEPS) {
-          step = 0;
+        // Stop playback after the last note ends (not loop)
+        if (step > lastNoteEndTime) {
+          setIsPlaying(false);
+          setCurrentStep(-1);
         }
       }, 200); // Speed
     } else {
       setCurrentStep(-1);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, notes, playTone]);
+  }, [isPlaying, notes, playTone, lastNoteEndTime]);
 
   return (
     <div className={`bg-slate-900/80 backdrop-blur-md border border-purple-500/30 rounded-xl p-6 shadow-2xl ${className}`}>
@@ -225,25 +254,17 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
       </div>
 
       <div className="overflow-x-auto pb-2">
-        <div className="min-w-[800px]">
-           {/* Grid Header */}
-           <div className="flex ml-16 mb-2">
-             {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-               <div key={i} className={`flex-1 text-[10px] text-center ${i % 4 === 0 ? 'text-slate-400 font-bold' : 'text-slate-700'}`}>
+        <div style={{ minWidth: `${KEY_LABEL_WIDTH + totalSteps * 25}px` }}>
+           {/* Grid Header - aligned with note cells, not key labels */}
+           <div className="flex mb-2" style={{ marginLeft: `${KEY_LABEL_WIDTH}px` }}>
+             {Array.from({ length: totalSteps }).map((_, i) => (
+               <div key={i} className={`text-[10px] text-center ${i % 4 === 0 ? 'text-slate-400 font-bold' : 'text-slate-700'}`} style={{ width: '25px', flexShrink: 0 }}>
                  {i % 4 === 0 ? i / 4 + 1 : ''}
                </div>
              ))}
            </div>
 
           <div className="relative border border-slate-700 rounded bg-slate-950">
-            {/* Playhead */}
-            {currentStep >= 0 && (
-              <div 
-                className="absolute top-0 bottom-0 bg-amber-400/30 w-[calc(100%/32)] z-10 pointer-events-none transition-all duration-100"
-                style={{ left: `${(currentStep / TOTAL_STEPS) * 100}%` }}
-              />
-            )}
-
             {OCTAVES.map((octave, oIdx) => (
               <React.Fragment key={octave}>
                 {PITCHES.map((noteName, pIdx) => {
@@ -251,13 +272,26 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
                   return (
                     <div key={`${octave}-${noteName}`} className="flex h-8 border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
                       {/* Key Label */}
-                      <div className={`w-16 flex-shrink-0 flex items-center justify-end pr-2 text-xs border-r border-slate-700 ${isBlackKey ? 'bg-slate-900 text-slate-500' : 'bg-slate-800 text-slate-300'}`}>
+                      <div 
+                        className={`flex-shrink-0 flex items-center justify-end pr-2 text-xs border-r border-slate-700 ${isBlackKey ? 'bg-slate-900 text-slate-500' : 'bg-slate-800 text-slate-300'}`}
+                        style={{ width: `${KEY_LABEL_WIDTH}px` }}
+                      >
                         {noteName}{octave}
                       </div>
                       
-                      {/* Cells */}
+                      {/* Cells - with playhead inside this container */}
                       <div className="flex-1 flex relative">
-                        {Array.from({ length: TOTAL_STEPS }).map((_, step) => {
+                        {/* Playhead - now inside the cells container */}
+                        {currentStep >= 0 && (
+                          <div 
+                            className="absolute top-0 bottom-0 bg-amber-400/30 z-10 pointer-events-none transition-all duration-100"
+                            style={{ 
+                              width: '25px',
+                              left: `${currentStep * 25}px`
+                            }}
+                          />
+                        )}
+                        {Array.from({ length: totalSteps }).map((_, step) => {
                           const isActive = notes.some(n => 
                             n.octave === octave && 
                             n.pitch === (11 - pIdx) && // Convert visual index back to logic pitch
@@ -268,9 +302,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
                             <div 
                               key={step} 
                               onClick={() => toggleNote(oIdx, pIdx, step)}
-                              className={`flex-1 border-r border-slate-800/30 cursor-pointer transition-colors relative
+                              className={`cursor-pointer transition-colors relative border-r border-slate-800/30
                                 ${step % 4 === 0 ? 'border-r-slate-700/50' : ''}
                               `}
+                              style={{ width: '25px', flexShrink: 0 }}
                             >
                               {isActive && (
                                 <div className={`absolute inset-0.5 rounded-sm bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.6)] ${isPlaying && currentStep === step ? 'animate-pulse scale-110' : ''}`} />
@@ -287,7 +322,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, onNotePlay }) => {
           </div>
         </div>
       </div>
-      <p className="text-xs text-slate-500 mt-2 text-right">点击网格添加/移除音符。选择乐谱文件加载预设旋律。</p>
+      <p className="text-xs text-slate-500 mt-2 text-right">点击网格添加/移除音符。网格会自动延长。播放将在最后一个音符结束后停止。</p>
     </div>
   );
 };

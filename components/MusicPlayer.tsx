@@ -222,65 +222,67 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ onAnalyserReady, className = 
         {isPlaying ? <Volume2 size={18} /> : <VolumeX size={18} />}
       </button>
 
-      {/* Expanded controls on hover */}
+      {/* Expanded controls on hover - using pt-2 with invisible bridge to maintain hover */}
       {isHovered && (
-        <div className="absolute right-0 top-full mt-2 bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-lg p-3 min-w-[200px] shadow-xl animate-fade-in-up z-50">
-          {/* Track info */}
-          {currentTrack && (
-            <div className="text-xs text-slate-300 mb-3 truncate text-center border-b border-white/10 pb-2">
-              {currentTrack.name}
+        <div className="absolute right-0 top-full pt-2 z-50">
+          <div className="bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-lg p-3 min-w-[200px] shadow-xl animate-fade-in-up">
+            {/* Track info */}
+            {currentTrack && (
+              <div className="text-xs text-slate-300 mb-3 truncate text-center border-b border-white/10 pb-2">
+                {currentTrack.name}
+              </div>
+            )}
+
+            {/* Playback controls */}
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <button
+                onClick={prevTrack}
+                disabled={tracks.length <= 1}
+                className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title="上一首"
+              >
+                <SkipBack size={16} />
+              </button>
+              
+              <button
+                onClick={togglePlay}
+                className={`p-2 rounded-full transition-colors ${
+                  isPlaying 
+                    ? 'bg-amber-500 text-white' 
+                    : 'bg-purple-600 text-white hover:bg-purple-500'
+                }`}
+              >
+                {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+              </button>
+              
+              <button
+                onClick={nextTrack}
+                disabled={tracks.length <= 1}
+                className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title="下一首"
+              >
+                <SkipForward size={16} />
+              </button>
             </div>
-          )}
 
-          {/* Playback controls */}
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <button
-              onClick={prevTrack}
-              disabled={tracks.length <= 1}
-              className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              title="上一首"
-            >
-              <SkipBack size={16} />
-            </button>
-            
-            <button
-              onClick={togglePlay}
-              className={`p-2 rounded-full transition-colors ${
-                isPlaying 
-                  ? 'bg-amber-500 text-white' 
-                  : 'bg-purple-600 text-white hover:bg-purple-500'
-              }`}
-            >
-              {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-            </button>
-            
-            <button
-              onClick={nextTrack}
-              disabled={tracks.length <= 1}
-              className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              title="下一首"
-            >
-              <SkipForward size={16} />
-            </button>
-          </div>
-
-          {/* Volume control */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleMute}
-              className="text-slate-400 hover:text-white transition-colors"
-            >
-              {isMuted || volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={isMuted ? 0 : volume}
-              onChange={handleVolumeChange}
-              className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
-            />
+            {/* Volume control */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleMute}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                {isMuted || volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              />
+            </div>
           </div>
         </div>
       )}
