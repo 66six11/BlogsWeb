@@ -15,6 +15,7 @@ import PianoEditor from './components/PianoEditor';
 import MagicChat from './components/MagicChat';
 import Scene3D from './components/Scene3D';
 import MusicPlayer from './components/MusicPlayer';
+import ThemeToggle from './components/ThemeToggle';
 import {CustomSparkleIcon, CustomWitchIcon,HexagramIcon} from './components/CustomIcons';
 
 import {
@@ -743,6 +744,7 @@ const App: React.FC = () => {
                         ))}
                     </div>
 
+                    <ThemeToggle />
                     <MusicPlayer 
                         onAnalyserReady={handleAnalyserReady}
                     />

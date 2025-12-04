@@ -12,6 +12,7 @@
 
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -23,6 +24,23 @@
                 dark: '#0f172a',
                 purple: '#7c3aed',
                 gold: '#fbbf24',
+              },
+              // Theme colors from config
+              theme: {
+                // Light mode
+                'light-primary': '#F7F8F3',
+                'light-secondary': '#EBECF2',
+                'light-tertiary': '#e3d8d8',
+                'light-accent1': '#deb99a',
+                'light-accent2': '#7C85EB',
+                'light-accent3': '#c493b1',
+                // Dark mode
+                'dark-primary': '#897b8c',
+                'dark-secondary': '#4d4658',
+                'dark-tertiary': '#3b3442',
+                'dark-accent1': '#deb99a',
+                'dark-accent2': '#c493b1',
+                'dark-accent3': '#7C85EB',
               }
             },
             animation: {
@@ -45,17 +63,52 @@
       }
     </script>
     <style>
+      /* CSS Variables for theming */
+      :root {
+        --bg-primary: #0f172a;
+        --bg-secondary: #1e293b;
+        --bg-tertiary: #334155;
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --accent-1: #deb99a;
+        --accent-2: #7C85EB;
+        --accent-3: #c493b1;
+      }
+      
+      :root.light {
+        --bg-primary: #F7F8F3;
+        --bg-secondary: #EBECF2;
+        --bg-tertiary: #e3d8d8;
+        --text-primary: #1e293b;
+        --text-secondary: #475569;
+        --accent-1: #deb99a;
+        --accent-2: #7C85EB;
+        --accent-3: #c493b1;
+      }
+      
+      :root.dark {
+        --bg-primary: #3b3442;
+        --bg-secondary: #4d4658;
+        --bg-tertiary: #897b8c;
+        --text-primary: #f1f5f9;
+        --text-secondary: #e2e8f0;
+        --accent-1: #deb99a;
+        --accent-2: #c493b1;
+        --accent-3: #7C85EB;
+      }
+
       body {
-        background-color: #0f172a;
-        color: #f1f5f9;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
         overflow-x: hidden;
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #1e293b;
+        background: var(--bg-secondary);
       }
       ::-webkit-scrollbar-thumb {
         background: #4c1d95;
