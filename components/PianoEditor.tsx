@@ -9,18 +9,36 @@ const MIN_STEPS = 32;
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
 const OCTAVES = [5, 4, 3];
 const KEY_LABEL_WIDTH = 64;
-const NOTE_PALETTE_WIDTH = 36; // Width for note color palette
+const DURATION_PALETTE_WIDTH = 48; // Width for duration selector on left
 const CELL_WIDTH = 25;
 const DEFAULT_BPM = 120;
 const VISIBLE_STEP_BUFFER = 10; // Extra steps to render beyond visible area
 const MAX_CONCURRENT_NOTES = 32; // Limit concurrent oscillators for large scores
 
-// Note color palette - different colors for different octaves
-const OCTAVE_COLORS: Record<number, string> = {
-  5: '#ef4444', // red - high
-  4: '#8b5cf6', // purple - mid
-  3: '#3b82f6', // blue - low
+// Note colors by pitch - rainbow spectrum for different pitches
+const PITCH_COLORS: Record<number, string> = {
+  11: '#ef4444', // B - red
+  10: '#f97316', // A# - orange
+  9: '#f59e0b',  // A - amber
+  8: '#eab308',  // G# - yellow
+  7: '#84cc16',  // G - lime
+  6: '#22c55e',  // F# - green
+  5: '#14b8a6',  // F - teal
+  4: '#06b6d4',  // E - cyan
+  3: '#3b82f6',  // D# - blue
+  2: '#6366f1',  // D - indigo
+  1: '#8b5cf6',  // C# - violet
+  0: '#a855f7',  // C - purple
 };
+
+// Duration options with visual icons
+const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number; icon: string }[] = [
+  { value: 'sixteenth', label: '16分', steps: 1, icon: '𝅘𝅥𝅯' },
+  { value: 'eighth', label: '8分', steps: 2, icon: '𝅘𝅥𝅮' },
+  { value: 'quarter', label: '4分', steps: 4, icon: '𝅘𝅥' },
+  { value: 'half', label: '2分', steps: 8, icon: '𝅗𝅥' },
+  { value: 'whole', label: '全', steps: 16, icon: '𝅝' },
+];
 
 // Audio node object pool for performance
 class AudioNodePool {
@@ -79,20 +97,12 @@ class AudioNodePool {
   }
 }
 
-// Duration options for note editor
-const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number }[] = [
-  { value: 'sixteenth', label: '16分', steps: 1 },
-  { value: 'eighth', label: '8分', steps: 2 },
-  { value: 'quarter', label: '4分', steps: 4 },
-  { value: 'half', label: '2分', steps: 8 },
-  { value: 'whole', label: '全音符', steps: 16 },
-];
-
 interface PianoEditorProps {
   className?: string;
+  isVisible?: boolean; // Stop playback when not visible (page switched)
 }
 
-const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
+const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }) => {
   // Core state - Note[] displayed in grid, ABC used for playback
   const [notes, setNotes] = useState<Note[]>([]);
   const [currentStep, setCurrentStep] = useState(0); // Start at 0, always visible
@@ -108,7 +118,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
   const [selectedVoice, setSelectedVoice] = useState<string>('all'); // Voice filter
   const [selectedDuration, setSelectedDuration] = useState<NoteDurationType>('eighth'); // Default to 8th note
-  const [selectedPitch, setSelectedPitch] = useState<{ pitch: number; octave: number } | null>(null); // Selected note from palette
   
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -301,8 +310,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     }
   }, [playheadPosition]);
 
-  // Play using Tone.js for professional piano sound
-  const startPlayback = useCallback(async () => {
+  // Play using Tone.js for professional piano sound - can start from any step
+  const startPlaybackFromStep = useCallback(async (fromStep?: number) => {
     if (notes.length === 0) return;
     
     // Stop any existing playback
@@ -328,7 +337,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     toneSynthRef.current = synth;
     
     const stepDurationSec = stepInterval / 1000;
-    const startStep = currentStep >= 0 ? currentStep : 0;
+    const startStep = fromStep !== undefined ? fromStep : (currentStep >= 0 ? currentStep : 0);
     const currentPlaybackId = ++playbackIdRef.current;
     
     // Set BPM
@@ -340,7 +349,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       if (note.startTime >= startStep) {
         const midi = (note.octave + 1) * 12 + note.pitch;
         const freq = Tone.Frequency(midi, "midi").toFrequency();
-        const noteName = Tone.Frequency(midi, "midi").toNote();
         const offsetSec = (note.startTime - startStep) * stepDurationSec;
         const durSec = Math.max(0.05, note.duration * stepDurationSec);
         
@@ -391,6 +399,24 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     
     animationFrameRef.current = requestAnimationFrame(updatePlayhead);
   }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, pausePlayback, bpm]);
+
+  // Wrapper for normal playback (from current position)
+  const startPlayback = useCallback(() => {
+    startPlaybackFromStep();
+  }, [startPlaybackFromStep]);
+
+  // Handle ruler click - move playhead, and if playing, restart from that position
+  const handleRulerClick = useCallback((step: number) => {
+    setCurrentStep(step);
+    setPlayheadPosition(step * CELL_WIDTH);
+    setIsUserScrolling(false);
+    isUserScrollingRef.current = false;
+    
+    // If currently playing, restart from this position
+    if (isPlaying) {
+      startPlaybackFromStep(step);
+    }
+  }, [isPlaying, startPlaybackFromStep]);
 
   // Load score - always parse to Note[] for grid display
   const loadScore = useCallback(async (scoreName: string) => {
@@ -462,8 +488,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     setSelectedScore('');
   }, [pausePlayback]);
 
-  // Cleanup
+  // Cleanup on unmount
   useEffect(() => () => pausePlayback(), [pausePlayback]);
+
+  // Stop playback when page/view changes (isVisible becomes false)
+  useEffect(() => {
+    if (!isVisible && isPlaying) {
+      pausePlayback();
+    }
+  }, [isVisible, isPlaying, pausePlayback]);
 
   const scrollbarStyles = `
     .piano-scroll::-webkit-scrollbar { height: 8px; }

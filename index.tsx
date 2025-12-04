@@ -699,7 +699,7 @@ const App: React.FC = () => {
     };
 
     const renderNav = () => (
-        <nav className="sticky top-0 z-40 w-full bg-slate-900/60 backdrop-blur-md border-b border-white/10 shadow-lg">
+        <nav className="sticky top-0 z-40 w-full bg-slate-900/60 dark:bg-slate-900/40 backdrop-blur-md border-b border-white/10 shadow-lg">
             <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
                 <div
                     className="flex items-center gap-2 cursor-pointer group"
@@ -747,8 +747,40 @@ const App: React.FC = () => {
                     <ThemeToggle />
                     <MusicPlayer 
                         onAnalyserReady={handleAnalyserReady}
+                        autoPlayTrigger={!showWelcome}
                     />
                 </div>
+            </div>
+        </nav>
+    );
+
+    // Mobile bottom navigation
+    const renderMobileNav = () => (
+        <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border-t border-white/10 shadow-lg">
+            <div className="flex justify-around items-center h-16 px-2">
+                {[
+                    {id: View.HOME, icon: Home, label: '首页'},
+                    {id: View.BLOG, icon: Book, label: '魔法书'},
+                    {id: View.PORTFOLIO, icon: Code, label: '作品'},
+                    {id: View.MUSIC, icon: Music, label: '旋律'},
+                    {id: View.ABOUT, icon: User, label: '关于'},
+                ].map((item) => (
+                    <button
+                        key={item.id}
+                        onClick={() => {
+                            setCurrentView(item.id);
+                            setSelectedPost(null);
+                        }}
+                        className={`flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg transition-all duration-300
+                            ${currentView === item.id
+                                ? 'text-amber-400 bg-white/10'
+                                : 'text-slate-400 hover:text-slate-100'
+                            }`}
+                    >
+                        <item.icon size={20}/>
+                        <span className="text-[10px] font-medium">{item.label}</span>
+                    </button>
+                ))}
             </div>
         </nav>
     );
@@ -1065,7 +1097,7 @@ const App: React.FC = () => {
                 <p className="text-slate-300">创作一段旋律。即使是魔女也需要从学习中休息一下。</p>
             </div>
 
-            <PianoEditor className="w-full"/>
+            <PianoEditor className="w-full" isVisible={currentView === View.MUSIC}/>
 
             <div
                 className="mt-8 text-center max-w-2xl mx-auto bg-slate-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
@@ -1151,7 +1183,7 @@ const App: React.FC = () => {
 
                 {/* Updated Main Container with Flex logic */}
                 <main
-                    className={`flex-1 w-full flex flex-col ${currentView === View.HOME ? 'justify-center' : 'pb-24'}`}>
+                    className={`flex-1 w-full flex flex-col ${currentView === View.HOME ? 'justify-center' : 'pb-24 md:pb-8'}`}>
                     {currentView === View.HOME && renderHome()}
                     {currentView === View.BLOG && renderBlog()}
                     {currentView === View.PORTFOLIO && renderPortfolio()}
@@ -1162,7 +1194,7 @@ const App: React.FC = () => {
                 <MagicChat/>
 
                 <footer
-                    className="bg-slate-950/80 backdrop-blur-md border-t border-white/5 py-8 text-center text-slate-500 text-sm mt-auto">
+                    className="hidden md:block bg-slate-950/80 backdrop-blur-md border-t border-white/5 py-8 text-center text-slate-500 text-sm mt-auto">
                     <p>© {new Date().getFullYear()} {userProfile?.name || AUTHOR_NAME}. 灵感来自《魔女之旅》。</p>
                     <div className="flex justify-center gap-4 mt-2">
                         <a href={userProfile?.html_url || "#"}
@@ -1171,6 +1203,9 @@ const App: React.FC = () => {
                         <a href="#" className="hover:text-amber-400 transition-colors">ArtStation</a>
                     </div>
                 </footer>
+                
+                {/* Mobile bottom navigation */}
+                {renderMobileNav()}
             </div>
         </div>
     );
