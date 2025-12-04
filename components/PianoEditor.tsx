@@ -47,6 +47,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const playbackIdRef = useRef<number>(0);
   const animationFrameRef = useRef<number>(0);
   const abcSynthRef = useRef<any>(null);
+  const abcVisualObjRef = useRef<any>(null);
+  const abcSynthPrimedRef = useRef<boolean>(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   
   // Grid mode derived values
@@ -100,6 +102,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
       abcSynthRef.current = null;
     }
     
+    abcSynthPrimedRef.current = false;
+    
     if (audioContextRef.current) {
       try { audioContextRef.current.close(); } catch (e) {}
       audioContextRef.current = null;
@@ -112,50 +116,66 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   }, []);
 
   // Play ABC natively using abcjs (for large files)
+  // Synth is pre-initialized during load, so playback starts instantly
   const playAbcNative = useCallback(async () => {
     if (!abcContent) return;
     
     stopPlayback();
     
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      audioContextRef.current = ctx;
-      
-      if (ctx.state === 'suspended') await ctx.resume();
-      
-      // Parse ABC with abcjs
-      const visualObj = abcjs.renderAbc('abc-render-area', abcContent, {
-        responsive: 'resize',
-        add_classes: true
-      })[0];
-      
-      if (!visualObj) {
-        console.error('Failed to parse ABC');
-        return;
+      // If synth not primed yet, wait for it
+      if (!abcSynthPrimedRef.current || !abcSynthRef.current) {
+        console.log('Synth not ready, initializing...');
+        // Create audio context if needed
+        if (!audioContextRef.current) {
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          audioContextRef.current = ctx;
+        }
+        
+        if (audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
+        
+        // Initialize synth if not done
+        if (!abcVisualObjRef.current) {
+          abcVisualObjRef.current = abcjs.renderAbc('abc-render-area', abcContent, {
+            responsive: 'resize',
+            add_classes: true
+          })[0];
+        }
+        
+        if (!abcVisualObjRef.current) {
+          console.error('Failed to parse ABC');
+          return;
+        }
+        
+        const synth = new abcjs.synth.CreateSynth();
+        abcSynthRef.current = synth;
+        
+        await synth.init({
+          audioContext: audioContextRef.current,
+          visualObj: abcVisualObjRef.current,
+          millisecondsPerMeasure: abcVisualObjRef.current.millisecondsPerMeasure?.() || 2000
+        });
+        
+        await synth.prime();
+        abcSynthPrimedRef.current = true;
+      } else {
+        // Resume audio context if suspended
+        if (audioContextRef.current?.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
       }
-      
-      // Create and prime synth
-      const synth = new abcjs.synth.CreateSynth();
-      abcSynthRef.current = synth;
-      
-      await synth.init({
-        audioContext: ctx,
-        visualObj: visualObj,
-        millisecondsPerMeasure: visualObj.millisecondsPerMeasure?.() || 2000
-      });
-      
-      await synth.prime();
       
       const currentPlaybackId = ++playbackIdRef.current;
       setIsPlaying(true);
       
-      // Track progress
-      const totalDuration = synth.synthControl?.warp 
-        ? synth.synthControl.duration 
-        : (visualObj.getTotalTime?.() || 60);
-      const startTime = ctx.currentTime;
+      // Get duration from visual object
+      const totalDuration = abcVisualObjRef.current?.getTotalTime?.() || 60;
+      const startTime = audioContextRef.current!.currentTime;
       
-      synth.start();
+      // Start playback immediately - synth is already primed
+      abcSynthRef.current.start();
       
       const updateProgress = () => {
         if (playbackIdRef.current !== currentPlaybackId || !audioContextRef.current) return;
@@ -263,6 +283,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const loadScore = useCallback(async (scoreName: string) => {
     stopPlayback();
     
+    // Clear previous synth state
+    abcVisualObjRef.current = null;
+    abcSynthPrimedRef.current = false;
+    
     if (!scoreName) {
       setMode('grid');
       setAbcContent('');
@@ -296,6 +320,46 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
           bpm: tempoMatch ? parseInt(tempoMatch[1]) : DEFAULT_BPM
         });
         setBpm(tempoMatch ? parseInt(tempoMatch[1]) : DEFAULT_BPM);
+        
+        // Pre-initialize synth during load (async, non-blocking for UI)
+        // This happens after state updates so abc-render-area exists
+        setTimeout(async () => {
+          try {
+            // Create audio context
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            audioContextRef.current = ctx;
+            
+            // Render ABC notation visually
+            const visualObj = abcjs.renderAbc('abc-render-area', content, {
+              responsive: 'resize',
+              add_classes: true
+            })[0];
+            
+            if (!visualObj) {
+              console.error('Failed to parse ABC during preload');
+              return;
+            }
+            
+            abcVisualObjRef.current = visualObj;
+            
+            // Create and prime synth
+            const synth = new abcjs.synth.CreateSynth();
+            abcSynthRef.current = synth;
+            
+            await synth.init({
+              audioContext: ctx,
+              visualObj: visualObj,
+              millisecondsPerMeasure: visualObj.millisecondsPerMeasure?.() || 2000
+            });
+            
+            await synth.prime();
+            abcSynthPrimedRef.current = true;
+            console.log('ABC synth pre-initialized successfully');
+          } catch (e) {
+            console.error('Error pre-initializing ABC synth:', e);
+          }
+        }, 100);
+        
       } else {
         // Small file or non-ABC - use grid mode
         setMode('grid');
