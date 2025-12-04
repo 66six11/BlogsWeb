@@ -87,6 +87,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [sustain, setSustain] = useState(true); // Sustain/延音 toggle, default on
   const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
+  const [selectedVoice, setSelectedVoice] = useState<string>('all'); // Voice filter
+  const [noteDuration, setNoteDuration] = useState<number>(2); // Default duration for new notes (eighth note)
   
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -114,18 +116,44 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className }) => {
     return Math.max(...notes.map(n => n.startTime + n.duration));
   }, [notes]);
 
-  // O(1) note lookup for grid
-  const activeNoteSet = useMemo(() => {
-    const set = new Set<string>();
-    for (const note of notes) {
-      set.add(`${note.octave}-${note.pitch}-${note.startTime}`);
-    }
-    return set;
-  }, [notes]);
+  // Filter notes by selected voice
+  const filteredNotes = useMemo(() => {
+    if (selectedVoice === 'all') return notes;
+    return notes.filter(n => (n.voice || 'V1') === selectedVoice);
+  }, [notes, selectedVoice]);
 
-  const isNoteActive = useCallback((octave: number, pitch: number, step: number) => {
-    return activeNoteSet.has(`${octave}-${pitch}-${step}`);
-  }, [activeNoteSet]);
+  // O(1) note lookup for grid - includes duration info
+  const activeNoteMap = useMemo(() => {
+    const map = new Map<string, Note>();
+    for (const note of filteredNotes) {
+      map.set(`${note.octave}-${note.pitch}-${note.startTime}`, note);
+    }
+    return map;
+  }, [filteredNotes]);
+
+  const getNoteAt = useCallback((octave: number, pitch: number, step: number): Note | undefined => {
+    return activeNoteMap.get(`${octave}-${pitch}-${step}`);
+  }, [activeNoteMap]);
+
+  // Check if a cell is part of a sustained note (for visual display)
+  const isPartOfNote = useCallback((octave: number, pitch: number, step: number): { isStart: boolean; isMiddle: boolean; note?: Note } => {
+    // Check if this is the start of a note
+    const startNote = activeNoteMap.get(`${octave}-${pitch}-${step}`);
+    if (startNote) {
+      return { isStart: true, isMiddle: false, note: startNote };
+    }
+    
+    // Check if this step is part of a longer note that started earlier
+    for (const note of filteredNotes) {
+      if (note.octave === octave && note.pitch === pitch) {
+        if (step > note.startTime && step < note.startTime + note.duration) {
+          return { isStart: false, isMiddle: true, note };
+        }
+      }
+    }
+    
+    return { isStart: false, isMiddle: false };
+  }, [activeNoteMap, filteredNotes]);
   
   // Initialize
   useEffect(() => {

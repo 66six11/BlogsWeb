@@ -61,6 +61,7 @@ export interface ScoreMetadata {
   timeSignature?: string;
   key?: string;
   defaultNoteLength?: string;
+  voices?: string[]; // List of voice/track names
 }
 
 // Scheduled note for playback - contains timing and frequency info
@@ -70,7 +71,21 @@ export interface ScheduledNote {
   duration: number;  // in steps
   pitch: number;
   octave: number;
+  voice?: string; // Track/voice identifier
 }
+
+// Note duration types for professional editing
+export type NoteDurationType = 'whole' | 'half' | 'quarter' | 'eighth' | 'sixteenth' | 'thirtysecond';
+
+// Note duration in steps (based on 16th note = 1 step)
+export const NOTE_DURATION_STEPS: Record<NoteDurationType, number> = {
+  'whole': 16,      // 全音符
+  'half': 8,        // 二分音符
+  'quarter': 4,     // 四分音符
+  'eighth': 2,      // 八分音符
+  'sixteenth': 1,   // 十六分音符
+  'thirtysecond': 0.5 // 三十二分音符
+};
 
 // Parsed score result
 export interface ParsedScore {
@@ -80,6 +95,8 @@ export interface ParsedScore {
   playbackSchedule: ScheduledNote[];
   // Notes indexed by step for O(1) lookup
   notesByStep: Map<number, ScheduledNote[]>;
+  // Notes indexed by voice
+  notesByVoice: Map<string, Note[]>;
   // Total duration in steps
   totalSteps: number;
 }
@@ -293,7 +310,7 @@ const parseABCChordV2 = (
 const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMetadata } => {
   const rawLines = content.split('\n');
   const parsedNotes: Note[] = [];
-  const metadata: ScoreMetadata = { bpm: DEFAULT_BPM, defaultNoteLength: '1/8' };
+  const metadata: ScoreMetadata = { bpm: DEFAULT_BPM, defaultNoteLength: '1/8', voices: [] };
   
   let defaultNoteLength = 1/8;
   let baseNoteDuration = 2;
@@ -301,8 +318,10 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
   let keySignature: Record<string, number> = {};
   
   const voicePositions: Map<string, number> = new Map();
-  let currentVoice = 'default';
+  const voiceSet: Set<string> = new Set();
+  let currentVoice = 'V1';
   voicePositions.set(currentVoice, 0);
+  voiceSet.add(currentVoice);
   
   let barAccidentals: Map<string, number> = new Map();
 
@@ -375,10 +394,11 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
           inBody = true;
           break;
         case 'V':
-          currentVoice = value.split(/\s+/)[0];
+          currentVoice = value.split(/\s+/)[0] || 'V1';
           if (!voicePositions.has(currentVoice)) {
             voicePositions.set(currentVoice, 0);
           }
+          voiceSet.add(currentVoice);
           break;
       }
       continue;
@@ -393,10 +413,11 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
       const field = match[1].toUpperCase();
       const value = match[2];
       if (field === 'V') {
-        currentVoice = value.split(/\s+/)[0];
+        currentVoice = value.split(/\s+/)[0] || 'V1';
         if (!voicePositions.has(currentVoice)) {
           voicePositions.set(currentVoice, 0);
         }
+        voiceSet.add(currentVoice);
       } else if (field === 'K') {
         const keyMatch = value.match(/^([A-G][b#]?)(m|min|maj|major|minor)?/i);
         if (keyMatch) {
@@ -467,6 +488,9 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
         if (!isInlineField && closeBracket > i) {
           const chordContent = musicContent.substring(i + 1, closeBracket);
           const { chordNotes, maxDuration } = parseABCChordV2(chordContent, baseNoteDuration, currentTime, keySignature, barAccidentals);
+          
+          // Add voice to chord notes
+          chordNotes.forEach(n => n.voice = currentVoice);
           parsedNotes.push(...chordNotes);
           
           let durationStr = '';
@@ -516,6 +540,7 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
           keySignature, barAccidentals, accidental, hasExplicitAccidental
         );
         if (noteResult.note) {
+          noteResult.note.voice = currentVoice;
           parsedNotes.push(noteResult.note);
           currentTime += noteResult.note.duration;
         }
@@ -528,6 +553,9 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
     
     voicePositions.set(currentVoice, currentTime);
   }
+
+  // Store voices in metadata
+  metadata.voices = Array.from(voiceSet);
 
   return { notes: parsedNotes, metadata };
 };
@@ -667,7 +695,8 @@ export const parseScore = (content: string): ParsedScore => {
     startTime: note.startTime,
     duration: note.duration,
     pitch: note.pitch,
-    octave: note.octave
+    octave: note.octave,
+    voice: note.voice
   }));
   
   // Sort by start time for sequential playback
@@ -683,6 +712,16 @@ export const parseScore = (content: string): ParsedScore => {
     notesByStep.get(step)!.push(note);
   }
   
+  // Pre-index notes by voice
+  const notesByVoice = new Map<string, Note[]>();
+  for (const note of notes) {
+    const voice = note.voice || 'V1';
+    if (!notesByVoice.has(voice)) {
+      notesByVoice.set(voice, []);
+    }
+    notesByVoice.get(voice)!.push(note);
+  }
+  
   // Calculate total steps
   const totalSteps = notes.length > 0 
     ? Math.max(...notes.map(n => n.startTime + n.duration))
@@ -693,6 +732,7 @@ export const parseScore = (content: string): ParsedScore => {
     metadata,
     playbackSchedule,
     notesByStep,
+    notesByVoice,
     totalSteps
   };
 };
