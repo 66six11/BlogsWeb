@@ -199,16 +199,17 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
 
   // Index notes by step for O(1) playback lookup
   // Maps each step to all notes that START at that step
+  // Uses filteredNotes to respect voice filtering
   const notesByStep = useMemo(() => {
     const map = new Map<number, Note[]>();
-    for (const note of notes) {
+    for (const note of filteredNotes) {
       if (!map.has(note.startTime)) {
         map.set(note.startTime, []);
       }
       map.get(note.startTime)!.push(note);
     }
     return map;
-  }, [notes]);
+  }, [filteredNotes]);
 
   const getNoteAt = useCallback((octave: number, pitch: number, step: number): Note | undefined => {
     return noteStartIndex.get(`${octave}-${pitch}-${step}`);
