@@ -1,37 +1,113 @@
 /* Theme CSS Variables and Styles */
+/* =================================================================================
+   All CSS variables are derived from config.ts color configurations.
+   This file provides CSS custom properties that can be used throughout the app.
+   =================================================================================
+*/
 
 /* CSS Variables for theming */
+/* Default theme (dark mode) - values from THEME_CONFIG.dark */
 :root {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --accent-1: #deb99a;
-  --accent-2: #7C85EB;
-  --accent-3: #c493b1;
+  /* Theme colors from THEME_CONFIG.dark */
+  --theme-primary: #897b8c;
+  --theme-secondary: #4d4658;
+  --theme-tertiary: #3b3442;
+  --theme-accent1: #deb99a;
+  --theme-accent2: #c493b1;
+  --theme-accent3: #7C85EB;
+  --theme-text-primary: #f1f5f9;
+  --theme-text-secondary: #e2e8f0;
+  
+  /* Semantic color mappings for dark mode */
+  --bg-primary: var(--theme-tertiary);
+  --bg-secondary: var(--theme-secondary);
+  --bg-tertiary: var(--theme-primary);
+  --text-primary: var(--theme-text-primary);
+  --text-secondary: var(--theme-text-secondary);
+  --accent-1: var(--theme-accent1);
+  --accent-2: var(--theme-accent2);
+  --accent-3: var(--theme-accent3);
+  
+  /* Icon colors from ICON_COLORS */
+  --icon-primary: #F3D493;
+  --icon-secondary: #6979D9;
+  --icon-accent: #F00608;
+  --icon-default: #fbbf24;
+  
+  /* UI Colors from UI_COLORS */
+  --ui-success: #10b981;
+  --ui-warning: #f59e0b;
+  --ui-error: #ef4444;
+  --ui-info: #3b82f6;
+  --ui-button-primary: #7c3aed;
+  --ui-button-primary-hover: #8b5cf6;
+  --ui-button-secondary: #64748b;
+  
+  /* Callout colors from UI_COLORS.callout */
+  --callout-info: #3b82f6;
+  --callout-tip: #10b981;
+  --callout-warning: #f97316;
+  --callout-error: #ef4444;
+  --callout-question: #f59e0b;
+  --callout-quote: #64748b;
+  --callout-example: #a855f7;
+  --callout-summary: #06b6d4;
+  
+  /* Playhead and glow colors */
+  --playhead: #fbbf24;
+  --glow-gold: #fbbf24;
+  --glow-purple: #7c3aed;
+  
+  /* Scene/3D colors from SCENE_COLORS */
+  --scene-particles: #fbbf24;
+  
+  /* Hexagram colors from HEXAGRAM_COLORS */
+  --hexagram-primary: rgb(251, 191, 36);
+  --hexagram-secondary: rgb(251, 143, 36);
 }
 
+/* Light theme - values from THEME_CONFIG.light */
 :root.light {
-  --bg-primary: #F7F8F3;
-  --bg-secondary: #EBECF2;
-  --bg-tertiary: #e3d8d8;
-  --text-primary: #1e293b;
-  --text-secondary: #475569;
-  --accent-1: #deb99a;
-  --accent-2: #7C85EB;
-  --accent-3: #c493b1;
+  --theme-primary: #F7F8F3;
+  --theme-secondary: #EBECF2;
+  --theme-tertiary: #e3d8d8;
+  --theme-accent1: #deb99a;
+  --theme-accent2: #7C85EB;
+  --theme-accent3: #c493b1;
+  --theme-text-primary: #1e293b;
+  --theme-text-secondary: #475569;
+  
+  /* Semantic mappings for light mode */
+  --bg-primary: var(--theme-primary);
+  --bg-secondary: var(--theme-secondary);
+  --bg-tertiary: var(--theme-tertiary);
+  --text-primary: var(--theme-text-primary);
+  --text-secondary: var(--theme-text-secondary);
+  --accent-1: var(--theme-accent1);
+  --accent-2: var(--theme-accent2);
+  --accent-3: var(--theme-accent3);
 }
 
+/* Dark theme - values from THEME_CONFIG.dark */
 :root.dark {
-  --bg-primary: #3b3442;
-  --bg-secondary: #4d4658;
-  --bg-tertiary: #897b8c;
-  --text-primary: #f1f5f9;
-  --text-secondary: #e2e8f0;
-  --accent-1: #deb99a;
-  --accent-2: #c493b1;
-  --accent-3: #7C85EB;
+  --theme-primary: #897b8c;
+  --theme-secondary: #4d4658;
+  --theme-tertiary: #3b3442;
+  --theme-accent1: #deb99a;
+  --theme-accent2: #c493b1;
+  --theme-accent3: #7C85EB;
+  --theme-text-primary: #f1f5f9;
+  --theme-text-secondary: #e2e8f0;
+  
+  /* Semantic mappings for dark mode */
+  --bg-primary: var(--theme-tertiary);
+  --bg-secondary: var(--theme-secondary);
+  --bg-tertiary: var(--theme-primary);
+  --text-primary: var(--theme-text-primary);
+  --text-secondary: var(--theme-text-secondary);
+  --accent-1: var(--theme-accent1);
+  --accent-2: var(--theme-accent2);
+  --accent-3: var(--theme-accent3);
 }
 
 body {
@@ -68,7 +144,7 @@ body {
 /* Theme-aware component overrides */
 :root.light .nav-bar,
 :root.light nav {
-  background-color: rgba(247, 248, 243, 0.6) !important;
+  background-color: rgba(247, 248, 243, 0.6) !important;  /* THEME_CONFIG.light.primary with alpha */
   border-color: var(--bg-tertiary) !important;
 }
 
@@ -81,11 +157,11 @@ body {
 :root.light .card,
 :root.light .bg-slate-900\/60,
 :root.light .bg-slate-900\/80 {
-  background-color: rgba(235, 236, 242, 0.3) !important;
+  background-color: rgba(235, 236, 242, 0.3) !important;  /* THEME_CONFIG.light.secondary with alpha */
 }
 
 :root.light .welcome-bg {
-  background-color: rgba(235, 236, 242, 1) !important;
+  background-color: rgba(235, 236, 242, 1) !important;  /* THEME_CONFIG.light.secondary */
 }
 
 :root.light .text-slate-100,
@@ -107,18 +183,18 @@ body {
 }
 
 :root.light footer {
-  background-color: rgba(227, 216, 216, 0.95) !important;
+  background-color: rgba(227, 216, 216, 0.95) !important;  /* THEME_CONFIG.light.tertiary with alpha */
 }
 
 :root.dark .nav-bar,
 :root.dark nav {
-  background-color: rgba(59, 52, 66, 0.6) !important;
+  background-color: rgba(59, 52, 66, 0.6) !important;  /* THEME_CONFIG.dark.tertiary with alpha */
 }
 
 :root.dark .card,
 :root.dark .bg-slate-900\/60,
 :root.dark .bg-slate-900\/80 {
-  background-color: rgba(77, 70, 88, 0.6) !important;
+  background-color: rgba(77, 70, 88, 0.6) !important;  /* THEME_CONFIG.dark.secondary with alpha */
 }
 
 /* Accent color styling */

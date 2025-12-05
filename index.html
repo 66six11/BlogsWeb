@@ -13,6 +13,13 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
 
     <script>
+      /**
+       * Tailwind CSS Configuration
+       * =================================================================================
+       * All color values are synchronized with config.ts color configurations.
+       * This provides Tailwind utility classes that match our theme system.
+       * =================================================================================
+       */
       tailwind.config = {
         darkMode: 'class',
         theme: {
@@ -22,28 +29,100 @@
               serif: ['Playfair Display', 'serif'],
             },
             colors: {
-              magic: {
-                dark: '#0f172a',
-                purple: '#7c3aed',
-                gold: '#fbbf24',
-              },
-              // Theme colors from config
+              // =============================================================
+              // Theme colors from THEME_CONFIG in config.ts
+              // =============================================================
               theme: {
-                // Light mode
+                // Light mode from THEME_CONFIG.light
                 'light-primary': '#F7F8F3',
                 'light-secondary': '#EBECF2',
                 'light-tertiary': '#e3d8d8',
                 'light-accent1': '#deb99a',
                 'light-accent2': '#7C85EB',
                 'light-accent3': '#c493b1',
-                // Dark mode
+                'light-text-primary': '#1e293b',
+                'light-text-secondary': '#475569',
+                // Dark mode from THEME_CONFIG.dark
                 'dark-primary': '#897b8c',
                 'dark-secondary': '#4d4658',
                 'dark-tertiary': '#3b3442',
                 'dark-accent1': '#deb99a',
                 'dark-accent2': '#c493b1',
                 'dark-accent3': '#7C85EB',
-              }
+                'dark-text-primary': '#f1f5f9',
+                'dark-text-secondary': '#e2e8f0',
+              },
+              // =============================================================
+              // Icon colors from ICON_COLORS in config.ts
+              // =============================================================
+              icon: {
+                'primary': '#F3D493',
+                'secondary': '#6979D9',
+                'accent': '#F00608',
+                'default': '#fbbf24',
+              },
+              // =============================================================
+              // UI Colors from UI_COLORS in config.ts
+              // =============================================================
+              ui: {
+                'success': '#10b981',
+                'warning': '#f59e0b',
+                'error': '#ef4444',
+                'info': '#3b82f6',
+                'button-primary': '#7c3aed',
+                'button-primary-hover': '#8b5cf6',
+                'button-secondary': '#64748b',
+              },
+              // =============================================================
+              // Callout colors from UI_COLORS.callout in config.ts
+              // =============================================================
+              callout: {
+                'info': '#3b82f6',
+                'tip': '#10b981',
+                'warning': '#f97316',
+                'error': '#ef4444',
+                'question': '#f59e0b',
+                'quote': '#64748b',
+                'example': '#a855f7',
+                'summary': '#06b6d4',
+              },
+              // =============================================================
+              // Scene/3D colors from SCENE_COLORS in config.ts
+              // =============================================================
+              scene: {
+                'particles': '#fbbf24',
+              },
+              // =============================================================
+              // Hexagram colors from HEXAGRAM_COLORS in config.ts
+              // =============================================================
+              hexagram: {
+                'primary': 'rgb(251, 191, 36)',
+                'secondary': 'rgb(251, 143, 36)',
+              },
+              // =============================================================
+              // Glow colors from UI_COLORS.glow in config.ts
+              // =============================================================
+              glow: {
+                'gold': '#fbbf24',
+                'purple': '#7c3aed',
+              },
+              // =============================================================
+              // CSS Variable-based colors (for dynamic theming)
+              // =============================================================
+              accent: {
+                '1': 'var(--accent-1)',
+                '2': 'var(--accent-2)',
+                '3': 'var(--accent-3)',
+              },
+              bg: {
+                'primary': 'var(--bg-primary)',
+                'secondary': 'var(--bg-secondary)',
+                'tertiary': 'var(--bg-tertiary)',
+              },
+              text: {
+                'primary': 'var(--text-primary)',
+                'secondary': 'var(--text-secondary)',
+              },
             },
             animation: {
               'float': 'float 6s ease-in-out infinite',

@@ -75,29 +75,38 @@ export const EXCLUDED_FILES: string[] = [
 // =================================================================================
 // THEME CONFIGURATION
 // =================================================================================
+// All colors used across the website are configured here.
+// Changes here will automatically apply throughout the application.
+// =================================================================================
 
 export const THEME_CONFIG = {
   // Light theme colors
   light: {
-    // Main theme colors
+    // Main theme colors (backgrounds)
     primary: '#F7F8F3',
     secondary: '#EBECF2',
     tertiary: '#e3d8d8',
-    // Accent colors
-    accent1: '#deb99a',
-    accent2: '#7C85EB',
-    accent3: '#c493b1',
+    // Accent colors (highlights, buttons, etc.)
+    accent1: '#deb99a',  // Warm gold/tan - used for highlights
+    accent2: '#7C85EB',  // Purple/blue - used for primary actions
+    accent3: '#c493b1',  // Pink/mauve - used for secondary elements
+    // Text colors
+    textPrimary: '#1e293b',
+    textSecondary: '#475569',
   },
   // Dark theme colors
   dark: {
-    // Main theme colors  
+    // Main theme colors (backgrounds)
     primary: '#897b8c',
     secondary: '#4d4658',
     tertiary: '#3b3442',
-    // Accent colors
-    accent1: '#deb99a',
-    accent2: '#c493b1',
-    accent3: '#7C85EB',
+    // Accent colors (highlights, buttons, etc.)
+    accent1: '#deb99a',  // Warm gold/tan
+    accent2: '#c493b1',  // Pink/mauve
+    accent3: '#7C85EB',  // Purple/blue
+    // Text colors
+    textPrimary: '#f1f5f9',
+    textSecondary: '#e2e8f0',
   },
 };
 
@@ -106,14 +115,78 @@ export const THEME_CONFIG = {
 // =================================================================================
 
 export const ICON_COLORS = {
-  // Primary icon color (used for sparkle icons, etc.)
+  // Primary icon color (used for sparkle icons, hexagram, etc.)
   primary: '#F3D493',
   // Secondary icon color
   secondary: '#6979D9',
-  // Accent icon color
+  // Accent icon color (used for small decorative elements)
   accent: '#F00608',
-  // Default icon color
-  default: '#fbbf24', // Amber/Gold
+  // Default icon color (amber/gold)
+  default: '#fbbf24',
+};
+
+// =================================================================================
+// UI COLORS
+// =================================================================================
+// Colors used for UI elements like buttons, callouts, status indicators, etc.
+// =================================================================================
+
+export const UI_COLORS = {
+  // Status/Semantic colors
+  success: '#10b981',      // Emerald - for success states
+  warning: '#f59e0b',      // Amber - for warnings
+  error: '#ef4444',        // Red - for errors
+  info: '#3b82f6',         // Blue - for info
+
+  // Interactive elements
+  button: {
+    primary: '#7c3aed',      // Purple - primary buttons
+    primaryHover: '#8b5cf6', // Lighter purple on hover
+    secondary: '#64748b',    // Slate - secondary buttons
+  },
+  
+  // Callout colors (for markdown callouts)
+  callout: {
+    info: '#3b82f6',       // Blue
+    tip: '#10b981',        // Emerald
+    warning: '#f97316',    // Orange
+    error: '#ef4444',      // Red
+    question: '#f59e0b',   // Amber
+    quote: '#64748b',      // Slate
+    example: '#a855f7',    // Purple
+    summary: '#06b6d4',    // Cyan
+  },
+
+  // Playhead and music player
+  playhead: '#fbbf24',     // Amber/Gold - playhead indicator
+  
+  // Shadows and glows (base colors, alpha applied in CSS)
+  glow: {
+    gold: '#fbbf24',
+    purple: '#7c3aed',
+    white: '#ffffff',
+  },
+};
+
+// =================================================================================
+// 3D SCENE COLORS
+// =================================================================================
+// Colors used in the Three.js particle scene
+// =================================================================================
+
+export const SCENE_COLORS = {
+  particles: '#fbbf24',    // Gold particles
+};
+
+// =================================================================================
+// HEXAGRAM ICON COLORS
+// =================================================================================
+// Colors for the animated hexagram/magic circle icon
+// =================================================================================
+
+export const HEXAGRAM_COLORS = {
+  primary: 'rgb(251, 191, 36)',    // Gold
+  secondary: 'rgb(251, 143, 36)',  // Orange-gold
 };
 
 // =================================================================================

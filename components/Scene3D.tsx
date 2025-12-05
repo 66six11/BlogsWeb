@@ -1,6 +1,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
+import { SCENE_COLORS } from '../config';
 
 interface Scene3DProps {
   analyser?: AnalyserNode;
@@ -105,7 +106,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ analyser }) => {
       uniforms: {
         uTime: { value: 0 },
         uBeat: { value: 0 },
-        uColor: { value: new THREE.Color('#fbbf24') } // Gold
+        uColor: { value: new THREE.Color(SCENE_COLORS.particles) }
       },
       vertexShader: particleVertexShader,
       fragmentShader: particleFragmentShader,
