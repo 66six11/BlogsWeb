@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
 import {Note} from '../types';
-import {Play, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair} from 'lucide-react';
+import {Play, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair, Undo2, Redo2} from 'lucide-react';
 import {SixteenthNoteIcon, EighthNoteIcon, QuarterNoteIcon, HalfNoteIcon, WholeNoteIcon} from './CustomIcons';
 import {MEDIA_CONFIG} from '../config';
 import {parseScore, ScoreMetadata, NOTE_DURATION_STEPS, NoteDurationType} from './ScoreParser';
@@ -77,6 +77,8 @@ const ROW_HEIGHT = 32;
 const DEFAULT_BPM = 120;
 const VISIBLE_STEP_BUFFER = 10; // Extra steps to render beyond visible area
 const MAX_CONCURRENT_NOTES = 32; // Limit concurrent oscillators for large scores
+const MAX_HISTORY_LENGTH = 50; // Maximum undo/redo history length
+const DRAG_THRESHOLD = 5; // Pixel threshold to distinguish click from drag
 
 // Salamander Grand Piano sampler configuration
 const SALAMANDER_BASE_URL = "https://tonejs.github.io/audio/salamander/";
@@ -254,6 +256,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
     const [selectedVoice, setSelectedVoice] = useState<string>('all'); // Voice filter
     const [selectedDuration, setSelectedDuration] = useState<NoteDurationType>('eighth'); // Default to 8th note
+    const [activeKeys, setActiveKeys] = useState<Map<string, { color: string; endTime: number }>>(new Map()); // Keys currently glowing
 
     // Refs
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -269,6 +272,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
     const [rulerScrollOffset, setRulerScrollOffset] = useState(0); // Track ruler scroll position
 
+    // History for undo/redo
+    const historyRef = useRef<{ states: Note[][]; cursor: number }>({states: [[]], cursor: 0});
+
+    // Drag scroll state
+    const isDraggingRef = useRef(false);
+    const dragStartRef = useRef({x: 0, y: 0, scrollLeft: 0, scrollTop: 0});
+    const hasDraggedRef = useRef(false); // Track if we've actually dragged (vs click)
+    const [isDragging, setIsDragging] = useState(false); // For cursor style
+
     // Virtual scroll state
     const [visibleRange, setVisibleRange] = useState({start: 0, end: MIN_STEPS});
 
@@ -279,6 +291,61 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
             playheadRef.current.style.transform = `translateX(${px}px)`;
         }
     }, []);
+
+    // Push notes state to history (for undo/redo)
+    const pushToHistory = useCallback((newNotes: Note[]) => {
+        const history = historyRef.current;
+        // Truncate any redo states if we're not at the end
+        const newStates = history.states.slice(0, history.cursor + 1);
+        newStates.push([...newNotes]);
+        // Limit history length
+        if (newStates.length > MAX_HISTORY_LENGTH) {
+            newStates.shift();
+        }
+        historyRef.current = {states: newStates, cursor: newStates.length - 1};
+    }, []);
+
+    // Undo function
+    const undo = useCallback(() => {
+        const history = historyRef.current;
+        if (history.cursor > 0) {
+            history.cursor--;
+            setNotes([...history.states[history.cursor]]);
+        }
+    }, []);
+
+    // Redo function
+    const redo = useCallback(() => {
+        const history = historyRef.current;
+        if (history.cursor < history.states.length - 1) {
+            history.cursor++;
+            setNotes([...history.states[history.cursor]]);
+        }
+    }, []);
+
+    // Check if undo/redo is available
+    const canUndo = historyRef.current.cursor > 0;
+    const canRedo = historyRef.current.cursor < historyRef.current.states.length - 1;
+
+    // Keyboard shortcuts for undo/redo
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+            const modKey = isMac ? e.metaKey : e.ctrlKey;
+
+            if (modKey && e.key === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    redo();
+                } else {
+                    undo();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [undo, redo]);
 
     // Derived values
     const stepInterval = useMemo(() => Math.round(60000 / bpm / 4), [bpm]);
@@ -571,6 +638,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         playbackIdRef.current++;
         cleanupSampler();
         setIsPlaying(false);
+        setActiveKeys(new Map()); // Clear active keys on pause
         onPlaybackChange?.(false);  // 通知父组件播放已暂停
         // Keep currentStep and playheadPosition - don't reset
     }, [cleanupSampler, onPlaybackChange]);
@@ -593,6 +661,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         updatePlayheadPosition(0);
         setIsUserScrolling(false);
         isUserScrollingRef.current = false;
+        setActiveKeys(new Map()); // Clear active keys
         // Scroll to start
         if (scrollContainerRef.current) {
             scrollContainerRef.current.scrollLeft = 0;
@@ -603,7 +672,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const jumpToPlayhead = useCallback(() => {
         if (scrollContainerRef.current) {
             const c = scrollContainerRef.current;
-            c.scrollLeft = Math.max(0, playheadPosition - c.clientWidth / 2);
+            // Calculate scroll position to align playhead with target position
+            const playheadTargetPosition = KEY_LABEL_WIDTH + CELL_WIDTH * 4;
+            c.scrollLeft = Math.max(0, playheadPosition - playheadTargetPosition + KEY_LABEL_WIDTH);
             setIsUserScrolling(false);
             isUserScrollingRef.current = false;
         }
@@ -653,6 +724,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         // Real-time playback loop
         const playStartTime = performance.now();
         let lastProcessedStep = startStep - 1;
+        // Track active notes for key glow effect
+        const activeNoteEndTimes = new Map<string, { endTime: number; color: string }>();
 
         const updatePlayhead = () => {
             if (playbackIdRef.current !== currentPlaybackId) return;
@@ -684,12 +757,36 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                                     // Sampler may have been disposed
                                     return;
                                 }
+
+                                // Track active note for glow effect
+                                const keyId = `${note.octave}-${note.pitch}`;
+                                const endTimeMs = performance.now() + durSec * 1000;
+                                const color = getNoteColor(note.octave, note.pitch);
+                                activeNoteEndTimes.set(keyId, {endTime: endTimeMs, color});
                             }
                         }
                     }
                 }
                 lastProcessedStep = currentStepFloor;
             }
+
+            // Update active keys for glow effect
+            const now = performance.now();
+            const newActiveKeys = new Map<string, { color: string; endTime: number }>();
+            for (const [keyId, data] of activeNoteEndTimes) {
+                if (data.endTime > now) {
+                    newActiveKeys.set(keyId, data);
+                }
+            }
+            // Only update state if changed
+            setActiveKeys(prev => {
+                if (prev.size !== newActiveKeys.size) return newActiveKeys;
+                for (const [k, v] of prev) {
+                    const newV = newActiveKeys.get(k);
+                    if (!newV || newV.endTime !== v.endTime) return newActiveKeys;
+                }
+                return prev;
+            });
 
             // Update playhead position directly via ref (no React re-render)
             const px = currentPos * CELL_WIDTH;
@@ -703,19 +800,34 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                 setCurrentStep(currentStepFloor);
             }
 
-            // Auto-scroll
+            // Smooth scroll during playback - playhead stays near left edge (after key labels)
             if (scrollContainerRef.current) {
                 const c = scrollContainerRef.current;
-                const isPlayheadVisible = px >= c.scrollLeft && px <= c.scrollLeft + c.clientWidth - CELL_WIDTH * 2;
+                // Fixed playhead position relative to viewport: at KEY_LABEL_WIDTH (right edge of key labels)
+                const playheadTargetPosition = KEY_LABEL_WIDTH; // A bit into the visible area
+
+                // Calculate the scroll position to keep playhead at target position
+                const targetScrollLeft = px - playheadTargetPosition + KEY_LABEL_WIDTH;
+
+                // Check if playhead is visible in current view
+                const playheadViewportX = px - c.scrollLeft + KEY_LABEL_WIDTH;
+                const isPlayheadVisible = playheadViewportX >= KEY_LABEL_WIDTH && playheadViewportX <= c.clientWidth - CELL_WIDTH * 2;
 
                 if (isPlayheadVisible && isUserScrollingRef.current) {
+                    // User scrolled away but playhead is now visible again - resume auto-scroll
                     setIsUserScrolling(false);
                     isUserScrollingRef.current = false;
                 }
 
                 if (!isUserScrollingRef.current) {
-                    if (px > c.scrollLeft + c.clientWidth - CELL_WIDTH * 4 || px < c.scrollLeft) {
-                        c.scrollLeft = Math.max(0, px - c.clientWidth / 2);
+                    // Smooth scroll to target position
+                    const currentScroll = c.scrollLeft;
+                    const scrollDiff = targetScrollLeft - currentScroll;
+                    // Smooth interpolation for fluid motion
+                    const smoothFactor = 0.15;
+                    const newScroll = currentScroll + scrollDiff * smoothFactor;
+                    if (Math.abs(scrollDiff) > 1) {
+                        c.scrollLeft = Math.max(0, newScroll);
                     }
                 }
             }
@@ -725,6 +837,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                 playbackIdRef.current++;
                 cleanupSampler();
                 setIsPlaying(false);
+                setActiveKeys(new Map()); // Clear active keys on stop
                 return;
             }
 
@@ -777,6 +890,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
             // Parse to Note[] using ScoreParser - always display in grid
             const parsed = parseScore(content);
             setNotes(parsed.notes);
+            // Reset history when loading a new score
+            historyRef.current = {states: [[...parsed.notes]], cursor: 0};
             setScoreMetadata(parsed.metadata);
             setBpm(parsed.metadata.bpm);
             setAbcContent(content);
@@ -823,10 +938,16 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                 n.octave === octave && n.pitch === pitch &&
                 step >= n.startTime && step < n.startTime + n.duration
             );
-            if (existingNote) return prev.filter(n => n !== existingNote);
-            return [...prev, {pitch, octave, startTime: step, duration}];
+            let newNotes: Note[];
+            if (existingNote) {
+                newNotes = prev.filter(n => n !== existingNote);
+            } else {
+                newNotes = [...prev, {pitch, octave, startTime: step, duration}];
+            }
+            pushToHistory(newNotes);
+            return newNotes;
         });
-    }, [selectedDuration]);
+    }, [selectedDuration, pushToHistory]);
 
     const togglePlayback = useCallback(() => {
         if (isPlaying) {
@@ -841,9 +962,71 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         setCurrentStep(0);
         updatePlayheadPosition(0);
         setNotes([]);
+        pushToHistory([]);
         setAbcContent('');
         setSelectedScore('');
-    }, [pausePlayback, updatePlayheadPosition]);
+    }, [pausePlayback, updatePlayheadPosition, pushToHistory]);
+
+    // Drag scroll handlers
+    const handleDragStart = useCallback((e: React.MouseEvent) => {
+        // Only start drag on left mouse button and if not clicking on interactive elements
+        if (e.button !== 0) return;
+
+        isDraggingRef.current = true;
+        hasDraggedRef.current = false;
+        dragStartRef.current = {
+            x: e.clientX,
+            y: e.clientY,
+            scrollLeft: scrollContainerRef.current?.scrollLeft || 0,
+            scrollTop: scrollContainerRef.current?.scrollTop || 0
+        };
+    }, []);
+
+    const handleDragMove = useCallback((e: React.MouseEvent) => {
+        if (!isDraggingRef.current || !scrollContainerRef.current) return;
+
+        const dx = e.clientX - dragStartRef.current.x;
+        const dy = e.clientY - dragStartRef.current.y;
+
+        // Check if we've moved enough to be considered a drag
+        if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+            hasDraggedRef.current = true;
+            setIsDragging(true);
+        }
+
+        if (hasDraggedRef.current) {
+            scrollContainerRef.current.scrollLeft = dragStartRef.current.scrollLeft - dx;
+            scrollContainerRef.current.scrollTop = dragStartRef.current.scrollTop - dy;
+        }
+    }, []);
+
+    const handleDragEnd = useCallback(() => {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        // hasDraggedRef is reset in handleGridClick, not here, because:
+        // The click event fires after mouseUp, and we need hasDraggedRef to 
+        // distinguish between a drag-release (should not toggle note) and
+        // a simple click (should toggle note).
+    }, []);
+
+    // Handle grid click - only toggle note if not dragged
+    const handleGridClick = useCallback((e: React.MouseEvent) => {
+        // If we were dragging, don't toggle note
+        if (hasDraggedRef.current) {
+            hasDraggedRef.current = false;
+            return;
+        }
+
+        // Event delegation: calculate which cell was clicked
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const step = Math.floor(x / CELL_WIDTH);
+        const rowIndex = Math.floor(y / ROW_HEIGHT);
+        if (rowIndex >= 0 && rowIndex < TOTAL_KEYS && step >= 0 && step < totalSteps) {
+            toggleNote(rowIndex, step);
+        }
+    }, [totalSteps, toggleNote]);
 
     // Cleanup on unmount - properly dispose all audio resources
     useEffect(() => () => disposeSampler(), [disposeSampler]);
@@ -877,43 +1060,63 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
 
                 {/* Controls row */}
                 <div className="flex gap-2 items-center flex-wrap justify-between">
-                {/* Sustain toggle */}
+                    {/* Sustain toggle */}
                     <div className="flex gap-2 items-center flex-wrap">
-                    <button
-                        onClick={() => setSustain(prev => !prev)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${sustain ? 'ring-2 ring-purple-400 piano-btn-primary' : 'piano-btn-secondary'}`}
-                        title={sustain ? '延音开启 - 音符会自然衰减' : '延音关闭 - 音符快速停止'}
-                    >
-                        {sustain ? '延音 ✓' : '延音'}
-                    </button>
-
-                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg piano-bg-secondary">
-                        <button onClick={() => setBpm(prev => Math.max(40, prev - 10))}
-                                className="p-1 rounded hover:bg-white/10 piano-text-secondary">
-                            <Minus size={14}/>
-                        </button>
-                        <span className="text-xs font-mono w-16 text-center piano-text-accent1">{bpm} BPM</span>
-                        <button onClick={() => setBpm(prev => Math.min(240, prev + 10))}
-                                className="p-1 rounded hover:bg-white/10 piano-text-secondary">
-                            <Plus size={14}/>
-                        </button>
-                    </div>
-
-                    {availableScores.length > 0 && (
-                        <select
-                            value={selectedScore}
-                            onChange={(e) => loadScore(e.target.value)}
-                            className="px-3 py-1.5 rounded-lg border text-sm piano-input"
+                        <button
+                            onClick={() => setSustain(prev => !prev)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${sustain ? 'ring-2 ring-purple-400 piano-btn-primary' : 'piano-btn-secondary'}`}
+                            title={sustain ? '延音开启 - 音符会自然衰减' : '延音关闭 - 音符快速停止'}
                         >
-                            <option value="">加载乐谱...</option>
-                            {availableScores.map(score => <option key={score} value={score}>{score}</option>)}
-                        </select>
-                    )}
+                            {sustain ? '延音 ✓' : '延音'}
+                        </button>
+
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-lg piano-bg-secondary">
+                            <button onClick={() => setBpm(prev => Math.max(40, prev - 10))}
+                                    className="p-1 rounded hover:bg-white/10 piano-text-secondary">
+                                <Minus size={14}/>
+                            </button>
+                            <span className="text-xs font-mono w-16 text-center piano-text-accent1">{bpm} BPM</span>
+                            <button onClick={() => setBpm(prev => Math.min(240, prev + 10))}
+                                    className="p-1 rounded hover:bg-white/10 piano-text-secondary">
+                                <Plus size={14}/>
+                            </button>
+                        </div>
+
+                        {availableScores.length > 0 && (
+                            <select
+                                value={selectedScore}
+                                onChange={(e) => loadScore(e.target.value)}
+                                className="px-3 py-1.5 rounded-lg border text-sm piano-input"
+                            >
+                                <option value="">加载乐谱...</option>
+                                {availableScores.map(score => <option key={score} value={score}>{score}</option>)}
+                            </select>
+                        )}
                     </div>
                     <div className="flex gap-2 items-center flex-wrap">
                         <button onClick={clearAll} className="p-2 rounded-full hover:bg-red-500/20 text-red-400"
                                 title="清除">
                             <Trash2 size={20}/>
+                        </button>
+
+                        {/* Undo button */}
+                        <button
+                            onClick={undo}
+                            disabled={!canUndo}
+                            className={`p-2 rounded-full hover:bg-white/10 piano-text-secondary ${!canUndo ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            title="撤销 (Ctrl+Z)"
+                        >
+                            <Undo2 size={20}/>
+                        </button>
+
+                        {/* Redo button */}
+                        <button
+                            onClick={redo}
+                            disabled={!canRedo}
+                            className={`p-2 rounded-full hover:bg-white/10 piano-text-secondary ${!canRedo ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            title="重做 (Ctrl+Shift+Z)"
+                        >
+                            <Redo2 size={20}/>
                         </button>
 
                         {/* Jump to start button */}
@@ -936,29 +1139,29 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                             </button>
 
                         )}
-                   
 
-                    {/* Sampler loading indicator */}
-                    {isSamplerLoading && (
-                        <span
-                            className="flex items-center gap-1 px-2 py-1 rounded text-xs piano-bg-secondary piano-text-secondary">
+
+                        {/* Sampler loading indicator */}
+                        {isSamplerLoading && (
+                            <span
+                                className="flex items-center gap-1 px-2 py-1 rounded text-xs piano-bg-secondary piano-text-secondary">
               <Loader2 size={14} className="animate-spin"/>
               加载钢琴音色中...
             </span>
-                    )}
+                        )}
 
-                    <button
-                        onClick={togglePlayback}
-                        disabled={notes.length === 0 || isSamplerLoading}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold transition-all text-white hover:opacity-90 ${
-                            isPlaying ? 'shadow-[0_0_15px_rgba(222,185,154,0.5)] piano-btn-active' : 'piano-btn-primary'
-                        } ${(notes.length === 0 || isSamplerLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        title={isSamplerLoading ? '正在加载钢琴音色...' : (notes.length === 0 ? '没有音符可播放' : (isPlaying ? '暂停' : '播放'))}
-                    >
-                        {isSamplerLoading ? <Loader2 size={16} className="animate-spin"/> : (isPlaying ?
-                            <Pause size={16}/> : <Play size={16} fill="currentColor"/>)}
-                        {isSamplerLoading ? '加载中' : (isPlaying ? '暂停' : '播放')}
-                    </button> 
+                        <button
+                            onClick={togglePlayback}
+                            disabled={notes.length === 0 || isSamplerLoading}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold transition-all text-white hover:opacity-90 ${
+                                isPlaying ? 'shadow-[0_0_15px_rgba(222,185,154,0.5)] piano-btn-active' : 'piano-btn-primary'
+                            } ${(notes.length === 0 || isSamplerLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            title={isSamplerLoading ? '正在加载钢琴音色...' : (notes.length === 0 ? '没有音符可播放' : (isPlaying ? '暂停' : '播放'))}
+                        >
+                            {isSamplerLoading ? <Loader2 size={16} className="animate-spin"/> : (isPlaying ?
+                                <Pause size={16}/> : <Play size={16} fill="currentColor"/>)}
+                            {isSamplerLoading ? '加载中' : (isPlaying ? '暂停' : '播放')}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1063,7 +1266,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                             >
                                 {/* Key labels column - sticky left, scrolls vertically with grid */}
                                 <div
-                                    className="absolute top-0 z-20"
+                                    className="absolute top-0 z-50"
                                     style={{
                                         position: 'sticky',
                                         left: 0,
@@ -1071,53 +1274,67 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                                         height: `${TOTAL_KEYS * ROW_HEIGHT}px`
                                     }}
                                 >
-                                    {PIANO_KEYS.map((key, idx) => (
-                                        <div
-                                            key={`${key.octave}-${key.pitch}`}
-                                            className={`flex items-center text-xs border-b piano-border-subtle ${key.isBlack ? 'piano-key-black' : 'piano-key-white'}`}
-                                            style={{
-                                                width: `${KEY_LABEL_WIDTH}px`,
-                                                height: `${ROW_HEIGHT}px`
-                                            }}
-                                        >
-                                            <span className="flex-1 text-right pr-2">{key.name}{key.octave}</span>
-                                            {/* 右侧颜色指示条 */}
+                                    {PIANO_KEYS.map((key, idx) => {
+                                        const keyId = `${key.octave}-${key.pitch}`;
+                                        const activeData = activeKeys.get(keyId);
+                                        const isActive = !!activeData;
+                                        const glowColor = activeData?.color || getNoteColor(key.octave, key.pitch);
+
+                                        return (
                                             <div
+                                                key={keyId}
+                                                className={`flex items-center text-xs border-b piano-border-subtle ${key.isBlack ? 'piano-key-black' : 'piano-key-white'}`}
                                                 style={{
-                                                    width: '4px',
-                                                    height: '100%',
-                                                    backgroundColor: getNoteColor(key.octave, key.pitch)
+                                                    width: `${KEY_LABEL_WIDTH}px`,
+                                                    height: `${ROW_HEIGHT}px`,
+                                                    transition: 'box-shadow 0.15s ease-out, background-color 0.15s ease-out',
+                                                    boxShadow: isActive ? `inset 0 0 20px ${glowColor}, 0 0 15px ${glowColor}` : 'none',
+                                                    backgroundColor: isActive ? `${glowColor}30` : undefined
                                                 }}
-                                            />
-                                        </div>
-                                    ))}
+                                            >
+                                                <span
+                                                    className="flex-1 text-right pr-2"
+                                                    style={{
+                                                        transition: 'text-shadow 0.15s ease-out',
+                                                        textShadow: isActive ? `0 0 10px ${glowColor}` : 'none'
+                                                    }}
+                                                >
+                                                    {key.name}{key.octave}
+                                                </span>
+                                                {/* 右侧颜色指示条 */}
+                                                <div
+                                                    style={{
+                                                        width: '4px',
+                                                        height: '100%',
+                                                        backgroundColor: glowColor,
+                                                        transition: 'box-shadow 0.15s ease-out',
+                                                        boxShadow: isActive ? `0 0 10px ${glowColor}` : 'none'
+                                                    }}
+                                                />
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 {/* Grid area - uses CSS background for grid lines */}
                                 <div
-                                    className="absolute cursor-crosshair piano-grid"
+                                    className={`absolute piano-grid ${isDragging ? 'cursor-grabbing' : 'cursor-crosshair'}`}
                                     style={{
                                         left: `${KEY_LABEL_WIDTH}px`,
                                         top: 0,
                                         width: `${totalSteps * CELL_WIDTH}px`,
                                         height: `${TOTAL_KEYS * ROW_HEIGHT}px`
                                     }}
-                                    onClick={(e) => {
-                                        // Event delegation: calculate which cell was clicked
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        const x = e.clientX - rect.left;
-                                        const y = e.clientY - rect.top;
-                                        const step = Math.floor(x / CELL_WIDTH);
-                                        const rowIndex = Math.floor(y / ROW_HEIGHT);
-                                        if (rowIndex >= 0 && rowIndex < TOTAL_KEYS && step >= 0 && step < totalSteps) {
-                                            toggleNote(rowIndex, step);
-                                        }
-                                    }}
+                                    onMouseDown={handleDragStart}
+                                    onMouseMove={handleDragMove}
+                                    onMouseUp={handleDragEnd}
+                                    onMouseLeave={handleDragEnd}
+                                    onClick={handleGridClick}
                                 >
                                     {/* Playhead - highest z-index, positioned via ref for performance */}
                                     <div
                                         ref={playheadRef}
-                                        className="absolute top-0 bottom-0 z-50 pointer-events-none piano-playhead"
+                                        className="absolute top-0 bottom-0 z-20 pointer-events-none piano-playhead"
                                         style={{
                                             width: '2px',
                                             left: 0,
