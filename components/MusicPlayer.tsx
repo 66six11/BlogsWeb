@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { Volume2, VolumeX, SkipBack, SkipForward, Play, Pause } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
+import { buttonStyles, panelStyles, textStyles, borderStyles, mergeStyles } from '../utils/styles';
 
 interface MusicPlayerProps {
   onAnalyserReady?: (analyser: AnalyserNode) => void;
@@ -265,6 +266,18 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
 
   const currentTrack = tracks[currentTrackIndex];
 
+  // Button styles for different states
+  const playingButtonStyle = mergeStyles(
+    { backgroundColor: 'rgba(var(--accent-1-rgb, 222, 185, 154), 0.2)' },
+    { borderColor: 'var(--accent-1)' },
+    { color: 'var(--accent-1)' }
+  );
+
+  const inactiveButtonStyle = mergeStyles(
+    buttonStyles.secondary,
+    textStyles.secondary
+  );
+
   return (
     <div 
       className={`relative ${className}`}
@@ -275,10 +288,9 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
       <button
         onClick={togglePlay}
         className={`p-2 rounded-full transition-all duration-300 border ${
-          isPlaying
-            ? 'bg-amber-500/20 border-amber-500 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.3)] animate-pulse'
-            : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-200'
+          isPlaying ? 'shadow-[0_0_10px_rgba(222,185,154,0.3)] animate-pulse' : 'hover:opacity-80'
         }`}
+        style={isPlaying ? playingButtonStyle : inactiveButtonStyle}
         title={isPlaying ? '暂停音乐' : '播放音乐'}
       >
         {isPlaying ? <Volume2 size={18} /> : <VolumeX size={18} />}
@@ -287,10 +299,16 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
       {/* Expanded controls on hover - using pt-2 with invisible bridge to maintain hover */}
       {isHovered && (
         <div className="absolute right-0 top-full pt-2 z-50">
-          <div className="bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-lg p-3 min-w-[200px] shadow-xl animate-fade-in-up">
+          <div 
+            className="backdrop-blur-md rounded-lg p-3 min-w-[200px] shadow-xl animate-fade-in-up"
+            style={mergeStyles(panelStyles.dropdown, { opacity: 0.95 })}
+          >
             {/* Track info */}
             {currentTrack && (
-              <div className="text-xs text-slate-300 mb-3 truncate text-center border-b border-white/10 pb-2">
+              <div 
+                className="text-xs mb-3 truncate text-center pb-2"
+                style={mergeStyles(textStyles.secondary, { borderBottom: '1px solid var(--bg-tertiary)' })}
+              >
                 {currentTrack.name}
               </div>
             )}
@@ -300,7 +318,8 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
               <button
                 onClick={prevTrack}
                 disabled={tracks.length <= 1}
-                className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-1.5 rounded-full hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                style={textStyles.secondary}
                 title="上一首"
               >
                 <SkipBack size={16} />
@@ -308,11 +327,8 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
               
               <button
                 onClick={togglePlay}
-                className={`p-2 rounded-full transition-colors ${
-                  isPlaying 
-                    ? 'bg-amber-500 text-white' 
-                    : 'bg-purple-600 text-white hover:bg-purple-500'
-                }`}
+                className="p-2 rounded-full transition-colors text-white hover:opacity-90"
+                style={isPlaying ? buttonStyles.active : buttonStyles.primary}
               >
                 {isPlaying ? <Pause size={18} /> : <Play size={18} />}
               </button>
@@ -320,7 +336,8 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
               <button
                 onClick={nextTrack}
                 disabled={tracks.length <= 1}
-                className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-1.5 rounded-full hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                style={textStyles.secondary}
                 title="下一首"
               >
                 <SkipForward size={16} />
@@ -331,7 +348,8 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleMute}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="hover:opacity-80 transition-colors"
+                style={textStyles.secondary}
               >
                 {isMuted || volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
               </button>
@@ -342,7 +360,8 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
                 step="0.01"
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                className="flex-1 h-1 rounded-lg appearance-none cursor-pointer"
+                style={{ backgroundColor: 'var(--bg-tertiary)', accentColor: 'var(--accent-1)' }}
               />
             </div>
           </div>

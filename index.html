@@ -27,22 +27,20 @@
                 purple: '#7c3aed',
                 gold: '#fbbf24',
               },
-              // Theme colors from config
+              // Semantic theme colors using CSS variables
+              // These automatically adapt to light/dark mode
               theme: {
-                // Light mode
-                'light-primary': '#F7F8F3',
-                'light-secondary': '#EBECF2',
-                'light-tertiary': '#e3d8d8',
-                'light-accent1': '#deb99a',
-                'light-accent2': '#7C85EB',
-                'light-accent3': '#c493b1',
-                // Dark mode
-                'dark-primary': '#897b8c',
-                'dark-secondary': '#4d4658',
-                'dark-tertiary': '#3b3442',
-                'dark-accent1': '#deb99a',
-                'dark-accent2': '#c493b1',
-                'dark-accent3': '#7C85EB',
+                // Background colors
+                'primary': 'var(--bg-primary)',
+                'secondary': 'var(--bg-secondary)',
+                'tertiary': 'var(--bg-tertiary)',
+                // Text colors
+                'text-primary': 'var(--text-primary)',
+                'text-secondary': 'var(--text-secondary)',
+                // Accent colors
+                'accent-1': 'var(--accent-1)',
+                'accent-2': 'var(--accent-2)',
+                'accent-3': 'var(--accent-3)',
               }
             },
             animation: {
