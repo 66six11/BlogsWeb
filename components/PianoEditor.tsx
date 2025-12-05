@@ -454,11 +454,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
   
   // Initialize notes and available scores
   useEffect(() => {
-    setNotes([
-      { pitch: 4, octave: 4, startTime: 0, duration: 2 },
-      { pitch: 8, octave: 4, startTime: 2, duration: 2 },
-      { pitch: 11, octave: 4, startTime: 4, duration: 4 },
-    ]);
     setAvailableScores(MEDIA_CONFIG.scores.files);
   }, []);
 
