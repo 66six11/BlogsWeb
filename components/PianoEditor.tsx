@@ -267,6 +267,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const audioPoolRef = useRef<AudioNodePool | null>(null);
     const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
+    const isProgrammaticScrollRef = useRef(false); // Flag to ignore scroll events during programmatic scroll
     const toneSamplerRef = useRef<Tone.Sampler | null>(null); // Tone.js sampler for piano sound
     const playheadRef = useRef<HTMLDivElement>(null); // Playhead DOM ref for direct manipulation
     const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
@@ -558,6 +559,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
 
     // Handle user scroll - stop auto-follow when user manually scrolls
     const handleUserScroll = useCallback(() => {
+        // Ignore scroll events triggered by programmatic scrolling (e.g., jumpToPlayhead)
+        if (isProgrammaticScrollRef.current) {
+            return;
+        }
+        
         if (isPlaying) {
             setIsUserScrolling(true);
             isUserScrollingRef.current = true;
@@ -662,9 +668,13 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         setIsUserScrolling(false);
         isUserScrollingRef.current = false;
         setActiveKeys(new Map()); // Clear active keys
-        // Scroll to start
+        // Scroll to start with programmatic scroll flag
         if (scrollContainerRef.current) {
+            isProgrammaticScrollRef.current = true;
             scrollContainerRef.current.scrollLeft = 0;
+            requestAnimationFrame(() => {
+                isProgrammaticScrollRef.current = false;
+            });
         }
     }, [isPlaying, pausePlayback, updatePlayheadPosition]);
 
@@ -672,11 +682,17 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const jumpToPlayhead = useCallback(() => {
         if (scrollContainerRef.current) {
             const c = scrollContainerRef.current;
+            // Set flag to prevent scroll event from triggering user scroll detection
+            isProgrammaticScrollRef.current = true;
             // Calculate scroll position to align playhead with target position
             const playheadTargetPosition = KEY_LABEL_WIDTH + CELL_WIDTH * 4;
             c.scrollLeft = Math.max(0, playheadPosition - playheadTargetPosition + KEY_LABEL_WIDTH);
             setIsUserScrolling(false);
             isUserScrollingRef.current = false;
+            // Reset flag after scroll event is processed
+            requestAnimationFrame(() => {
+                isProgrammaticScrollRef.current = false;
+            });
         }
     }, [playheadPosition]);
 
