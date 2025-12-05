@@ -175,7 +175,7 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
     }
   };
 
-  // Expose play function to parent via ref
+  // Expose play, pause, resume functions to parent via ref
   useImperativeHandle(ref, () => ({
     play: async () => {
       if (!audioRef.current || isPlaying) return;
@@ -199,7 +199,34 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
       } catch (e) {
         console.error("Auto-play failed:", e);
       }
-    }
+    },
+    pause: () => {
+      if (!audioRef.current || !isPlaying) return;
+      fadeVolume(0, () => {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      });
+    },
+    resume: async () => {
+      if (!audioRef.current || isPlaying) return;
+      
+      if (audioContextRef.current?.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
+      if (gainNodeRef.current) {
+        gainNodeRef.current.gain.value = 0;
+      }
+
+      try {
+        await audioRef.current.play();
+        setIsPlaying(true);
+        fadeVolume(isMuted ? 0 : volume);
+      } catch (e) {
+        console.error("Resume failed:", e);
+      }
+    },
+    isPlaying: () => isPlaying
   }), [isPlaying, isInitialized, isMuted, volume, initializeAudioContext, fadeVolume]);
 
   // Auto-play when trigger changes to true

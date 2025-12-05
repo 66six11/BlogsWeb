@@ -14,7 +14,7 @@ import { SITE_CONFIG } from './config';
 import PianoEditor from './components/PianoEditor';
 import MagicChat from './components/MagicChat';
 import Scene3D from './components/Scene3D';
-import MusicPlayer from './components/MusicPlayer';
+import MusicPlayer, { MusicPlayerRef } from './components/MusicPlayer';
 import ThemeToggle from './components/ThemeToggle';
 import {CustomSparkleIcon, CustomWitchIcon,HexagramIcon} from './components/CustomIcons';
 
@@ -591,14 +591,35 @@ const App: React.FC = () => {
 
     // Audio State - managed by MusicPlayer component
     const [musicAnalyser, setMusicAnalyser] = useState<AnalyserNode | null>(null);
+    
+    // Track if BGM was playing before piano editor started
+    const [bgmWasPlaying, setBgmWasPlaying] = useState(false);
 
     // Video Ref
     const videoRef = useRef<HTMLVideoElement>(null);
+    
+    // MusicPlayer Ref for controlling BGM
+    const musicPlayerRef = useRef<MusicPlayerRef>(null);
 
     // Callback when music player analyser is ready
     const handleAnalyserReady = useCallback((analyser: AnalyserNode) => {
         setMusicAnalyser(analyser);
     }, []);
+    
+    // Callbacks for PianoEditor to control BGM
+    const handlePianoPlayStart = useCallback(() => {
+        if (musicPlayerRef.current?.isPlaying()) {
+            setBgmWasPlaying(true);
+            musicPlayerRef.current.pause();
+        }
+    }, []);
+    
+    const handlePianoPlayEnd = useCallback(() => {
+        if (bgmWasPlaying && musicPlayerRef.current) {
+            musicPlayerRef.current.resume();
+            setBgmWasPlaying(false);
+        }
+    }, [bgmWasPlaying]);
 
     // --- Initialization Effects ---
     const loadData = async () => {
@@ -746,6 +767,7 @@ const App: React.FC = () => {
 
                     <ThemeToggle />
                     <MusicPlayer 
+                        ref={musicPlayerRef}
                         onAnalyserReady={handleAnalyserReady}
                         autoPlayTrigger={!showWelcome}
                     />
@@ -1097,7 +1119,12 @@ const App: React.FC = () => {
                 <p className="text-slate-300">创作一段旋律。即使是魔女也需要从学习中休息一下。</p>
             </div>
 
-            <PianoEditor className="w-full" isVisible={currentView === View.MUSIC}/>
+            <PianoEditor 
+                className="w-full" 
+                isVisible={currentView === View.MUSIC}
+                onPlayStart={handlePianoPlayStart}
+                onPlayEnd={handlePianoPlayEnd}
+            />
 
             <div
                 className="mt-8 text-center max-w-2xl mx-auto bg-slate-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
