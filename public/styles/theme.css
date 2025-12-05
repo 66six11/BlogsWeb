@@ -10,6 +10,11 @@
   --accent-1: #deb99a;
   --accent-2: #7C85EB;
   --accent-3: #c493b1;
+  /* RGB versions for rgba() usage */
+  --bg-primary-rgb: 15, 23, 42;
+  --bg-secondary-rgb: 30, 41, 59;
+  --accent-1-rgb: 222, 185, 154;
+  --accent-3-rgb: 196, 147, 177;
 }
 
 :root.light {
@@ -21,6 +26,11 @@
   --accent-1: #deb99a;
   --accent-2: #7C85EB;
   --accent-3: #c493b1;
+  /* RGB versions for rgba() usage */
+  --bg-primary-rgb: 247, 248, 243;
+  --bg-secondary-rgb: 235, 236, 242;
+  --accent-1-rgb: 222, 185, 154;
+  --accent-3-rgb: 196, 147, 177;
 }
 
 :root.dark {
@@ -32,6 +42,11 @@
   --accent-1: #deb99a;
   --accent-2: #c493b1;
   --accent-3: #7C85EB;
+  /* RGB versions for rgba() usage */
+  --bg-primary-rgb: 59, 52, 66;
+  --bg-secondary-rgb: 77, 70, 88;
+  --accent-1-rgb: 222, 185, 154;
+  --accent-3-rgb: 124, 133, 235;
 }
 
 body {
@@ -216,6 +231,270 @@ body {
   font-size: 1.5rem;
   opacity: 1;
   transition: opacity 0.5s;
+}
+
+/* ====================================
+   Semantic Theme Classes
+   (Migrated from styles.ts)
+   ==================================== */
+
+/* --- Background Styles --- */
+.theme-bg-primary {
+  background-color: var(--bg-primary);
+}
+
+.theme-bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.theme-bg-tertiary {
+  background-color: var(--bg-tertiary);
+}
+
+.theme-bg-primary-translucent {
+  background-color: rgba(var(--bg-primary-rgb, 15, 23, 42), 0.8);
+}
+
+.theme-bg-secondary-translucent {
+  background-color: rgba(var(--bg-secondary-rgb, 30, 41, 59), 0.5);
+}
+
+/* --- Text Styles --- */
+.theme-text-primary {
+  color: var(--text-primary);
+}
+
+.theme-text-secondary {
+  color: var(--text-secondary);
+}
+
+.theme-text-accent1 {
+  color: var(--accent-1);
+}
+
+.theme-text-accent2 {
+  color: var(--accent-2);
+}
+
+.theme-text-accent3 {
+  color: var(--accent-3);
+}
+
+/* --- Border Styles --- */
+.theme-border-subtle {
+  border-color: var(--bg-tertiary);
+}
+
+.theme-border-accent1 {
+  border-color: var(--accent-1);
+}
+
+.theme-border-accent2 {
+  border-color: var(--accent-2);
+}
+
+.theme-border-accent3 {
+  border-color: var(--accent-3);
+}
+
+/* --- Card Styles --- */
+.theme-card-primary {
+  background-color: var(--bg-secondary);
+  border-color: var(--bg-tertiary);
+  border-width: 1px;
+  border-style: solid;
+}
+
+.theme-card-secondary {
+  background-color: var(--bg-primary);
+  border-color: var(--bg-tertiary);
+  border-width: 1px;
+  border-style: solid;
+}
+
+/* --- Button Styles --- */
+.theme-btn-primary {
+  background-color: var(--accent-3);
+  color: white;
+}
+
+.theme-btn-secondary {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-color: var(--bg-tertiary);
+  border-width: 1px;
+  border-style: solid;
+}
+
+.theme-btn-ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+}
+
+.theme-btn-active {
+  background-color: var(--accent-1);
+  color: white;
+}
+
+/* --- Input Styles --- */
+.theme-input {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--bg-tertiary);
+  border-width: 1px;
+  border-style: solid;
+}
+
+/* --- Panel Styles --- */
+.theme-panel-dropdown {
+  background-color: var(--bg-primary);
+  border-color: var(--bg-tertiary);
+  border-width: 1px;
+  border-style: solid;
+}
+
+.theme-panel-header {
+  background-color: var(--bg-secondary);
+  border-color: var(--bg-tertiary);
+}
+
+/* --- Gradient Styles --- */
+.theme-gradient-accent {
+  background: linear-gradient(to right, var(--accent-3), var(--bg-tertiary));
+}
+
+.theme-gradient-button {
+  background: linear-gradient(to bottom right, var(--accent-3), var(--accent-2));
+}
+
+/* --- Music Player Specific Styles --- */
+.music-player-btn-playing {
+  background-color: rgba(var(--accent-1-rgb), 0.2);
+  border-color: var(--accent-1);
+  color: var(--accent-1);
+}
+
+.music-player-volume-slider {
+  background-color: var(--bg-tertiary);
+  accent-color: var(--accent-1);
+}
+
+/* --- Magic Chat Specific Styles --- */
+.magic-chat-window {
+  background-color: var(--bg-secondary);
+  border-color: var(--accent-3);
+  border-width: 1px;
+  border-style: solid;
+}
+
+.magic-chat-header {
+  background: linear-gradient(to right, var(--accent-3), var(--bg-tertiary));
+  border-bottom: 1px solid var(--accent-3);
+}
+
+.magic-chat-user-message {
+  background-color: var(--accent-3);
+  color: white;
+}
+
+.magic-chat-bot-message {
+  background-color: var(--bg-primary);
+  border-color: var(--bg-tertiary);
+  border-width: 1px;
+  border-style: solid;
+  color: var(--text-primary);
+}
+
+.magic-chat-loading-dot {
+  background-color: var(--accent-2);
+}
+
+.magic-chat-input-area {
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--bg-tertiary);
+}
+
+/* --- Theme Toggle Specific Styles --- */
+.theme-toggle-dark {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-color: var(--bg-tertiary);
+}
+
+.theme-toggle-light {
+  background-color: var(--accent-1);
+  opacity: 0.3;
+  border-color: var(--accent-1);
+  color: var(--text-primary);
+}
+
+/* --- Navigation Styles --- */
+.nav-bar {
+  background-color: var(--bg-secondary);
+  border-color: var(--bg-tertiary);
+}
+
+.nav-button-active {
+  border-color: var(--accent-1);
+}
+
+.nav-button-pills-container {
+  background-color: var(--bg-primary);
+  border-color: var(--bg-tertiary);
+}
+
+/* --- Footer Styles --- */
+.theme-footer {
+  background-color: var(--bg-primary);
+  border-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.theme-footer-link {
+  color: var(--accent-1);
+}
+
+/* --- Additional helper classes for index.tsx --- */
+.avatar-gradient-bg {
+  background: linear-gradient(to top right, var(--accent-3), var(--accent-1));
+}
+
+.avatar-border {
+  border-color: var(--bg-primary);
+  background-color: var(--bg-tertiary);
+}
+
+.accent-border-light {
+  border-color: rgba(var(--accent-1-rgb), 0.2);
+}
+
+.accent3-border {
+  border-color: rgba(var(--accent-3-rgb), 0.5);
+}
+
+.welcome-enter-btn {
+  background: linear-gradient(to right, var(--accent-3), var(--accent-1));
+}
+
+.category-badge {
+  background-color: rgba(var(--accent-3-rgb), 0.2);
+  border-color: rgba(var(--accent-3-rgb), 0.3);
+}
+
+.project-card-overlay {
+  background-color: rgba(var(--accent-3-rgb), 0.2);
+}
+
+.bg-overlay-dark {
+  background-color: rgba(var(--bg-primary-rgb), 0.6);
+}
+
+.selection-accent::selection {
+  background-color: var(--accent-1);
+}
+
+.about-profile-border {
+  border-color: var(--text-primary);
 }
 
 /* ====================================
