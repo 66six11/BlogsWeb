@@ -99,20 +99,41 @@ const GRID_BACKGROUND_CSS = `
   )
 `;
 
-// Note colors by pitch - rainbow spectrum for different pitches
-const PITCH_COLORS: Record<number, string> = {
-  11: '#ef4444', // B - red
-  10: '#f97316', // A# - orange
-  9: '#f59e0b',  // A - amber
-  8: '#eab308',  // G# - yellow
-  7: '#84cc16',  // G - lime
-  6: '#22c55e',  // F# - green
-  5: '#14b8a6',  // F - teal
-  4: '#06b6d4',  // E - cyan
-  3: '#3b82f6',  // D# - blue
-  2: '#6366f1',  // D - indigo
-  1: '#8b5cf6',  // C# - violet
-  0: '#a855f7',  // C - purple
+// 八度基础色相 (0-8 八度)
+const OCTAVE_HUES: Record<number, number> = {
+  0: 0,      // 红色系
+  1: 30,     // 橙色系
+  2: 60,     // 黄色系
+  3: 120,    // 绿色系
+  4: 180,    // 青色系
+  5: 220,    // 蓝色系
+  6: 270,    // 紫色系
+  7: 320,    // 粉色系
+  8: 340,    // 玫红色系
+};
+
+// 根据八度和音高生成颜色
+// 每个八度有一个基础色，音符从该八度的颜色渐变到下一个八度的颜色
+const getNoteColor = (octave: number, pitch: number): string => {
+  const currentHue = OCTAVE_HUES[octave] ?? 0;
+  const nextHue = OCTAVE_HUES[octave + 1] ?? currentHue;
+  
+  // pitch 0-11 映射到 0-1 的渐变比例
+  const ratio = pitch / 12;
+  
+  // 计算色相差，处理色环回绕（如从 340° 到 0°）
+  let hueDiff = nextHue - currentHue;
+  if (hueDiff > 180) hueDiff -= 360;
+  if (hueDiff < -180) hueDiff += 360;
+  
+  // 插值计算当前音符的色相
+  let hue = currentHue + hueDiff * ratio;
+  if (hue < 0) hue += 360;
+  if (hue >= 360) hue -= 360;
+  
+  const saturation = 75;
+  const lightness = 55; // 固定亮度
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 };
 
 // Duration options with visual icons
@@ -192,9 +213,10 @@ interface VisibleNote {
 interface PianoEditorProps {
   className?: string;
   isVisible?: boolean; // Stop playback when not visible (page switched)
+  onPlaybackChange?: (isPlaying: boolean) => void;  // 新增：通知父组件播放状态变化
 }
 
-const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }) => {
+const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, onPlaybackChange }) => {
   // Core state - Note[] displayed in grid, ABC used for playback
   const [notes, setNotes] = useState<Note[]>([]);
   const [currentStep, setCurrentStep] = useState(0); // Start at 0, always visible
@@ -486,8 +508,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     playbackIdRef.current++;
     cleanupSynth();
     setIsPlaying(false);
+    onPlaybackChange?.(false);  // 通知父组件播放已暂停
     // Keep currentStep and playheadPosition - don't reset
-  }, [cleanupSynth]);
+  }, [cleanupSynth, onPlaybackChange]);
 
   // Stop and reset to beginning
   const stopPlayback = useCallback(() => {
@@ -571,6 +594,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     const activeNotes = new Map<string, { freq: number; endStep: number }>();
     
     setIsPlaying(true);
+    onPlaybackChange?.(true);  // 通知父组件播放已开始
     setIsUserScrolling(false);
     isUserScrollingRef.current = false;
     
@@ -656,7 +680,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     };
     
     animationFrameRef.current = requestAnimationFrame(updatePlayhead);
-  }, [notes, noteIndex, currentStep, lastNoteEndTime, stepInterval, sustain, cleanupSynth]);
+  }, [notes, noteIndex, currentStep, lastNoteEndTime, stepInterval, sustain, cleanupSynth, onPlaybackChange]);
 
   // Wrapper for normal playback (from current position)
   const startPlayback = useCallback(() => {
@@ -706,11 +730,31 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
       setAbcContent(content);
       setSelectedScore(scoreName);
       setIsLoading(false);
+      
+      // 加载完成后滚动到音符范围（最高音贴住视窗顶部）
+      setTimeout(() => {
+        if (scrollContainerRef.current && parsed.notes.length > 0) {
+          // 找到最高音
+          const highestNote = parsed.notes.reduce((highest, note) => {
+            const currentMidi = note.octave * 12 + note.pitch;
+            const highestMidi = highest.octave * 12 + highest.pitch;
+            return currentMidi > highestMidi ? note : highest;
+          }, parsed.notes[0]);
+          
+          // 计算最高音在 PIANO_KEYS 中的索引 - 使用 O(1) Map 查找
+          const highestKeyIndex = keyRowIndex.get(`${highestNote.octave}-${highestNote.pitch}`);
+          
+          if (highestKeyIndex !== undefined) {
+            const scrollTop = Math.max(0, highestKeyIndex * ROW_HEIGHT - 10);
+            scrollContainerRef.current.scrollTop = scrollTop;
+          }
+        }
+      }, 100);
     } catch (e) {
       console.error('Error loading score:', e);
       setIsLoading(false);
     }
-  }, [pausePlayback, updatePlayheadPosition]);
+  }, [pausePlayback, updatePlayheadPosition, keyRowIndex]);
 
   // Toggle note in grid - uses selected duration
   // rowIndex is the index into PIANO_KEYS, step is the horizontal position
@@ -985,7 +1029,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
                   {PIANO_KEYS.map((key, idx) => (
                     <div 
                       key={`${key.octave}-${key.pitch}`}
-                      className="flex items-center justify-end px-2 text-xs border-b border-r"
+                      className="flex items-center text-xs border-b"
                       style={{ 
                         width: `${KEY_LABEL_WIDTH}px`,
                         height: `${ROW_HEIGHT}px`,
@@ -994,7 +1038,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
                         borderColor: 'var(--bg-tertiary, #334155)'
                       }}
                     >
-                      <span>{key.name}{key.octave}</span>
+                      <span className="flex-1 text-right pr-2">{key.name}{key.octave}</span>
+                      {/* 右侧颜色指示条 */}
+                      <div 
+                        style={{ 
+                          width: '4px',
+                          height: '100%',
+                          backgroundColor: getNoteColor(key.octave, key.pitch)
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
@@ -1047,7 +1099,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
 
                   {/* Only render visible notes - absolutely positioned */}
                   {visibleNotes.map((vn, idx) => {
-                    const noteColor = PITCH_COLORS[vn.note.pitch] || 'var(--accent-3, #a855f7)';
+                    const noteColor = getNoteColor(vn.note.octave, vn.note.pitch);
                     return (
                       <div
                         key={`note-${idx}-${vn.note.octave}-${vn.note.pitch}-${vn.note.startTime}`}
