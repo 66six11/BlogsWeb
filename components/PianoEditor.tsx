@@ -159,7 +159,7 @@ const getNoteColor = (octave: number, pitch: number): string => {
 };
 
 // Duration options with visual icons
-const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number; icon: JSX.Element }[] = [
+const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number; icon: Element }[] = [
     {value: 'sixteenth', label: '16分', steps: 1, icon: <SixteenthNoteIcon size={20}/>},
     {value: 'eighth', label: '8分', steps: 2, icon: <EighthNoteIcon size={20}/>},
     {value: 'quarter', label: '4分', steps: 4, icon: <QuarterNoteIcon size={20}/>},
@@ -267,6 +267,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const audioPoolRef = useRef<AudioNodePool | null>(null);
     const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
+    const wasLeftOutsideViewRef = useRef<boolean>(false); // 上一帧是否在左侧视窗外
     const isProgrammaticScrollRef = useRef(false); // Flag to ignore scroll events during programmatic scroll
     const toneSamplerRef = useRef<Tone.Sampler | null>(null); // Tone.js sampler for piano sound
     const playheadRef = useRef<HTMLDivElement>(null); // Playhead DOM ref for direct manipulation
@@ -680,20 +681,21 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
 
     // Jump to current playhead position and enable auto-follow
     const jumpToPlayhead = useCallback(() => {
-        if (scrollContainerRef.current) {
-            const c = scrollContainerRef.current;
-            // Set flag to prevent scroll event from triggering user scroll detection
-            isProgrammaticScrollRef.current = true;
-            // Calculate scroll position to align playhead with target position (same as auto-scroll)
-            const playheadTargetPosition = KEY_LABEL_WIDTH; // Match auto-scroll position
-            c.scrollLeft = Math.max(0, playheadPosition - playheadTargetPosition + KEY_LABEL_WIDTH);
-            // Reset flag synchronously after scroll is set (scroll event fires synchronously)
-            isProgrammaticScrollRef.current = false;
-            // Enable auto-follow after jumping to playhead
-            setIsUserScrolling(false);
-            isUserScrollingRef.current = false;
-        }
-    }, [playheadPosition]);
+        if (!scrollContainerRef.current) return;
+        const c = scrollContainerRef.current;
+
+        const px = currentStep * CELL_WIDTH; // 世界坐标
+        const playheadTargetPosition = 20;   // 与上面保持一致
+
+        const targetScrollLeft = Math.max(0, px - playheadTargetPosition);
+
+        isProgrammaticScrollRef.current = true;
+        c.scrollLeft = targetScrollLeft;
+        isProgrammaticScrollRef.current = false;
+
+        setIsUserScrolling(false);
+        isUserScrollingRef.current = false;
+    }, [currentStep]);
 
     // Play using Tone.js Sampler for realistic piano sound - can start from any step
     // Uses real-time triggering instead of pre-scheduling for reliable jumps
