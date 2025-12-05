@@ -18,6 +18,12 @@
        * =================================================================================
        * All color values are synchronized with config.ts color configurations.
        * This provides Tailwind utility classes that match our theme system.
+       * 
+       * USAGE: Instead of using hardcoded Tailwind colors like bg-slate-900/60,
+       * use the semantic classes defined here or in theme.css:
+       *   - bg-card, bg-surface, bg-overlay (backgrounds)
+       *   - text-heading, text-body, text-muted, text-highlight (text)
+       *   - border-default, border-subtle, border-accent (borders)
        * =================================================================================
        */
       tailwind.config = {
@@ -30,99 +36,120 @@
             },
             colors: {
               // =============================================================
-              // Theme colors from THEME_CONFIG in config.ts
+              // Semantic colors using CSS variables (auto-adapts to theme)
+              // USE THESE instead of hardcoded slate/amber/purple colors
               // =============================================================
-              theme: {
-                // Light mode from THEME_CONFIG.light
-                'light-primary': '#F7F8F3',
-                'light-secondary': '#EBECF2',
-                'light-tertiary': '#e3d8d8',
-                'light-accent1': '#deb99a',
-                'light-accent2': '#7C85EB',
-                'light-accent3': '#c493b1',
-                'light-text-primary': '#1e293b',
-                'light-text-secondary': '#475569',
-                // Dark mode from THEME_CONFIG.dark
-                'dark-primary': '#897b8c',
-                'dark-secondary': '#4d4658',
-                'dark-tertiary': '#3b3442',
-                'dark-accent1': '#deb99a',
-                'dark-accent2': '#c493b1',
-                'dark-accent3': '#7C85EB',
-                'dark-text-primary': '#f1f5f9',
-                'dark-text-secondary': '#e2e8f0',
-              },
-              // =============================================================
-              // Icon colors from ICON_COLORS in config.ts
-              // =============================================================
-              icon: {
-                'primary': '#F3D493',
-                'secondary': '#6979D9',
-                'accent': '#F00608',
-                'default': '#fbbf24',
-              },
-              // =============================================================
-              // UI Colors from UI_COLORS in config.ts
-              // =============================================================
-              ui: {
-                'success': '#10b981',
-                'warning': '#f59e0b',
-                'error': '#ef4444',
-                'info': '#3b82f6',
-                'button-primary': '#7c3aed',
-                'button-primary-hover': '#8b5cf6',
-                'button-secondary': '#64748b',
-              },
-              // =============================================================
-              // Callout colors from UI_COLORS.callout in config.ts
-              // =============================================================
-              callout: {
-                'info': '#3b82f6',
-                'tip': '#10b981',
-                'warning': '#f97316',
-                'error': '#ef4444',
-                'question': '#f59e0b',
-                'quote': '#64748b',
-                'example': '#a855f7',
-                'summary': '#06b6d4',
-              },
-              // =============================================================
-              // Scene/3D colors from SCENE_COLORS in config.ts
-              // =============================================================
-              scene: {
-                'particles': '#fbbf24',
-              },
-              // =============================================================
-              // Hexagram colors from HEXAGRAM_COLORS in config.ts
-              // =============================================================
-              hexagram: {
-                'primary': 'rgb(251, 191, 36)',
-                'secondary': 'rgb(251, 143, 36)',
-              },
-              // =============================================================
-              // Glow colors from UI_COLORS.glow in config.ts
-              // =============================================================
-              glow: {
-                'gold': '#fbbf24',
-                'purple': '#7c3aed',
-              },
-              // =============================================================
-              // CSS Variable-based colors (for dynamic theming)
-              // =============================================================
+              
+              // Accent colors
               accent: {
                 '1': 'var(--accent-1)',
                 '2': 'var(--accent-2)',
                 '3': 'var(--accent-3)',
               },
-              bg: {
-                'primary': 'var(--bg-primary)',
-                'secondary': 'var(--bg-secondary)',
-                'tertiary': 'var(--bg-tertiary)',
+              
+              // Background colors
+              card: 'var(--bg-card)',
+              'card-hover': 'var(--bg-card-hover)',
+              surface: 'var(--bg-surface)',
+              overlay: 'var(--bg-overlay)',
+              
+              // Semantic text colors
+              heading: 'var(--text-heading)',
+              body: 'var(--text-body)',
+              muted: 'var(--text-muted)',
+              highlight: 'var(--text-highlight)',
+              
+              // Border colors
+              'border-default': 'var(--border-default)',
+              'border-subtle': 'var(--border-subtle)',
+              'border-accent': 'var(--border-accent)',
+              
+              // =============================================================
+              // UI Status colors from UI_COLORS in config.ts
+              // =============================================================
+              ui: {
+                'success': 'var(--ui-success)',
+                'warning': 'var(--ui-warning)',
+                'error': 'var(--ui-error)',
+                'info': 'var(--ui-info)',
+                'button-primary': 'var(--ui-button-primary)',
+                'button-primary-hover': 'var(--ui-button-primary-hover)',
+                'button-secondary': 'var(--ui-button-secondary)',
               },
-              text: {
-                'primary': 'var(--text-primary)',
-                'secondary': 'var(--text-secondary)',
+              
+              // =============================================================
+              // Callout colors from UI_COLORS.callout in config.ts
+              // =============================================================
+              callout: {
+                'info': 'var(--callout-info)',
+                'tip': 'var(--callout-tip)',
+                'warning': 'var(--callout-warning)',
+                'error': 'var(--callout-error)',
+                'question': 'var(--callout-question)',
+                'quote': 'var(--callout-quote)',
+                'example': 'var(--callout-example)',
+                'summary': 'var(--callout-summary)',
               },
+              
+              // =============================================================
+              // Icon colors from ICON_COLORS in config.ts
+              // =============================================================
+              icon: {
+                'primary': 'var(--icon-primary)',
+                'secondary': 'var(--icon-secondary)',
+                'accent': 'var(--icon-accent)',
+                'default': 'var(--icon-default)',
+              },
+              
+              // =============================================================
+              // Scene/3D and glow colors
+              // =============================================================
+              scene: {
+                'particles': 'var(--scene-particles)',
+              },
+              glow: {
+                'gold': 'var(--glow-gold)',
+                'purple': 'var(--glow-purple)',
+              },
+              hexagram: {
+                'primary': 'var(--hexagram-primary)',
+                'secondary': 'var(--hexagram-secondary)',
+              },
+            },
+            // Background colors using CSS variables
+            backgroundColor: {
+              'theme-primary': 'var(--bg-primary)',
+              'theme-secondary': 'var(--bg-secondary)',
+              'theme-tertiary': 'var(--bg-tertiary)',
+              'card': 'var(--bg-card)',
+              'card-hover': 'var(--bg-card-hover)',
+              'surface': 'var(--bg-surface)',
+              'overlay': 'var(--bg-overlay)',
+              'code': 'var(--bg-code)',
+              'nav': 'var(--bg-nav)',
+              'input': 'var(--bg-input)',
+            },
+            // Text colors using CSS variables
+            textColor: {
+              'theme-primary': 'var(--text-primary)',
+              'theme-secondary': 'var(--text-secondary)',
+              'heading': 'var(--text-heading)',
+              'body': 'var(--text-body)',
+              'muted': 'var(--text-muted)',
+              'highlight': 'var(--text-highlight)',
+              'accent': 'var(--text-accent)',
+              'link': 'var(--text-link)',
+              'code': 'var(--text-code)',
+            },
+            // Border colors using CSS variables
+            borderColor: {
+              'theme-primary': 'var(--bg-primary)',
+              'theme-secondary': 'var(--bg-secondary)',
+              'theme-tertiary': 'var(--bg-tertiary)',
+              'default': 'var(--border-default)',
+              'subtle': 'var(--border-subtle)',
+              'accent': 'var(--border-accent)',
+              'focus': 'var(--border-focus)',
             },
             animation: {
               'float': 'float 6s ease-in-out infinite',

@@ -2,6 +2,19 @@
 /* =================================================================================
    All CSS variables are derived from config.ts color configurations.
    This file provides CSS custom properties that can be used throughout the app.
+   
+   USAGE IN COMPONENTS:
+   Instead of using hardcoded Tailwind colors like:
+     - className="bg-slate-900/60"
+     - className="text-amber-400"
+   
+   Use the semantic utility classes defined below:
+     - className="bg-card"
+     - className="text-highlight"
+   
+   Or use inline styles with CSS variables:
+     - style={{ backgroundColor: 'var(--bg-card)' }}
+     - style={{ color: 'var(--text-highlight)' }}
    =================================================================================
 */
 
@@ -27,6 +40,37 @@
   --accent-1: var(--theme-accent1);
   --accent-2: var(--theme-accent2);
   --accent-3: var(--theme-accent3);
+  
+  /* =========================================================================
+     SEMANTIC UI VARIABLES
+     These provide semantic meaning to colors for easier component styling
+     ========================================================================= */
+  
+  /* Background colors for different UI contexts */
+  --bg-card: rgba(77, 70, 88, 0.6);           /* Card backgrounds */
+  --bg-card-hover: rgba(77, 70, 88, 0.8);     /* Card hover state */
+  --bg-surface: rgba(59, 52, 66, 0.6);        /* Surface/panel backgrounds */
+  --bg-overlay: rgba(15, 23, 42, 0.8);        /* Overlay/modal backgrounds */
+  --bg-code: rgba(15, 23, 42, 0.8);           /* Code block backgrounds */
+  --bg-nav: rgba(59, 52, 66, 0.6);            /* Navigation backgrounds */
+  --bg-input: rgba(30, 41, 59, 0.8);          /* Input field backgrounds */
+  --bg-button: var(--theme-accent3);          /* Primary button background */
+  --bg-button-secondary: rgba(100, 116, 139, 0.3); /* Secondary button background */
+  
+  /* Text colors for different contexts */
+  --text-heading: var(--theme-text-primary);  /* Headings */
+  --text-body: var(--theme-text-secondary);   /* Body text */
+  --text-muted: rgba(148, 163, 184, 0.8);     /* Muted/subtle text */
+  --text-highlight: var(--theme-accent1);     /* Highlighted text (gold) */
+  --text-accent: var(--theme-accent3);        /* Accent text (purple) */
+  --text-link: var(--theme-accent2);          /* Link text */
+  --text-code: #c4b5fd;                       /* Code text */
+  
+  /* Border colors */
+  --border-default: rgba(255, 255, 255, 0.1); /* Default borders */
+  --border-subtle: rgba(255, 255, 255, 0.05); /* Subtle borders */
+  --border-accent: rgba(251, 191, 36, 0.3);   /* Accent borders (gold) */
+  --border-focus: var(--theme-accent3);       /* Focus state borders */
   
   /* Icon colors from ICON_COLORS */
   --icon-primary: #F3D493;
@@ -86,6 +130,30 @@
   --accent-1: var(--theme-accent1);
   --accent-2: var(--theme-accent2);
   --accent-3: var(--theme-accent3);
+  
+  /* Semantic UI variables for light mode */
+  --bg-card: rgba(235, 236, 242, 0.6);
+  --bg-card-hover: rgba(235, 236, 242, 0.8);
+  --bg-surface: rgba(247, 248, 243, 0.8);
+  --bg-overlay: rgba(255, 255, 255, 0.95);
+  --bg-code: rgba(30, 41, 59, 0.05);
+  --bg-nav: rgba(247, 248, 243, 0.6);
+  --bg-input: rgba(255, 255, 255, 0.8);
+  --bg-button: var(--theme-accent2);
+  --bg-button-secondary: rgba(100, 116, 139, 0.1);
+  
+  --text-heading: var(--theme-text-primary);
+  --text-body: var(--theme-text-secondary);
+  --text-muted: rgba(71, 85, 105, 0.6);
+  --text-highlight: #b45309;
+  --text-accent: #6d28d9;
+  --text-link: var(--theme-accent2);
+  --text-code: #6d28d9;
+  
+  --border-default: rgba(0, 0, 0, 0.1);
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-accent: rgba(180, 83, 9, 0.3);
+  --border-focus: var(--theme-accent2);
 }
 
 /* Dark theme - values from THEME_CONFIG.dark */
@@ -108,7 +176,91 @@
   --accent-1: var(--theme-accent1);
   --accent-2: var(--theme-accent2);
   --accent-3: var(--theme-accent3);
+  
+  /* Semantic UI variables for dark mode (same as :root default) */
+  --bg-card: rgba(77, 70, 88, 0.6);
+  --bg-card-hover: rgba(77, 70, 88, 0.8);
+  --bg-surface: rgba(59, 52, 66, 0.6);
+  --bg-overlay: rgba(15, 23, 42, 0.8);
+  --bg-code: rgba(15, 23, 42, 0.8);
+  --bg-nav: rgba(59, 52, 66, 0.6);
+  --bg-input: rgba(30, 41, 59, 0.8);
+  --bg-button: var(--theme-accent3);
+  --bg-button-secondary: rgba(100, 116, 139, 0.3);
+  
+  --text-heading: var(--theme-text-primary);
+  --text-body: var(--theme-text-secondary);
+  --text-muted: rgba(148, 163, 184, 0.8);
+  --text-highlight: var(--theme-accent1);
+  --text-accent: var(--theme-accent3);
+  --text-link: var(--theme-accent2);
+  --text-code: #c4b5fd;
+  
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-accent: rgba(251, 191, 36, 0.3);
+  --border-focus: var(--theme-accent3);
 }
+
+/* =================================================================================
+   SEMANTIC UTILITY CLASSES
+   Use these classes in components instead of hardcoded Tailwind color classes.
+   These classes automatically adapt to light/dark themes.
+   ================================================================================= */
+
+/* Background utility classes */
+.bg-card { background-color: var(--bg-card); }
+.bg-card-hover { background-color: var(--bg-card-hover); }
+.bg-surface { background-color: var(--bg-surface); }
+.bg-overlay { background-color: var(--bg-overlay); }
+.bg-code { background-color: var(--bg-code); }
+.bg-nav { background-color: var(--bg-nav); }
+.bg-input { background-color: var(--bg-input); }
+.bg-theme-primary { background-color: var(--bg-primary); }
+.bg-theme-secondary { background-color: var(--bg-secondary); }
+.bg-theme-tertiary { background-color: var(--bg-tertiary); }
+
+/* Text utility classes */
+.text-heading { color: var(--text-heading); }
+.text-body { color: var(--text-body); }
+.text-muted { color: var(--text-muted); }
+.text-highlight { color: var(--text-highlight); }
+.text-accent { color: var(--text-accent); }
+.text-link { color: var(--text-link); }
+.text-code { color: var(--text-code); }
+.text-theme-primary { color: var(--text-primary); }
+.text-theme-secondary { color: var(--text-secondary); }
+
+/* Border utility classes */
+.border-default { border-color: var(--border-default); }
+.border-subtle { border-color: var(--border-subtle); }
+.border-accent { border-color: var(--border-accent); }
+.border-focus { border-color: var(--border-focus); }
+
+/* Status color utility classes */
+.text-success { color: var(--ui-success); }
+.text-warning { color: var(--ui-warning); }
+.text-error { color: var(--ui-error); }
+.text-info { color: var(--ui-info); }
+.bg-success { background-color: var(--ui-success); }
+.bg-warning { background-color: var(--ui-warning); }
+.bg-error { background-color: var(--ui-error); }
+.bg-info { background-color: var(--ui-info); }
+.border-success { border-color: var(--ui-success); }
+.border-warning { border-color: var(--ui-warning); }
+.border-error { border-color: var(--ui-error); }
+.border-info { border-color: var(--ui-info); }
+
+/* Accent color utility classes */
+.text-accent-1 { color: var(--accent-1); }
+.text-accent-2 { color: var(--accent-2); }
+.text-accent-3 { color: var(--accent-3); }
+.bg-accent-1 { background-color: var(--accent-1); }
+.bg-accent-2 { background-color: var(--accent-2); }
+.bg-accent-3 { background-color: var(--accent-3); }
+.border-accent-1 { border-color: var(--accent-1); }
+.border-accent-2 { border-color: var(--accent-2); }
+.border-accent-3 { border-color: var(--accent-3); }
 
 body {
   background-color: var(--bg-primary);
