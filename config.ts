@@ -144,7 +144,7 @@ export const MEDIA_CONFIG = {
   scores: {
     folder: "/scores",
     // List of available score files (supports both ABC notation and legacy format)
-    files: ['canon-in-d.abc', 'twinkle.abc', 'sample.txt', 'chords-demo.txt', 'canon-in-d.txt']
+    files: ['canon-in-d.abc', 'twinkle.abc', 'sample.txt', 'chords-demo.txt', 'canon-in-d.txt','魔女之旅.abc']
   },
 };
 

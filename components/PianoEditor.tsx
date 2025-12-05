@@ -769,7 +769,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
           </div>
           
           {/* Piano grid container */}
-          <div className="flex-1 flex flex-col overflow-hidden" style={{ maxHeight: '400px' }}>
+          <div className="flex-1 flex flex-col overflow-hidden" style={{ maxHeight: '800px' }}>
             {/* Fixed ruler row - scrolls horizontally only */}
             <div className="flex shrink-0" style={{ height: '24px' }}>
               {/* Key label header - fixed */}

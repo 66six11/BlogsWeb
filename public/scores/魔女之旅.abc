@@ -1,0 +1,94 @@
+X: 1
+T: 魔女之旅（文学）
+M: 4/4
+L: 1/8
+Q:1/4=118
+K:E % 4 sharps
+V:1
+%%MIDI program 0
+[bfeB]3/2e3/2b [fdB]3/2[c'c]3/2[d'd]| \
+[e'ge]3/2[d'd]3/2[bB] [fB]e eB| \
+[cA]3/2 (3e2f2b2f'3/2b'| \
+[b'b]2 z4 zB|
+[eB]d/2e/2 z/2d/2[eB]/2z3/2d ed| \
+[eB]3/2f3/2f z3B| \
+[fB]e/2f/2 z/2e/2f/2z3/2e fg| \
+[c'fd]3/2b3/2b z2 gb|
+[ac]g/2f/2 z/2e/2z/2e/2 z3g/2b/2| \
+[ad]g/2f/2 z/2e/2z/2f2-f/2 e2| \
+[BG]e ed/2e/2 [e'e]d ed| \
+[eB]3/2f3/2f z4|
+[BG]f fe/2f/2 ze fg| \
+[c'fd]3/2b3/2b z2 gb| \
+[ac]g/2f/2 z/2e/2z/2e/2 z3g/2b/2| \
+[ad]g/2f/2 z/2e/2z/2f2-f/2 z2|
+[ECG,]D E[DB,]2C B,[C-A,-]| \
+[CA,]B, A,[B,G,F,] [B,G,F,]2 [B,F,]2| \
+[EC]D E[BE]2F G[G-E-]| \
+[GGEEC]F E[FDB,]2z [BB,]F|
+z
+F F (3F2F2F2G| \
+[FE]3/2E3/2[eE] z2 [BE]2| \
+[FEB,]2 z2 [BFEB,][BFEB,] [BFEB,][BFEB,]| \
+[FEB,]z/2[FEB,]z/2[FDB,] [c''-B,,-A,,-=G,,-]2 [c''B,,A,,G,,]/2z/2b|
+[bec]g [fc][ec] [fc]z [ec]g| \
+[fdB]2 [eB]g [fB][eB] [eB]z| \
+[bec]g [fc][ec] [fc]z [ec]g| \
+[fdB]2 e[bB] [geB]2 [GEB,]2|
+[bec]g [fc][ec] [fc]z [ec]g| \
+[fdB]2 [eB]g [fB]e dc| \
+[cGE]2 [dGE]2 [eGE]2 [bB]2| \
+[beB]2 [FD]a/2g/2 [fG]2 [BGE]2|
+[ecA]2 [ecA]2 [ecA]c [ecA]f| \
+[fdB]2 [fB]e [fB][eB] [fB][gB]| \
+[gec]2 [ge][c'e] [be][ge] [ge]z| \
+[fB]e [geB]2 [BG]/2E/2D/2E/2 F/2B/2c/2d/2|
+[ecA]2 [ecA]2 [ecA]c [ecA]f| \
+[fdB]2 [fB]e [fB][eB] [fB][gB]| \
+[gcB]2 [ge][c'e] [be][ge] [ge][ge]| \
+[fB]e gz ag fe|
+[eB]d eb de bd| \
+eb de bd' e'[b'b]|
+V:2
+%%MIDI program 0
+A,,3/2E,3/2C B,,2 DF,| \
+C,3/2G,3/2E G,,F, B,E| \
+[A,E,A,,]2 z6| \
+B,,,2 z6|
+E,3/2F3/2z4z| \
+[B,D,]2 z6| \
+C,3/2B,3/2E z4| \
+B,,3/2F,3/2D z4|
+A,,3/2E,3/2A, zB, E,z| \
+B,,3/2F,3/2F z4| \
+[B,E,]2 z2 E2 z2| \
+[B,D,]2 z6|
+[G,C,]2 z2 E2 z2| \
+[F,B,,]2 z6| \
+A,,3/2E,3/2B, zA, E,z| \
+B,,3/2F,3/2F zB,, F,z|
+[C,C,,]2 z[G,,G,,,]2D, F,[A,,-A,,,-]| \
+[A,,A,,,]C, E,[E,E,,]2E, [D,D,,]D,,| \
+[C,C,,]G,, C,[G,,G,,,]2G, B,z| \
+[A,,A,,,]E, A,[B,,B,,,]2F, z2|
+[A,=D,]2 z6| \
+[A,C,]2 z2 C2 z2| \
+[B,,B,,,]2 [B,,B,,,][B,,B,,,] [B,,B,,,][B,,B,,,] [B,,B,,,][B,,B,,,]| \
+[B,,B,,,]z/2[B,,B,,,]z/2[B,,B,,,] z4|
+[A,,A,,,]2 A,,,[E,C,] A,,,[E,C,] A,,,[E,C,]| \
+[B,,B,,,]2 B,,,D, B,,,D, B,,,D,| \
+[C,C,,]2 C,,[E,C,] C,,[E,C,] C,,[E,C,]| \
+[D,D,,]z/2[D,D,,]z/2[E,E,,] z/2[E,E,,]z/2 [E,E,,][E,E,,]|
+[A,,A,,,]2 A,,,[E,C,] A,,,[E,C,] A,,,[E,C,]| \
+[B,,B,,,]2 B,,,D, B,,,D, B,,,D,| \
+[C,C,,]2 C,,[E,C,] C,,[E,C,] C,,[E,C,]| \
+[C,C,,]2 [D,D,,]2 [E,E,,]2 [G,,G,,,]G,,,|
+[A,,A,,,]2 A,,,[E,C,] A,,,[E,C,] A,,,[E,C,]| \
+[B,,B,,,]2 B,,,D, B,,,D, B,,,D,| \
+[C,C,,]2 C,,[E,C,] C,,[E,C,] C,,[E,C,]| \
+[E,E,,]2 E,,G, E,,G, E,,G,|
+[F,,F,,,]2 F,,,[A,,F,,] F,,,[A,,F,,] F,,,[A,,F,,]| \
+[G,,G,,,]2 G,,,[B,,G,,] G,,,[B,,G,,] G,,,[B,,G,,]| \
+[A,,A,,,]2 A,,,C, A,,,C, A,,,C,| \
+[B,,B,,,]2 z6|
+[A,,A,,,]2 
