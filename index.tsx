@@ -904,8 +904,12 @@ const App: React.FC = () => {
                     <div className="md:col-span-9">
                         {isLoadingPosts && posts.length === 0 ? (
                             <div
-                                className="text-center py-20 rounded-xl border opacity-80 theme-bg-secondary theme-border-subtle theme-text-accent1">
-                                <CustomSparkleIcon className="animate-spin inline-block mr-2"/> 正在召唤卷轴...
+
+                                   className="text-center py-20 rounded-xl border opacity-80 theme-bg-secondary theme-border-subtle theme-text-accent1">
+                                <div className="flex items-center  justify-center ">  {/* 新增容器 */}
+                                    <HexagramIcon size={48} className="animate-pulse inline-block mr-2" />
+                                    <span>正在召唤卷轴...</span>
+
                             </div>
                         ) : isFetchingContent ? (
                             <div
