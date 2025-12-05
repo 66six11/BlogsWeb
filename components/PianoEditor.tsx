@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Note } from '../types';
-import { Play, Square, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair, Music } from 'lucide-react';
+import { Play, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair } from 'lucide-react';
 import { MEDIA_CONFIG } from '../config';
 import { parseScore, ScoreMetadata, NOTE_DURATION_STEPS, NoteDurationType } from './ScoreParser';
 import * as Tone from 'tone';
@@ -31,24 +31,50 @@ function throttle<T extends (...args: Parameters<T>) => void>(fn: T, delay: numb
 }
 
 const MIN_STEPS = 32;
-const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
-// Full 88-key piano range: A0 to C8 (octaves 0-8, but octave 0 only has A, A#, B, and octave 8 only has C)
-// For simplicity, we use octaves 0-8 with all 12 notes, and the ABC parser will handle edge cases
-const OCTAVES = [8, 7, 6, 5, 4, 3, 2, 1, 0];
-const KEY_LABEL_WIDTH = 64;
+const ROW_HEIGHT = 32; // Height of each piano key row
 
-// Octave colors - gradient from red (high) to blue (low)
-const OCTAVE_COLORS: Record<number, string> = {
-  8: '#ef4444', // C8 - highest - red
-  7: '#f97316', // Orange
-  6: '#eab308', // Yellow
-  5: '#84cc16', // Lime
-  4: '#22c55e', // Green (middle C)
-  3: '#14b8a6', // Teal
-  2: '#3b82f6', // Blue
-  1: '#6366f1', // Indigo
-  0: '#8b5cf6', // Purple - lowest - violet
-};
+// Standard 88-key piano range: A0 (MIDI 21) to C8 (MIDI 108)
+// Octave 0: A, A#, B (3 keys)
+// Octaves 1-7: C, C#, D, D#, E, F, F#, G, G#, A, A#, B (12 keys each = 84 keys)
+// Octave 8: C (1 key)
+// Total: 3 + 84 + 1 = 88 keys
+interface PianoKey {
+  name: string;
+  pitch: number;  // 0-11 (C=0, C#=1, ..., B=11)
+  octave: number; // 0-8
+  isBlack: boolean;
+}
+
+// Generate the 88 keys from high to low for display
+const PIANO_KEYS: PianoKey[] = (() => {
+  const keys: PianoKey[] = [];
+  const pitchNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  
+  // Octave 8: only C (highest)
+  keys.push({ name: 'C', pitch: 0, octave: 8, isBlack: false });
+  
+  // Octaves 7-1: all 12 notes (B down to C)
+  for (let octave = 7; octave >= 1; octave--) {
+    for (let p = 11; p >= 0; p--) {
+      keys.push({
+        name: pitchNames[p],
+        pitch: p,
+        octave,
+        isBlack: pitchNames[p].includes('#')
+      });
+    }
+  }
+  
+  // Octave 0: only A, A#, B (lowest)
+  keys.push({ name: 'B', pitch: 11, octave: 0, isBlack: false });
+  keys.push({ name: 'A#', pitch: 10, octave: 0, isBlack: true });
+  keys.push({ name: 'A', pitch: 9, octave: 0, isBlack: false });
+  
+  return keys;
+})();
+
+const TOTAL_KEYS = PIANO_KEYS.length; // 88
+const KEY_LABEL_WIDTH = 64;
 const DURATION_PALETTE_WIDTH = 48; // Width for duration selector on left
 const CELL_WIDTH = 25;
 const DEFAULT_BPM = 120;
@@ -137,115 +163,13 @@ class AudioNodePool {
   }
 }
 
-// NoteRow component - memoized for performance
-interface NoteRowProps {
-  octave: number;
-  pitchIndex: number;
-  pitchName: string;
-  oIdx: number;
-  visibleRange: { start: number; end: number };
-  isPartOfNote: (octave: number, pitch: number, step: number) => { isStart: boolean; isMiddle: boolean; isEnd: boolean; note?: Note };
-  toggleNote: (octaveIndex: number, pitchIndex: number, step: number) => void;
+// Visible note data structure for optimized rendering
+interface VisibleNote {
+  note: Note;
+  rowIndex: number; // Index in PIANO_KEYS array
+  left: number;     // Pixel position
+  width: number;    // Pixel width
 }
-
-const NoteRow = React.memo<NoteRowProps>(({ 
-  octave, 
-  pitchIndex, 
-  pitchName, 
-  oIdx, 
-  visibleRange, 
-  isPartOfNote, 
-  toggleNote 
-}) => {
-  return (
-    <div className="relative h-8 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)' }}>
-      {/* Grid cells layer (below notes) */}
-      <div className="absolute inset-0 flex z-0">
-        {/* Left spacer for virtual scroll */}
-        <div style={{ width: `${visibleRange.start * CELL_WIDTH}px`, flexShrink: 0 }} />
-        
-        {/* Visible grid cells */}
-        {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
-          const step = visibleRange.start + idx;
-          return (
-            <div 
-              key={step} 
-              onClick={() => toggleNote(oIdx, pitchIndex, step)}
-              className="cursor-pointer hover:bg-white/5"
-              style={{ 
-                width: `${CELL_WIDTH}px`, height: '100%', flexShrink: 0,
-                borderRight: step % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
-              }}
-            />
-          );
-        })}
-      </div>
-      
-      {/* Notes layer (above grid) */}
-      <div className="absolute inset-0 flex z-10 pointer-events-none">
-        {/* Left spacer for virtual scroll */}
-        <div style={{ width: `${visibleRange.start * CELL_WIDTH}px`, flexShrink: 0 }} />
-        
-        {/* Visible notes */}
-        {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
-          const step = visibleRange.start + idx;
-          const noteInfo = isPartOfNote(octave, 11 - pitchIndex, step);
-          const { isStart, isMiddle, isEnd } = noteInfo;
-          const isActive = isStart || isMiddle;
-          
-          if (!isActive) {
-            return <div key={step} style={{ width: `${CELL_WIDTH}px`, flexShrink: 0 }} />;
-          }
-          
-          // Get note color based on pitch (rainbow spectrum)
-          const pitchValue = 11 - pitchIndex;
-          const noteColor = PITCH_COLORS[pitchValue] || 'var(--accent-3, #a855f7)';
-          
-          // Determine border radius for unified note block appearance
-          let borderRadius = '0';
-          if (isStart && isEnd) {
-            borderRadius = '4px'; // Single cell note
-          } else if (isStart) {
-            borderRadius = '4px 0 0 4px'; // Start of multi-cell note
-          } else if (isEnd) {
-            borderRadius = '0 4px 4px 0'; // End of multi-cell note
-          }
-          
-          return (
-            <div 
-              key={step}
-              className="relative pointer-events-auto"
-              style={{ width: `${CELL_WIDTH}px`, height: '100%', flexShrink: 0 }}
-              onClick={() => toggleNote(oIdx, pitchIndex, step)}
-            >
-              <div 
-                className="absolute" 
-                style={{ 
-                  backgroundColor: noteColor,
-                  boxShadow: `0 0 10px ${noteColor}80`,
-                  borderRadius,
-                  top: '2px',
-                  bottom: '2px',
-                  left: isStart ? '2px' : '0',
-                  right: isEnd ? '2px' : '0',
-                  borderLeft: isStart ? '3px solid rgba(255,255,255,0.5)' : 'none'
-                }} 
-              />
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}, (prev, next) => {
-  // Custom comparison function - only re-render when necessary
-  return prev.visibleRange.start === next.visibleRange.start &&
-         prev.visibleRange.end === next.visibleRange.end &&
-         prev.octave === next.octave &&
-         prev.pitchIndex === next.pitchIndex &&
-         prev.isPartOfNote === next.isPartOfNote &&
-         prev.toggleNote === next.toggleNote;
-});
 
 interface PianoEditorProps {
   className?: string;
@@ -395,6 +319,40 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     const result = isPartOfNote(octave, pitch, step);
     return result.isStart || result.isMiddle;
   }, [isPartOfNote]);
+
+  // Create a map from octave-pitch to row index for O(1) lookup
+  const keyRowIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    PIANO_KEYS.forEach((key, idx) => {
+      map.set(`${key.octave}-${key.pitch}`, idx);
+    });
+    return map;
+  }, []);
+
+  // Pre-compute visible notes with their rendering positions
+  // Only notes that overlap with the visible range are included
+  const visibleNotes = useMemo((): VisibleNote[] => {
+    const result: VisibleNote[] = [];
+    const { start, end } = visibleRange;
+    
+    for (const note of filteredNotes) {
+      const noteEnd = note.startTime + note.duration;
+      // Check if note overlaps with visible range
+      if (noteEnd > start && note.startTime < end) {
+        const rowIndex = keyRowIndex.get(`${note.octave}-${note.pitch}`);
+        if (rowIndex !== undefined) {
+          result.push({
+            note,
+            rowIndex,
+            left: note.startTime * CELL_WIDTH,
+            width: note.duration * CELL_WIDTH
+          });
+        }
+      }
+    }
+    
+    return result;
+  }, [filteredNotes, visibleRange, keyRowIndex]);
   
   // Initialize
   useEffect(() => {
@@ -737,19 +695,22 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   }, [pausePlayback, updatePlayheadPosition]);
 
   // Toggle note in grid - uses selected duration
-  const toggleNote = useCallback((octaveIndex: number, pitchIndex: number, step: number) => {
-    const pitchVal = 11 - pitchIndex;
-    const octaveVal = OCTAVES[octaveIndex];
+  // rowIndex is the index into PIANO_KEYS, step is the horizontal position
+  const toggleNote = useCallback((rowIndex: number, step: number) => {
+    const key = PIANO_KEYS[rowIndex];
+    if (!key) return;
+    
+    const { pitch, octave } = key;
     const duration = NOTE_DURATION_STEPS[selectedDuration];
 
     setNotes(prev => {
       // Check if clicking on any part of an existing note
       const existingNote = prev.find(n => 
-        n.octave === octaveVal && n.pitch === pitchVal && 
+        n.octave === octave && n.pitch === pitch && 
         step >= n.startTime && step < n.startTime + n.duration
       );
       if (existingNote) return prev.filter(n => n !== existingNote);
-      return [...prev, { pitch: pitchVal, octave: octaveVal, startTime: step, duration }];
+      return [...prev, { pitch, octave, startTime: step, duration }];
     });
   }, [selectedDuration]);
 
@@ -973,46 +934,98 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
               </div>
             </div>
             
-            {/* Scrollable content area - vertical scroll */}
-            <div className="flex-1 flex overflow-y-auto">
-              {/* Key labels column - fixed horizontally, scrolls vertically */}
-              <div className="shrink-0 z-20" style={{ width: `${KEY_LABEL_WIDTH}px` }}>
-                {OCTAVES.map((octave) => (
-                  <React.Fragment key={octave}>
-                    {PITCHES.map((noteName, pIdx) => {
-                      const isBlackKey = noteName.includes('#');
-                      return (
-                        <div 
-                          key={`${octave}-${noteName}`}
-                          className="flex items-center justify-end px-2 text-xs border-b border-r h-8"
-                          style={{ 
-                            width: `${KEY_LABEL_WIDTH}px`,
-                            backgroundColor: isBlackKey ? 'var(--bg-primary, #0f172a)' : 'var(--bg-secondary, #1e293b)',
-                            color: isBlackKey ? 'var(--text-secondary, #64748b)' : 'var(--text-primary, #e2e8f0)',
-                            borderColor: 'var(--bg-tertiary, #334155)'
-                          }}
-                        >
-                          <span>{noteName}{octave}</span>
-                        </div>
-                      );
-                    })}
-                  </React.Fragment>
-                ))}
-              </div>
-
-              {/* Scrollable grid - horizontal scroll */}
+            {/* Scrollable content area - both vertical and horizontal scroll */}
+            <div 
+              ref={scrollContainerRef} 
+              className="piano-scroll flex-1 overflow-auto relative"
+              onScroll={() => {
+                // Sync ruler position with grid scroll using state
+                if (scrollContainerRef.current) {
+                  setRulerScrollOffset(scrollContainerRef.current.scrollLeft);
+                }
+                handleUserScroll();
+              }}
+            >
+              {/* Content wrapper - contains both key labels and grid for synchronized vertical scrolling */}
               <div 
-                ref={scrollContainerRef} 
-                className="piano-scroll flex-1 overflow-x-auto relative"
-                onScroll={() => {
-                  // Sync ruler position with grid scroll using state
-                  if (scrollContainerRef.current) {
-                    setRulerScrollOffset(scrollContainerRef.current.scrollLeft);
-                  }
-                  handleUserScroll();
+                className="relative" 
+                style={{ 
+                  width: `${totalSteps * CELL_WIDTH + KEY_LABEL_WIDTH}px`, 
+                  height: `${TOTAL_KEYS * ROW_HEIGHT}px`
                 }}
               >
-                <div className="relative" style={{ width: `${totalSteps * CELL_WIDTH}px`, minWidth: `${totalSteps * CELL_WIDTH}px` }}>
+                {/* Key labels column - sticky left, scrolls vertically with grid */}
+                <div 
+                  className="absolute top-0 z-20"
+                  style={{ 
+                    position: 'sticky', 
+                    left: 0,
+                    width: `${KEY_LABEL_WIDTH}px`,
+                    height: `${TOTAL_KEYS * ROW_HEIGHT}px`
+                  }}
+                >
+                  {PIANO_KEYS.map((key, idx) => (
+                    <div 
+                      key={`${key.octave}-${key.pitch}`}
+                      className="flex items-center justify-end px-2 text-xs border-b border-r"
+                      style={{ 
+                        width: `${KEY_LABEL_WIDTH}px`,
+                        height: `${ROW_HEIGHT}px`,
+                        backgroundColor: key.isBlack ? 'var(--bg-primary, #0f172a)' : 'var(--bg-secondary, #1e293b)',
+                        color: key.isBlack ? 'var(--text-secondary, #64748b)' : 'var(--text-primary, #e2e8f0)',
+                        borderColor: 'var(--bg-tertiary, #334155)'
+                      }}
+                    >
+                      <span>{key.name}{key.octave}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Grid area - uses CSS background for grid lines */}
+                <div
+                  className="absolute cursor-crosshair"
+                  style={{ 
+                    left: `${KEY_LABEL_WIDTH}px`,
+                    top: 0,
+                    width: `${totalSteps * CELL_WIDTH}px`,
+                    height: `${TOTAL_KEYS * ROW_HEIGHT}px`,
+                    backgroundColor: 'var(--bg-primary, #0f172a)',
+                    backgroundImage: `
+                      repeating-linear-gradient(
+                        to right,
+                        transparent 0px,
+                        transparent ${CELL_WIDTH * 4 - 2}px,
+                        var(--accent-1, #deb99a) ${CELL_WIDTH * 4 - 2}px,
+                        var(--accent-1, #deb99a) ${CELL_WIDTH * 4}px
+                      ),
+                      repeating-linear-gradient(
+                        to right,
+                        transparent 0px,
+                        transparent ${CELL_WIDTH - 1}px,
+                        var(--bg-tertiary, #334155) ${CELL_WIDTH - 1}px,
+                        var(--bg-tertiary, #334155) ${CELL_WIDTH}px
+                      ),
+                      repeating-linear-gradient(
+                        to bottom,
+                        transparent 0px,
+                        transparent ${ROW_HEIGHT - 1}px,
+                        var(--bg-tertiary, #334155) ${ROW_HEIGHT - 1}px,
+                        var(--bg-tertiary, #334155) ${ROW_HEIGHT}px
+                      )
+                    `
+                  }}
+                  onClick={(e) => {
+                    // Event delegation: calculate which cell was clicked
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const step = Math.floor(x / CELL_WIDTH);
+                    const rowIndex = Math.floor(y / ROW_HEIGHT);
+                    if (rowIndex >= 0 && rowIndex < TOTAL_KEYS && step >= 0 && step < totalSteps) {
+                      toggleNote(rowIndex, step);
+                    }
+                  }}
+                >
                   {/* Playhead - highest z-index, positioned via ref for performance */}
                   <div 
                     ref={playheadRef}
@@ -1027,23 +1040,26 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
                     }}
                   />
 
-                  {/* Note grid - virtual scrolling with memoized NoteRow components */}
-                  {OCTAVES.map((octave, oIdx) => (
-                    <React.Fragment key={octave}>
-                      {PITCHES.map((noteName, pIdx) => (
-                        <NoteRow
-                          key={`${octave}-${noteName}`}
-                          octave={octave}
-                          pitchIndex={pIdx}
-                          pitchName={noteName}
-                          oIdx={oIdx}
-                          visibleRange={visibleRange}
-                          isPartOfNote={isPartOfNote}
-                          toggleNote={toggleNote}
-                        />
-                      ))}
-                    </React.Fragment>
-                  ))}
+                  {/* Only render visible notes - absolutely positioned */}
+                  {visibleNotes.map((vn, idx) => {
+                    const noteColor = PITCH_COLORS[vn.note.pitch] || 'var(--accent-3, #a855f7)';
+                    return (
+                      <div
+                        key={`note-${idx}-${vn.note.octave}-${vn.note.pitch}-${vn.note.startTime}`}
+                        className="absolute z-10 pointer-events-none"
+                        style={{
+                          left: `${vn.left + 2}px`,
+                          top: `${vn.rowIndex * ROW_HEIGHT + 2}px`,
+                          width: `${vn.width - 4}px`,
+                          height: `${ROW_HEIGHT - 4}px`,
+                          backgroundColor: noteColor,
+                          boxShadow: `0 0 10px ${noteColor}80`,
+                          borderRadius: '4px',
+                          borderLeft: '3px solid rgba(255,255,255,0.5)'
+                        }}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             </div>
