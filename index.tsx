@@ -10,13 +10,13 @@ import {
     GITHUB_USERNAME,
     GITHUB_REPO
 } from './constants';
-import { SITE_CONFIG } from './config';
+import {SITE_CONFIG} from './config';
 import PianoEditor from './components/PianoEditor';
 import MagicChat from './components/MagicChat';
 import Scene3D from './components/Scene3D';
 import MusicPlayer from './components/MusicPlayer';
 import ThemeToggle from './components/ThemeToggle';
-import {CustomSparkleIcon, CustomWitchIcon,HexagramIcon} from './components/CustomIcons';
+import {CustomSparkleIcon, CustomWitchIcon, HexagramIcon} from './components/CustomIcons';
 
 import {
     fetchBlogPosts,
@@ -664,7 +664,7 @@ const App: React.FC = () => {
     const handleEnterSite = () => {
         // 开始淡出动画
         setWelcomeFading(true);
-        
+
         // 等待过渡动画完成后再隐藏
         setTimeout(() => {
             setShowWelcome(false);
@@ -699,7 +699,8 @@ const App: React.FC = () => {
     };
 
     const renderNav = () => (
-        <nav className="sticky top-0 z-40 w-full bg-slate-900/60 dark:bg-slate-900/40 backdrop-blur-md border-b border-white/10 shadow-lg">
+        <nav
+            className="sticky top-0 z-40 w-full bg-slate-900/60 dark:bg-slate-900/40 backdrop-blur-md border-b border-white/10 shadow-lg">
             <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
                 <div
                     className="flex items-center gap-2 cursor-pointer group"
@@ -708,7 +709,8 @@ const App: React.FC = () => {
                         setSelectedPost(null);
                     }}
                 >
-                    <div className=" from-purple-600 to-amber-500 p-1. 5 rounded-lg group-hover:rotate-[30deg] transition-transform shadow-[0_0_15px_rgba(251,191,36,0. 4)]">
+                    <div
+                        className=" from-purple-600 to-amber-500 p-1. 5 rounded-lg group-hover:rotate-[30deg] transition-transform shadow-[0_0_15px_rgba(251,191,36,0. 4)]">
                         <HexagramIcon size={48}/>
                     </div>
                     <span
@@ -744,8 +746,8 @@ const App: React.FC = () => {
                         ))}
                     </div>
 
-                    <ThemeToggle />
-                    <MusicPlayer 
+                    <ThemeToggle/>
+                    <MusicPlayer
                         onAnalyserReady={handleAnalyserReady}
                         autoPlayTrigger={!showWelcome}
                     />
@@ -756,7 +758,8 @@ const App: React.FC = () => {
 
     // Mobile bottom navigation
     const renderMobileNav = () => (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border-t border-white/10 shadow-lg">
+        <nav
+            className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border-t border-white/10 shadow-lg">
             <div className="flex justify-around items-center h-16 px-2">
                 {[
                     {id: View.HOME, icon: Home, label: '首页'},
@@ -773,9 +776,9 @@ const App: React.FC = () => {
                         }}
                         className={`flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg transition-all duration-300
                             ${currentView === item.id
-                                ? 'text-amber-400 bg-white/10'
-                                : 'text-slate-400 hover:text-slate-100'
-                            }`}
+                            ? 'text-amber-400 bg-white/10'
+                            : 'text-slate-400 hover:text-slate-100'
+                        }`}
                     >
                         <item.icon size={20}/>
                         <span className="text-[10px] font-medium">{item.label}</span>
@@ -790,7 +793,7 @@ const App: React.FC = () => {
             className="flex flex-col items-center justify-center flex-1 text-center px-4 relative overflow-hidden w-full h-full">
             <div
                 className="relative z-10 animate-fade-in-up bg-slate-900/60 backdrop-blur-md p-8 md:p-12 rounded-3xl border border-white/10 shadow-2xl max-w-4xl flex flex-col items-center">
-                <div 
+                <div
                     className="w-32 h-32 mx-auto mb-8 relative group cursor-pointer"
                     onClick={() => setCurrentView(View.ABOUT)}
                     title="关于我"
@@ -1113,15 +1116,15 @@ const App: React.FC = () => {
 
             {/* 欢迎遮罩层 */}
             {showWelcome && (
-                <div 
-                    className={`fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center
+                <div
+                    className={`fixed inset-0 z-50 bg-slate-950 welcome-bg flex flex-col items-center justify-center
                                 transition-opacity ease-out ${welcomeFading ? 'opacity-0' : 'opacity-100'}`}
-                    style={{ transitionDuration: `${WELCOME_TRANSITION_DURATION}ms` }}
+                    style={{transitionDuration: `${WELCOME_TRANSITION_DURATION}ms`}}
                 >
-                    <HexagramIcon 
-                        size={80} 
+                    <HexagramIcon
+                        size={80}
                         className={`mb-8 animate-pulse transition-all duration-500
-                                    ${welcomeFading ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`} 
+                                    ${welcomeFading ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`}
                     />
                     <h1 className={`text-4xl font-serif font-bold text-white mb-4 transition-all duration-500
                                    ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
@@ -1134,11 +1137,14 @@ const App: React.FC = () => {
                     <button
                         onClick={handleEnterSite}
                         className={`px-8 py-3 bg-gradient-to-r from-purple-600 to-amber-500 text-white rounded-full 
-                                   font-bold shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:scale-105 
-                                   transition-all duration-500 delay-100 flex items-center gap-2 border border-white/20
-                                   ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}
+           font-bold shadow-[0_0_30px_rgba(251,191,36,0.4)]
+           transition-all duration-300 flex items-center gap-2
+           relative before:absolute before:inset-0 before:rounded-full
+           before:border-2 before:border-white/10 before:pointer-events-none
+           hover:scale-105 hover:before:border-white/20
+           ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}
                     >
-                        <Music size={20} /> 进入
+                        <Music size={20}/> 进入
                     </button>
                 </div>
             )}
@@ -1203,7 +1209,7 @@ const App: React.FC = () => {
                         <a href="#" className="hover:text-amber-400 transition-colors">ArtStation</a>
                     </div>
                 </footer>
-                
+
                 {/* Mobile bottom navigation */}
                 {renderMobileNav()}
             </div>

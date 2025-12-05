@@ -132,7 +132,7 @@ export const MEDIA_CONFIG = {
       { name: '文学', file: '上田麗奈 - リテラチュア (文学) (Anime Size)_H.mp3' }
     ],
     // Default volume (0-1)
-    defaultVolume: 0.4,
+    defaultVolume: 1,
     // Enable shuffle
     shuffle: false,
     // Enable loop

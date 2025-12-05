@@ -131,7 +131,7 @@
       /* Theme-aware component overrides */
       :root.light .nav-bar,
       :root.light nav {
-        background-color: rgba(247, 248, 243, 0.9) !important;
+        background-color: rgba(247, 248, 243, 0.6) !important;
         border-color: var(--bg-tertiary) !important;
       }
       
@@ -143,9 +143,11 @@
       
       :root.light .card,
       :root.light .bg-slate-900\/60,
-      :root.light .bg-slate-900\/80,
-      :root.light [class*="bg-slate-9"] {
-        background-color: rgba(235, 236, 242, 0.9) !important;
+      :root.light .bg-slate-900\/80 {
+        background-color: rgba(235, 236, 242, 0.3) !important;
+      }
+      :root.light .welcome-bg {
+        background-color:rgba(235, 236, 242, 1) !important; /* 使用具体颜色值保持不透明 */
       }
       
       :root.light .text-slate-100,
@@ -172,13 +174,13 @@
 
       :root.dark .nav-bar,
       :root.dark nav {
-        background-color: rgba(59, 52, 66, 0.9) !important;
+        background-color: rgba(59, 52, 66, 0.6) !important;
       }
       
       :root.dark .card,
       :root.dark .bg-slate-900\/60,
       :root.dark .bg-slate-900\/80 {
-        background-color: rgba(77, 70, 88, 0.9) !important;
+        background-color: rgba(77, 70, 88, 0.6) !important;
       }
 
       /* Accent color styling */
