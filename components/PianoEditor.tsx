@@ -807,6 +807,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     .piano-scroll::-webkit-scrollbar { height: 8px; }
     .piano-scroll::-webkit-scrollbar-track { background: var(--bg-secondary, #1e293b); }
     .piano-scroll::-webkit-scrollbar-thumb { background: var(--accent-3, #7C85EB); border-radius: 4px; }
+    .piano-scroll::-webkit-scrollbar-corner {background-color: transparent;display: none; /* 完全隐藏角落 */ }
   `;
 
   return (

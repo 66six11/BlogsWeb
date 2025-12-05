@@ -188,7 +188,7 @@ const MagicChat: React.FC = () => {
                 {isOpen ? (
                     <X size={24}/>
                 ) : (
-                    <div className="relative">
+                    <div className="relative pointer-events-none">
                         <LayeredCharacterIcon
                             mainSrc="/main.png"
                             hairSrc="/hair.png"
