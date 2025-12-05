@@ -403,9 +403,11 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({content}) => {
                     }
 
                     // E. Standard Images ![...](...)  - handle optional |size in alt text
-                    const imgMatch = line.match(/^!\[(\|?\d*)?([^\]]*?)?\]\((.*?)\)/);
+                    // Obsidian size formats can be: |100, |100x200, |small, etc.
+                    const imgMatch = line.match(/^!\[(\|[^\]]*)?([^\]]*?)?\]\((.*?)\)/);
                     if (imgMatch) {
-                        // imgMatch[1] might be "|300" or similar, imgMatch[2] is the actual alt text, imgMatch[3] is the URL
+                        // imgMatch[1] is the optional size prefix (e.g., "|300", "|100x200", etc.)
+                        // imgMatch[2] is the actual alt text, imgMatch[3] is the URL
                         const altText = imgMatch[2] || '';
                         const imageUrl = imgMatch[3];
                         result.push(

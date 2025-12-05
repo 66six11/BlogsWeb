@@ -816,6 +816,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                 const leftEdge = KEY_LABEL_WIDTH;
                 
                 // Detect if playhead is entering from the left side of the viewport
+                // On first frame (prevX is null), we don't trigger to avoid false positives
                 const prevX = prevPlayheadViewportXRef.current;
                 const isEnteringFromLeft = prevX !== null && prevX < leftEdge && playheadViewportX >= leftEdge;
                 
