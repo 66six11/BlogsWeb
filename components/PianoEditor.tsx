@@ -684,8 +684,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
             const c = scrollContainerRef.current;
             // Set flag to prevent scroll event from triggering user scroll detection
             isProgrammaticScrollRef.current = true;
-            // Calculate scroll position to align playhead with target position
-            const playheadTargetPosition = KEY_LABEL_WIDTH + CELL_WIDTH * 4;
+            // Calculate scroll position to align playhead with target position (same as auto-scroll)
+            const playheadTargetPosition = KEY_LABEL_WIDTH; // Match auto-scroll position
             c.scrollLeft = Math.max(0, playheadPosition - playheadTargetPosition + KEY_LABEL_WIDTH);
             setIsUserScrolling(false);
             isUserScrollingRef.current = false;
