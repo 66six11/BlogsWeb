@@ -376,9 +376,9 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({content}) => {
                         continue;
                     }
 
-                    // D. Obsidian Images ![[...]]
-                    if (trimmed.match(/!\[\[(.*?)\]\]/)) {
-                        const match = trimmed.match(/!\[\[(.*?)\]\]/);
+                    // D. Obsidian Images ![[...]] - handle optional |size parameter
+                    if (trimmed.match(/!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/)) {
+                        const match = trimmed.match(/!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/);
                         if (match) {
                             const imageName = match[1];
                             const encodedName = encodeURIComponent(imageName);
@@ -389,7 +389,7 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({content}) => {
                                     <img
                                         src={imageUrl}
                                         alt={imageName}
-                                        className="max-w-full md:max-w-lg rounded-lg border border-white/10 shadow-lg"
+                                        className="max-w-full md:max-w-lg rounded-lg border border-white/10 shadow-lg opacity-100"
                                         onError={(e) => {
                                             (e.target as HTMLImageElement).style.display = 'none';
                                         }}
@@ -402,15 +402,18 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({content}) => {
                         }
                     }
 
-                    // E. Standard Images ![...](...)
-                    const imgMatch = line.match(/^!\[(.*?)\]\((.*?)\)/);
+                    // E. Standard Images ![...](...)  - handle optional |size in alt text
+                    const imgMatch = line.match(/^!\[(\|?\d*)?([^\]]*?)?\]\((.*?)\)/);
                     if (imgMatch) {
+                        // imgMatch[1] might be "|300" or similar, imgMatch[2] is the actual alt text, imgMatch[3] is the URL
+                        const altText = imgMatch[2] || '';
+                        const imageUrl = imgMatch[3];
                         result.push(
                             <div key={key} className="my-6 flex flex-col items-center">
-                                <img src={imgMatch[2]} alt={imgMatch[1]}
-                                     className="max-w-full rounded-lg border border-white/10 shadow-lg"/>
-                                {imgMatch[1] &&
-                                    <span className="text-xs text-slate-500 mt-2 italic">{imgMatch[1]}</span>}
+                                <img src={imageUrl} alt={altText}
+                                     className="max-w-full rounded-lg border border-white/10 shadow-lg opacity-100"/>
+                                {altText &&
+                                    <span className="text-xs text-slate-500 mt-2 italic">{altText}</span>}
                             </div>
                         );
                         i++;
@@ -991,7 +994,7 @@ const App: React.FC = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {PROJECTS.map(project => (
                     <div key={project.id}
-                         className="group rounded-xl overflow-hidden border transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md opacity-90 theme-bg-secondary theme-border-subtle">
+                         className="group rounded-xl overflow-hidden border transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md theme-bg-secondary theme-border-subtle">
                         <div className="h-48 overflow-hidden relative">
                             <div
                                 className="absolute inset-0 group-hover:bg-transparent transition-colors z-10 project-card-overlay"/>

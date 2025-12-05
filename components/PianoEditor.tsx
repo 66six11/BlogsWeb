@@ -270,6 +270,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const toneSamplerRef = useRef<Tone.Sampler | null>(null); // Tone.js sampler for piano sound
     const playheadRef = useRef<HTMLDivElement>(null); // Playhead DOM ref for direct manipulation
     const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
+    const prevPlayheadViewportXRef = useRef<number | null>(null); // Track previous playhead viewport X for detecting left edge entry
     const [rulerScrollOffset, setRulerScrollOffset] = useState(0); // Track ruler scroll position
 
     // History for undo/redo
@@ -720,6 +721,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         onPlaybackChange?.(true);  // 通知父组件播放已开始
         setIsUserScrolling(false);
         isUserScrollingRef.current = false;
+        prevPlayheadViewportXRef.current = null; // Reset previous playhead position tracking
 
         // Real-time playback loop
         const playStartTime = performance.now();
@@ -809,12 +811,19 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                 // Calculate the scroll position to keep playhead at target position
                 const targetScrollLeft = px - playheadTargetPosition + KEY_LABEL_WIDTH;
 
-                // Check if playhead is visible in current view
+                // Calculate playhead position in viewport
                 const playheadViewportX = px - c.scrollLeft + KEY_LABEL_WIDTH;
-                const isPlayheadVisible = playheadViewportX >= KEY_LABEL_WIDTH && playheadViewportX <= c.clientWidth - CELL_WIDTH * 2;
+                const leftEdge = KEY_LABEL_WIDTH;
+                
+                // Detect if playhead is entering from the left side of the viewport
+                const prevX = prevPlayheadViewportXRef.current;
+                const isEnteringFromLeft = prevX !== null && prevX < leftEdge && playheadViewportX >= leftEdge;
+                
+                // Update previous position for next frame
+                prevPlayheadViewportXRef.current = playheadViewportX;
 
-                if (isPlayheadVisible && isUserScrollingRef.current) {
-                    // User scrolled away but playhead is now visible again - resume auto-scroll
+                if (isEnteringFromLeft && isUserScrollingRef.current) {
+                    // Playhead entered viewport from left edge - resume auto-scroll
                     setIsUserScrolling(false);
                     isUserScrollingRef.current = false;
                 }
