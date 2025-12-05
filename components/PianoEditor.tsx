@@ -447,36 +447,27 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
   useEffect(() => {
     let mounted = true;
     
-    const initSampler = async () => {
-      try {
-        // Create sampler with Salamander Grand Piano samples
-        const sampler = new Tone.Sampler({
-          urls: SALAMANDER_SAMPLES,
-          baseUrl: SALAMANDER_BASE_URL,
-          release: sustain ? 1.0 : 0.3,
-          onload: () => {
-            if (mounted) {
-              setIsSamplerLoading(false);
-            }
-          },
-          onerror: (error) => {
-            console.error('Error loading sampler:', error);
-            if (mounted) {
-              setIsSamplerLoading(false);
-            }
-          }
-        }).toDestination();
-        
-        toneSamplerRef.current = sampler;
-      } catch (error) {
-        console.error('Error initializing sampler:', error);
+    // Create sampler with Salamander Grand Piano samples
+    // Initial release is set to 1.0 (sustain on by default)
+    // The sustain effect hook below will update this if sustain state changes
+    const sampler = new Tone.Sampler({
+      urls: SALAMANDER_SAMPLES,
+      baseUrl: SALAMANDER_BASE_URL,
+      release: 1.0, // Default release, updated by sustain effect
+      onload: () => {
+        if (mounted) {
+          setIsSamplerLoading(false);
+        }
+      },
+      onerror: (error) => {
+        console.error('Error loading sampler:', error);
         if (mounted) {
           setIsSamplerLoading(false);
         }
       }
-    };
+    }).toDestination();
     
-    initSampler();
+    toneSamplerRef.current = sampler;
     
     return () => {
       mounted = false;
