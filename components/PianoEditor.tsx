@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
 import {Note} from '../types';
-import {Play, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair} from 'lucide-react';
+import {Play, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair, Undo2, Redo2} from 'lucide-react';
 import {SixteenthNoteIcon, EighthNoteIcon, QuarterNoteIcon, HalfNoteIcon, WholeNoteIcon} from './CustomIcons';
 import {MEDIA_CONFIG} from '../config';
 import {parseScore, ScoreMetadata, NOTE_DURATION_STEPS, NoteDurationType} from './ScoreParser';
@@ -77,6 +77,8 @@ const ROW_HEIGHT = 32;
 const DEFAULT_BPM = 120;
 const VISIBLE_STEP_BUFFER = 10; // Extra steps to render beyond visible area
 const MAX_CONCURRENT_NOTES = 32; // Limit concurrent oscillators for large scores
+const MAX_HISTORY_LENGTH = 50; // Maximum undo/redo history length
+const DRAG_THRESHOLD = 5; // Pixel threshold to distinguish click from drag
 
 // Salamander Grand Piano sampler configuration
 const SALAMANDER_BASE_URL = "https://tonejs.github.io/audio/salamander/";
@@ -254,6 +256,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
     const [selectedVoice, setSelectedVoice] = useState<string>('all'); // Voice filter
     const [selectedDuration, setSelectedDuration] = useState<NoteDurationType>('eighth'); // Default to 8th note
+    const [activeKeys, setActiveKeys] = useState<Map<string, { color: string; endTime: number }>>(new Map()); // Keys currently glowing
 
     // Refs
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -269,6 +272,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
     const [rulerScrollOffset, setRulerScrollOffset] = useState(0); // Track ruler scroll position
 
+    // History for undo/redo
+    const historyRef = useRef<{ states: Note[][]; cursor: number }>({ states: [[]], cursor: 0 });
+    
+    // Drag scroll state
+    const isDraggingRef = useRef(false);
+    const dragStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+    const hasDraggedRef = useRef(false); // Track if we've actually dragged (vs click)
+    const [isDragging, setIsDragging] = useState(false); // For cursor style
+
     // Virtual scroll state
     const [visibleRange, setVisibleRange] = useState({start: 0, end: MIN_STEPS});
 
@@ -279,6 +291,61 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
             playheadRef.current.style.transform = `translateX(${px}px)`;
         }
     }, []);
+
+    // Push notes state to history (for undo/redo)
+    const pushToHistory = useCallback((newNotes: Note[]) => {
+        const history = historyRef.current;
+        // Truncate any redo states if we're not at the end
+        const newStates = history.states.slice(0, history.cursor + 1);
+        newStates.push([...newNotes]);
+        // Limit history length
+        if (newStates.length > MAX_HISTORY_LENGTH) {
+            newStates.shift();
+        }
+        historyRef.current = { states: newStates, cursor: newStates.length - 1 };
+    }, []);
+
+    // Undo function
+    const undo = useCallback(() => {
+        const history = historyRef.current;
+        if (history.cursor > 0) {
+            history.cursor--;
+            setNotes([...history.states[history.cursor]]);
+        }
+    }, []);
+
+    // Redo function
+    const redo = useCallback(() => {
+        const history = historyRef.current;
+        if (history.cursor < history.states.length - 1) {
+            history.cursor++;
+            setNotes([...history.states[history.cursor]]);
+        }
+    }, []);
+
+    // Check if undo/redo is available
+    const canUndo = historyRef.current.cursor > 0;
+    const canRedo = historyRef.current.cursor < historyRef.current.states.length - 1;
+
+    // Keyboard shortcuts for undo/redo
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+            const modKey = isMac ? e.metaKey : e.ctrlKey;
+            
+            if (modKey && e.key === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    redo();
+                } else {
+                    undo();
+                }
+            }
+        };
+        
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [undo, redo]);
 
     // Derived values
     const stepInterval = useMemo(() => Math.round(60000 / bpm / 4), [bpm]);
@@ -777,6 +844,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
             // Parse to Note[] using ScoreParser - always display in grid
             const parsed = parseScore(content);
             setNotes(parsed.notes);
+            pushToHistory(parsed.notes);
+            // Reset history when loading a new score
+            historyRef.current = { states: [[...parsed.notes]], cursor: 0 };
             setScoreMetadata(parsed.metadata);
             setBpm(parsed.metadata.bpm);
             setAbcContent(content);
@@ -823,10 +893,16 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                 n.octave === octave && n.pitch === pitch &&
                 step >= n.startTime && step < n.startTime + n.duration
             );
-            if (existingNote) return prev.filter(n => n !== existingNote);
-            return [...prev, {pitch, octave, startTime: step, duration}];
+            let newNotes: Note[];
+            if (existingNote) {
+                newNotes = prev.filter(n => n !== existingNote);
+            } else {
+                newNotes = [...prev, {pitch, octave, startTime: step, duration}];
+            }
+            pushToHistory(newNotes);
+            return newNotes;
         });
-    }, [selectedDuration]);
+    }, [selectedDuration, pushToHistory]);
 
     const togglePlayback = useCallback(() => {
         if (isPlaying) {
@@ -841,9 +917,67 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         setCurrentStep(0);
         updatePlayheadPosition(0);
         setNotes([]);
+        pushToHistory([]);
         setAbcContent('');
         setSelectedScore('');
-    }, [pausePlayback, updatePlayheadPosition]);
+    }, [pausePlayback, updatePlayheadPosition, pushToHistory]);
+
+    // Drag scroll handlers
+    const handleDragStart = useCallback((e: React.MouseEvent) => {
+        // Only start drag on left mouse button and if not clicking on interactive elements
+        if (e.button !== 0) return;
+        
+        isDraggingRef.current = true;
+        hasDraggedRef.current = false;
+        dragStartRef.current = {
+            x: e.clientX,
+            y: e.clientY,
+            scrollLeft: scrollContainerRef.current?.scrollLeft || 0,
+            scrollTop: scrollContainerRef.current?.scrollTop || 0
+        };
+    }, []);
+
+    const handleDragMove = useCallback((e: React.MouseEvent) => {
+        if (!isDraggingRef.current || !scrollContainerRef.current) return;
+        
+        const dx = e.clientX - dragStartRef.current.x;
+        const dy = e.clientY - dragStartRef.current.y;
+        
+        // Check if we've moved enough to be considered a drag
+        if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+            hasDraggedRef.current = true;
+            setIsDragging(true);
+        }
+        
+        if (hasDraggedRef.current) {
+            scrollContainerRef.current.scrollLeft = dragStartRef.current.scrollLeft - dx;
+            scrollContainerRef.current.scrollTop = dragStartRef.current.scrollTop - dy;
+        }
+    }, []);
+
+    const handleDragEnd = useCallback(() => {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+    }, []);
+
+    // Handle grid click - only toggle note if not dragged
+    const handleGridClick = useCallback((e: React.MouseEvent) => {
+        // If we were dragging, don't toggle note
+        if (hasDraggedRef.current) {
+            hasDraggedRef.current = false;
+            return;
+        }
+        
+        // Event delegation: calculate which cell was clicked
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const step = Math.floor(x / CELL_WIDTH);
+        const rowIndex = Math.floor(y / ROW_HEIGHT);
+        if (rowIndex >= 0 && rowIndex < TOTAL_KEYS && step >= 0 && step < totalSteps) {
+            toggleNote(rowIndex, step);
+        }
+    }, [totalSteps, toggleNote]);
 
     // Cleanup on unmount - properly dispose all audio resources
     useEffect(() => () => disposeSampler(), [disposeSampler]);
@@ -914,6 +1048,26 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                         <button onClick={clearAll} className="p-2 rounded-full hover:bg-red-500/20 text-red-400"
                                 title="清除">
                             <Trash2 size={20}/>
+                        </button>
+
+                        {/* Undo button */}
+                        <button
+                            onClick={undo}
+                            disabled={!canUndo}
+                            className={`p-2 rounded-full hover:bg-white/10 piano-text-secondary ${!canUndo ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            title="撤销 (Ctrl+Z)"
+                        >
+                            <Undo2 size={20}/>
+                        </button>
+
+                        {/* Redo button */}
+                        <button
+                            onClick={redo}
+                            disabled={!canRedo}
+                            className={`p-2 rounded-full hover:bg-white/10 piano-text-secondary ${!canRedo ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            title="重做 (Ctrl+Shift+Z)"
+                        >
+                            <Redo2 size={20}/>
                         </button>
 
                         {/* Jump to start button */}
@@ -1095,24 +1249,18 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
 
                                 {/* Grid area - uses CSS background for grid lines */}
                                 <div
-                                    className="absolute cursor-crosshair piano-grid"
+                                    className={`absolute piano-grid ${isDragging ? 'cursor-grabbing' : 'cursor-crosshair'}`}
                                     style={{
                                         left: `${KEY_LABEL_WIDTH}px`,
                                         top: 0,
                                         width: `${totalSteps * CELL_WIDTH}px`,
                                         height: `${TOTAL_KEYS * ROW_HEIGHT}px`
                                     }}
-                                    onClick={(e) => {
-                                        // Event delegation: calculate which cell was clicked
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        const x = e.clientX - rect.left;
-                                        const y = e.clientY - rect.top;
-                                        const step = Math.floor(x / CELL_WIDTH);
-                                        const rowIndex = Math.floor(y / ROW_HEIGHT);
-                                        if (rowIndex >= 0 && rowIndex < TOTAL_KEYS && step >= 0 && step < totalSteps) {
-                                            toggleNote(rowIndex, step);
-                                        }
-                                    }}
+                                    onMouseDown={handleDragStart}
+                                    onMouseMove={handleDragMove}
+                                    onMouseUp={handleDragEnd}
+                                    onMouseLeave={handleDragEnd}
+                                    onClick={handleGridClick}
                                 >
                                     {/* Playhead - highest z-index, positioned via ref for performance */}
                                     <div
