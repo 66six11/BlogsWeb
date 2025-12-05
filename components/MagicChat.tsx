@@ -67,7 +67,7 @@ const MagicChat: React.FC = () => {
 
                     {/* 聊天窗口主体 */}
                     <div
-                        className="magic-chat-window w-80 md:w-96 h-96 backdrop-blur-xl rounded-2xl shadow-2xl flex flex-col overflow-hidden transform transition-all animate-fade-in-up border">
+                        className="magic-chat-window w-80 md:w-96 h-96 backdrop-blur-xl rounded-2xl shadow-2xl flex flex-col overflow-hidden transform transition-all animate-fade-in-up">
 
                         {/* Header */}
                         <div
@@ -97,7 +97,7 @@ const MagicChat: React.FC = () => {
                                         className={`max-w-[80%] p-3 rounded-lg text-sm ${
                                             msg.role === 'user' 
                                                 ? 'rounded-tr-none magic-chat-user-message' 
-                                                : 'rounded-tl-none magic-chat-bot-message border'
+                                                : 'rounded-tl-none magic-chat-bot-message'
                                         }`}>
                                         {msg.text}
                                     </div>
@@ -106,7 +106,7 @@ const MagicChat: React.FC = () => {
                             {isLoading && (
                                 <div className="flex justify-start">
                                     <div
-                                        className="p-3 rounded-lg rounded-tl-none flex gap-1 magic-chat-bot-message border">
+                                        className="p-3 rounded-lg rounded-tl-none flex gap-1 magic-chat-bot-message">
                                         <span className="w-2 h-2 rounded-full animate-bounce magic-chat-loading-dot"
                                               style={{ animationDelay: '0ms' }}/>
                                         <span className="w-2 h-2 rounded-full animate-bounce magic-chat-loading-dot"
