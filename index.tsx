@@ -810,8 +810,7 @@ const App: React.FC = () => {
                     onClick={() => setCurrentView(View.ABOUT)}
                     title="关于我"
                 >
-                    <div
-                        className="absolute inset-0 rounded-full animate-spin-slow opacity-80 blur-md group-hover:blur-xl transition-all avatar-gradient-bg"></div>
+                    <div className="absolute inset-0 rounded-full animate-spin-slow opacity-80 blur-md group-hover:blur-xl transition-all avatar-gradient-bg"></div>
                     <img
                         src={userProfile?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=Elaina&clothing=graphicShirt&top=hat&hairColor=silverGray"}
                         alt="Avatar"
@@ -1029,7 +1028,7 @@ const App: React.FC = () => {
     const renderAbout = () => (
         <div className="max-w-4xl mx-auto py-12 px-4 animate-fade-in-up relative z-10">
             <div
-                className="backdrop-blur-md border rounded-2xl p-8 md:p-12 shadow-2xl relative overflow-hidden opacity-90 theme-bg-secondary theme-border-subtle">
+                className="backdrop-blur-md border rounded-2xl p-8 md:p-12 shadow-2xl relative overflow-hidden  theme-bg-secondary theme-border-subtle">
                 {/* Decorative Corner */}
                 <div className="absolute top-0 right-0 p-4 opacity-10">
                     <CustomWitchIcon size={120} className="theme-text-accent1"/>
@@ -1037,8 +1036,8 @@ const App: React.FC = () => {
 
                 <div className="flex flex-col md:flex-row gap-10 items-center">
                     <div className="w-48 h-48 flex-shrink-0 relative">
-                        <div
-                            className="absolute inset-0 rounded-full blur-lg opacity-20 animate-pulse theme-bg-primary"></div>
+
+                        <div className="absolute inset-0 rounded-full animate-spin-slow opacity-80 blur-md group-hover:blur-xl transition-all avatar-gradient-bg"></div>
                         <img
                             src={userProfile?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=Elaina&clothing=graphicShirt&top=hat&hairColor=silverGray"}
                             alt="Profile"
@@ -1218,7 +1217,7 @@ const App: React.FC = () => {
                 <MagicChat/>
 
                 <footer
-                    className="hidden md:block backdrop-blur-md border-t py-8 text-center text-sm mt-auto opacity-90 theme-footer theme-bg-primary theme-border-subtle theme-text-secondary">
+                    className="hidden md:block backdrop-blur-md border-t py-2 text-center text-sm mt-auto opacity-90 theme-footer theme-bg-primary theme-border-subtle theme-text-secondary">
                     <p>© {new Date().getFullYear()} {userProfile?.name || AUTHOR_NAME}. 灵感来自《魔女之旅》。</p>
                     <div className="flex justify-center gap-4 mt-2">
                         <a href={userProfile?.html_url || "#"}
