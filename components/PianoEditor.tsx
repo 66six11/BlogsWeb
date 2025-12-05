@@ -113,11 +113,26 @@ const OCTAVE_HUES: Record<number, number> = {
 };
 
 // 根据八度和音高生成颜色
+// 每个八度有一个基础色，音符从该八度的颜色渐变到下一个八度的颜色
 const getNoteColor = (octave: number, pitch: number): string => {
-  const hue = OCTAVE_HUES[octave] ?? 0;
-  // 八度内从亮到暗渐变 (pitch 0=C 最亮, pitch 11=B 最暗)
-  const lightness = 65 - (pitch * 2); // 65% -> 43%
+  const currentHue = OCTAVE_HUES[octave] ?? 0;
+  const nextHue = OCTAVE_HUES[octave + 1] ?? currentHue;
+  
+  // pitch 0-11 映射到 0-1 的渐变比例
+  const ratio = pitch / 12;
+  
+  // 计算色相差，处理色环回绕（如从 340° 到 0°）
+  let hueDiff = nextHue - currentHue;
+  if (hueDiff > 180) hueDiff -= 360;
+  if (hueDiff < -180) hueDiff += 360;
+  
+  // 插值计算当前音符的色相
+  let hue = currentHue + hueDiff * ratio;
+  if (hue < 0) hue += 360;
+  if (hue >= 360) hue -= 360;
+  
   const saturation = 75;
+  const lightness = 55; // 固定亮度
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 };
 
