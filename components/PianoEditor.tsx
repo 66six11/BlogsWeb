@@ -31,7 +31,6 @@ function throttle<T extends (...args: Parameters<T>) => void>(fn: T, delay: numb
 }
 
 const MIN_STEPS = 32;
-const ROW_HEIGHT = 32; // Height of each piano key row
 
 // Standard 88-key piano range: A0 (MIDI 21) to C8 (MIDI 108)
 // Octave 0: A, A#, B (3 keys)
@@ -77,9 +76,28 @@ const TOTAL_KEYS = PIANO_KEYS.length; // 88
 const KEY_LABEL_WIDTH = 64;
 const DURATION_PALETTE_WIDTH = 48; // Width for duration selector on left
 const CELL_WIDTH = 25;
+const ROW_HEIGHT = 32;
 const DEFAULT_BPM = 120;
 const VISIBLE_STEP_BUFFER = 10; // Extra steps to render beyond visible area
 const MAX_CONCURRENT_NOTES = 32; // Limit concurrent oscillators for large scores
+
+// CSS background grid pattern - replaces DOM elements for grid lines
+const GRID_BACKGROUND_CSS = `
+  repeating-linear-gradient(
+    to right,
+    transparent 0px,
+    transparent ${CELL_WIDTH * 4 - 2}px,
+    var(--accent-1, #deb99a) ${CELL_WIDTH * 4 - 2}px,
+    var(--accent-1, #deb99a) ${CELL_WIDTH * 4}px
+  ),
+  repeating-linear-gradient(
+    to right,
+    transparent 0px,
+    transparent ${CELL_WIDTH - 1}px,
+    var(--bg-tertiary, #334155) ${CELL_WIDTH - 1}px,
+    var(--bg-tertiary, #334155) ${CELL_WIDTH}px
+  )
+`;
 
 // Note colors by pitch - rainbow spectrum for different pitches
 const PITCH_COLORS: Record<number, string> = {
@@ -991,20 +1009,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
                     height: `${TOTAL_KEYS * ROW_HEIGHT}px`,
                     backgroundColor: 'var(--bg-primary, #0f172a)',
                     backgroundImage: `
-                      repeating-linear-gradient(
-                        to right,
-                        transparent 0px,
-                        transparent ${CELL_WIDTH * 4 - 2}px,
-                        var(--accent-1, #deb99a) ${CELL_WIDTH * 4 - 2}px,
-                        var(--accent-1, #deb99a) ${CELL_WIDTH * 4}px
-                      ),
-                      repeating-linear-gradient(
-                        to right,
-                        transparent 0px,
-                        transparent ${CELL_WIDTH - 1}px,
-                        var(--bg-tertiary, #334155) ${CELL_WIDTH - 1}px,
-                        var(--bg-tertiary, #334155) ${CELL_WIDTH}px
-                      ),
+                      ${GRID_BACKGROUND_CSS},
                       repeating-linear-gradient(
                         to bottom,
                         transparent 0px,
