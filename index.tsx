@@ -936,6 +936,14 @@ const App: React.FC = () => {
 
                     {/* Content Area */}
                     <div className="md:col-span-9">
+                        <div
+                            className="text-center py-20 rounded-xl border"
+                            style={mergeStyles(bgStyles.secondary, borderStyles.subtle, textStyles.accent1, { opacity: 0.8 })}>
+                            <div className="flex items-center  justify-center ">  {/* 新增容器 */}
+                                <HexagramIcon size={48} className="animate-pulse inline-block mr-2" />
+                                <span>正在召唤卷轴...</span>
+                            </div>
+                        </div>
                         {isLoadingPosts && posts.length === 0 ? (
                             <div
                                 className="text-center py-20 rounded-xl border"
