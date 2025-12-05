@@ -262,10 +262,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     updateVisibleRange();
   }, [totalSteps, updateVisibleRange]);
 
-  // Pause playback - keep position
-  const pausePlayback = useCallback(() => {
-    playbackIdRef.current++;
-    
+  // Internal function to clean up synth resources (doesn't change state)
+  const cleanupSynth = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
@@ -293,10 +291,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     } catch (e) {
       console.error('Error stopping Tone.js:', e);
     }
-    
+  }, []);
+
+  // Pause playback - keep position
+  const pausePlayback = useCallback(() => {
+    playbackIdRef.current++;
+    cleanupSynth();
     setIsPlaying(false);
     // Keep currentStep and playheadPosition - don't reset
-  }, []);
+  }, [cleanupSynth]);
 
   // Stop and reset to beginning
   const stopPlayback = useCallback(() => {
@@ -335,11 +338,20 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   const startPlaybackFromStep = useCallback(async (fromStep?: number) => {
     if (notes.length === 0) return;
     
-    // Stop any existing playback
-    pausePlayback();
+    // Clean up any existing synth resources first (but don't change isPlaying yet)
+    cleanupSynth();
     
-    // Start Tone.js
+    // Increment playback ID to invalidate any old callbacks
+    const currentPlaybackId = ++playbackIdRef.current;
+    
+    // Start Tone.js context
     await Tone.start();
+    
+    // Small delay to ensure clean audio state
+    await new Promise(resolve => setTimeout(resolve, 20));
+    
+    // Check if we're still the current playback (in case another action was called)
+    if (playbackIdRef.current !== currentPlaybackId) return;
     
     // Create piano-like synth with PolySynth for polyphony
     const synth = new Tone.PolySynth(Tone.Synth, {
@@ -359,12 +371,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     
     const stepDurationSec = stepInterval / 1000;
     const startStep = fromStep !== undefined ? fromStep : (currentStep >= 0 ? currentStep : 0);
-    const currentPlaybackId = ++playbackIdRef.current;
     
     // Set BPM
     Tone.Transport.bpm.value = bpm;
     
-    // Schedule notes with Tone.js Transport
+    // Schedule notes with Tone.js - use fresh timestamp
     const now = Tone.now();
     for (const note of notes) {
       if (note.startTime >= startStep) {
@@ -411,7 +422,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
       }
       
       if (pos > lastNoteEndTime) {
-        pausePlayback();
+        playbackIdRef.current++;
+        cleanupSynth();
+        setIsPlaying(false);
         return;
       }
       
@@ -419,7 +432,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     };
     
     animationFrameRef.current = requestAnimationFrame(updatePlayhead);
-  }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, pausePlayback, bpm]);
+  }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, cleanupSynth, bpm]);
 
   // Wrapper for normal playback (from current position)
   const startPlayback = useCallback(() => {
