@@ -1029,7 +1029,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
                   {PIANO_KEYS.map((key, idx) => (
                     <div 
                       key={`${key.octave}-${key.pitch}`}
-                      className="flex items-center justify-end px-2 text-xs border-b border-r"
+                      className="flex items-center text-xs border-b"
                       style={{ 
                         width: `${KEY_LABEL_WIDTH}px`,
                         height: `${ROW_HEIGHT}px`,
@@ -1038,7 +1038,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
                         borderColor: 'var(--bg-tertiary, #334155)'
                       }}
                     >
-                      <span>{key.name}{key.octave}</span>
+                      <span className="flex-1 text-right pr-2">{key.name}{key.octave}</span>
+                      {/* 右侧颜色指示条 */}
+                      <div 
+                        style={{ 
+                          width: '4px',
+                          height: '100%',
+                          backgroundColor: getNoteColor(key.octave, key.pitch)
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
