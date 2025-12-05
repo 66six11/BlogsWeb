@@ -903,13 +903,11 @@ const App: React.FC = () => {
                     {/* Content Area */}
                     <div className="md:col-span-9">
                         {isLoadingPosts && posts.length === 0 ? (
-                            <div
-
-                                   className="text-center py-20 rounded-xl border opacity-80 theme-bg-secondary theme-border-subtle theme-text-accent1">
+                            <div className="text-center py-20 rounded-xl border opacity-80 theme-bg-secondary theme-border-subtle theme-text-accent1">
                                 <div className="flex items-center  justify-center ">  {/* 新增容器 */}
-                                    <HexagramIcon size={48} className="animate-pulse inline-block mr-2" />
+                                    <HexagramIcon size={48} className="animate-pulse inline-block mr-2"/>
                                     <span>正在召唤卷轴...</span>
-
+                                </div>
                             </div>
                         ) : isFetchingContent ? (
                             <div
@@ -982,7 +980,8 @@ const App: React.FC = () => {
 
     const renderPortfolio = () => (
         <div className="max-w-6xl mx-auto py-12 px-4 animate-fade-in-up relative z-10">
-            <div className="text-center mb-12 p-6 rounded-2xl backdrop-blur-sm border opacity-80 theme-bg-secondary theme-border-subtle">
+            <div
+                className="text-center mb-12 p-6 rounded-2xl backdrop-blur-sm border opacity-80 theme-bg-secondary theme-border-subtle">
                 <h2 className="text-3xl font-serif font-bold mb-2 flex items-center justify-center gap-2 theme-text-primary">
                     <Code size={30} className="theme-text-accent1"/> 魔法作品
                 </h2>
@@ -1050,7 +1049,8 @@ const App: React.FC = () => {
                             ) : (
                                 <>
                                     <p>
-                                        你好！我是一名对 <strong className="theme-text-accent1">计算机图形学</strong>、<strong
+                                        你好！我是一名对 <strong
+                                        className="theme-text-accent1">计算机图形学</strong>、<strong
                                         className="theme-text-accent1">Unity</strong> 和 <strong
                                         className="theme-text-accent1">游戏引擎架构</strong> 充满热情的学生。
                                     </p>
@@ -1106,12 +1106,14 @@ const App: React.FC = () => {
 
     const renderMusic = () => (
         <div className="max-w-5xl mx-auto py-12 px-4 animate-fade-in-up relative z-10">
-            <div className="text-center mb-8 p-6 rounded-2xl backdrop-blur-sm border opacity-80 theme-bg-secondary theme-border-subtle">
+            <div
+                className="text-center mb-8 p-6 rounded-2xl backdrop-blur-sm border opacity-80 theme-bg-secondary theme-border-subtle">
                 <h2 className="text-3xl font-serif font-bold mb-2 theme-text-primary">吟游诗人作曲</h2>
                 <p className="theme-text-secondary">创作一段旋律。即使是魔女也需要从学习中休息一下。</p>
             </div>
 
-            <PianoEditor className="w-full" isVisible={currentView === View.MUSIC} onPlaybackChange={handleScorePlaybackChange}/>
+            <PianoEditor className="w-full" isVisible={currentView === View.MUSIC}
+                         onPlaybackChange={handleScorePlaybackChange}/>
 
             <div
                 className="mt-8 text-center max-w-2xl mx-auto p-4 rounded-xl border backdrop-blur-sm opacity-80 theme-bg-secondary theme-border-subtle">
