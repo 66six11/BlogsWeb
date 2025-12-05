@@ -136,6 +136,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const rulerContainerRef = useRef<HTMLDivElement>(null);
   const playbackIdRef = useRef<number>(0);
   const animationFrameRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -143,6 +144,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
   const toneSynthRef = useRef<Tone.PolySynth | null>(null); // Tone.js synth
+  const [rulerScrollOffset, setRulerScrollOffset] = useState(0); // Track ruler scroll position
   
   // Virtual scroll state
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: MIN_STEPS });
@@ -676,12 +678,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
                 style={{ borderColor: 'var(--bg-tertiary, #334155)', backgroundColor: 'var(--bg-secondary, #1e293b)' }}
               >
                 <div 
+                  ref={rulerContainerRef}
                   className="absolute h-full flex"
                   style={{ 
                     width: `${totalSteps * CELL_WIDTH}px`,
-                    transform: `translateX(-${scrollContainerRef.current?.scrollLeft || 0}px)`
+                    transform: `translateX(-${rulerScrollOffset}px)`
                   }}
-                  id="ruler-container"
                 >
                   {/* Left spacer for virtual scroll */}
                   <div style={{ width: `${visibleRange.start * CELL_WIDTH}px`, flexShrink: 0 }} />
@@ -742,10 +744,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
                 ref={scrollContainerRef} 
                 className="piano-scroll flex-1 overflow-x-auto relative"
                 onScroll={() => {
-                  // Sync ruler position with grid scroll
-                  const rulerContainer = document.getElementById('ruler-container');
-                  if (rulerContainer && scrollContainerRef.current) {
-                    rulerContainer.style.transform = `translateX(-${scrollContainerRef.current.scrollLeft}px)`;
+                  // Sync ruler position with grid scroll using state
+                  if (scrollContainerRef.current) {
+                    setRulerScrollOffset(scrollContainerRef.current.scrollLeft);
                   }
                   handleUserScroll();
                 }}
