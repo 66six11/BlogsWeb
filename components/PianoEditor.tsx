@@ -4,17 +4,6 @@ import { Play, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair } from '
 import { MEDIA_CONFIG } from '../config';
 import { parseScore, ScoreMetadata, NOTE_DURATION_STEPS, NoteDurationType } from './ScoreParser';
 import * as Tone from 'tone';
-import { 
-    bgStyles, 
-    textStyles, 
-    buttonStyles, 
-    cardStyles, 
-    panelStyles, 
-    inputStyles, 
-    borderStyles,
-    mergeStyles,
-    cssVar 
-} from '../utils/styles';
 
 // Throttle helper for scroll performance
 const THROTTLE_MS = 16; // ~60fps
@@ -88,23 +77,46 @@ const DEFAULT_BPM = 120;
 const VISIBLE_STEP_BUFFER = 10; // Extra steps to render beyond visible area
 const MAX_CONCURRENT_NOTES = 32; // Limit concurrent oscillators for large scores
 
-// CSS background grid pattern - replaces DOM elements for grid lines
-const GRID_BACKGROUND_CSS = `
-  repeating-linear-gradient(
-    to right,
-    transparent 0px,
-    transparent ${CELL_WIDTH * 4 - 2}px,
-    var(--accent-1, #deb99a) ${CELL_WIDTH * 4 - 2}px,
-    var(--accent-1, #deb99a) ${CELL_WIDTH * 4}px
-  ),
-  repeating-linear-gradient(
-    to right,
-    transparent 0px,
-    transparent ${CELL_WIDTH - 1}px,
-    var(--bg-tertiary, #334155) ${CELL_WIDTH - 1}px,
-    var(--bg-tertiary, #334155) ${CELL_WIDTH}px
-  )
-`;
+// Salamander Grand Piano sampler configuration
+const SALAMANDER_BASE_URL = "https://tonejs.github.io/audio/salamander/";
+const SALAMANDER_SAMPLES: Record<string, string> = {
+  A0: "A0.mp3",
+  C1: "C1.mp3",
+  "D#1": "Ds1.mp3",
+  "F#1": "Fs1.mp3",
+  A1: "A1.mp3",
+  C2: "C2.mp3",
+  "D#2": "Ds2.mp3",
+  "F#2": "Fs2.mp3",
+  A2: "A2.mp3",
+  C3: "C3.mp3",
+  "D#3": "Ds3.mp3",
+  "F#3": "Fs3.mp3",
+  A3: "A3.mp3",
+  C4: "C4.mp3",
+  "D#4": "Ds4.mp3",
+  "F#4": "Fs4.mp3",
+  A4: "A4.mp3",
+  C5: "C5.mp3",
+  "D#5": "Ds5.mp3",
+  "F#5": "Fs5.mp3",
+  A5: "A5.mp3",
+  C6: "C6.mp3",
+  "D#6": "Ds6.mp3",
+  "F#6": "Fs6.mp3",
+  A6: "A6.mp3",
+  C7: "C7.mp3",
+  "D#7": "Ds7.mp3",
+  "F#7": "Fs7.mp3",
+  A7: "A7.mp3",
+  C8: "C8.mp3"
+};
+
+// Convert pitch (0-11) and octave to note name string (e.g., "C4", "D#5")
+const PITCH_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const getNoteName = (pitch: number, octave: number): string => {
+  return `${PITCH_NAMES[pitch]}${octave}`;
+};
 
 // 八度基础色相 (0-8 八度)
 const OCTAVE_HUES: Record<number, number> = {
@@ -235,6 +247,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
   const [bpm, setBpm] = useState<number>(DEFAULT_BPM);
   const [scoreMetadata, setScoreMetadata] = useState<ScoreMetadata>({ bpm: DEFAULT_BPM });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSamplerLoading, setIsSamplerLoading] = useState(true); // Sampler loading state
   const [sustain, setSustain] = useState(true); // Sustain/延音 toggle, default on
   const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
   const [selectedVoice, setSelectedVoice] = useState<string>('all'); // Voice filter
@@ -249,7 +262,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
   const audioPoolRef = useRef<AudioNodePool | null>(null);
   const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
-  const toneSynthRef = useRef<Tone.PolySynth | null>(null); // Tone.js synth
+  const toneSamplerRef = useRef<Tone.Sampler | null>(null); // Tone.js sampler for piano sound
   const playheadRef = useRef<HTMLDivElement>(null); // Playhead DOM ref for direct manipulation
   const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
   const [rulerScrollOffset, setRulerScrollOffset] = useState(0); // Track ruler scroll position
@@ -401,7 +414,45 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     return result;
   }, [filteredNotes, visibleRange, keyRowIndex]);
   
-  // Initialize
+  // Initialize sampler on component mount (preload strategy)
+  useEffect(() => {
+    let mounted = true;
+    
+    // Create sampler with Salamander Grand Piano samples
+    // Initial release is set to 1.0 (sustain on by default)
+    // The sustain effect hook below will update this if sustain state changes
+    const sampler = new Tone.Sampler({
+      urls: SALAMANDER_SAMPLES,
+      baseUrl: SALAMANDER_BASE_URL,
+      release: 1.0, // Default release, updated by sustain effect
+      onload: () => {
+        if (mounted) {
+          setIsSamplerLoading(false);
+        }
+      },
+      onerror: (error) => {
+        console.error('Error loading sampler:', error);
+        if (mounted) {
+          setIsSamplerLoading(false);
+        }
+      }
+    }).toDestination();
+    
+    toneSamplerRef.current = sampler;
+    
+    return () => {
+      mounted = false;
+    };
+  }, []); // Only run once on mount
+  
+  // Update sampler release based on sustain setting
+  useEffect(() => {
+    if (toneSamplerRef.current) {
+      toneSamplerRef.current.release = sustain ? 1.0 : 0.3;
+    }
+  }, [sustain]);
+  
+  // Initialize notes and available scores
   useEffect(() => {
     setNotes([
       { pitch: 4, octave: 4, startTime: 0, duration: 2 },
@@ -465,9 +516,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     updateVisibleRange();
   }, [totalSteps, updateVisibleRange]);
 
-  // Internal function to stop playback sounds without disposing synth
-  // Only releases currently playing notes - synth stays alive for reuse
-  const cleanupSynth = useCallback(() => {
+  // Internal function to stop playback sounds without disposing sampler
+  // Only releases currently playing notes - sampler stays alive for reuse
+  const cleanupSampler = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
@@ -483,41 +534,42 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
       audioContextRef.current = null;
     }
     
-    // Stop Tone.js transport and release all notes, but keep synth alive
+    // Stop Tone.js transport and release all notes, but keep sampler alive
     try {
       Tone.Transport.stop();
       Tone.Transport.cancel();
       Tone.Transport.position = 0;
-      if (toneSynthRef.current) {
+      if (toneSamplerRef.current) {
         // Release all playing notes immediately to prevent stuck sounds
-        toneSynthRef.current.releaseAll();
+        toneSamplerRef.current.releaseAll();
       }
     } catch (e) {
       console.error('Error stopping Tone.js:', e);
     }
   }, []);
 
-  // Full cleanup function for component unmount - disposes the synth
-  const disposeSynth = useCallback(() => {
-    cleanupSynth();
+  // Full cleanup function for component unmount - disposes the sampler
+  const disposeSampler = useCallback(() => {
+    cleanupSampler();
     try {
-      if (toneSynthRef.current) {
-        toneSynthRef.current.dispose();
-        toneSynthRef.current = null;
+      if (toneSamplerRef.current) {
+        toneSamplerRef.current.dispose();
+        toneSamplerRef.current = null;
       }
     } catch (e) {
-      console.error('Error disposing Tone.js synth:', e);
+      console.error('Error disposing Tone.js sampler:', e);
     }
-  }, [cleanupSynth]);
+  }, [cleanupSampler]);
 
   // Pause playback - keep position
   const pausePlayback = useCallback(() => {
     playbackIdRef.current++;
-    cleanupSynth();
+    cleanupSampler();
     setIsPlaying(false);
     onPlaybackChange?.(false);  // 通知父组件播放已暂停
     // Keep currentStep and playheadPosition - don't reset
-  }, [cleanupSynth, onPlaybackChange]);
+  }, [cleanupSampler, onPlaybackChange]);
+
 
   // Stop and reset to beginning
   const stopPlayback = useCallback(() => {
@@ -552,13 +604,19 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     }
   }, [playheadPosition]);
 
-  // Play using Tone.js for professional piano sound - can start from any step
+  // Play using Tone.js Sampler for realistic piano sound - can start from any step
   // Uses real-time triggering instead of pre-scheduling for reliable jumps
   const startPlaybackFromStep = useCallback(async (fromStep?: number) => {
     if (notes.length === 0) return;
     
-    // Clean up any currently playing notes first (but keep synth)
-    cleanupSynth();
+    // Check if sampler is loaded
+    if (isSamplerLoading || !toneSamplerRef.current) {
+      console.warn('Sampler not loaded yet');
+      return;
+    }
+    
+    // Clean up any currently playing notes first (but keep sampler)
+    cleanupSampler();
     
     // Increment playback ID to invalidate any old callbacks
     const currentPlaybackId = ++playbackIdRef.current;
@@ -572,33 +630,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     // Check if we're still the current playback
     if (playbackIdRef.current !== currentPlaybackId) return;
     
-    // Reuse existing synth or create a new one
-    let synth = toneSynthRef.current;
-    if (!synth) {
-      synth = new Tone.PolySynth(Tone.Synth, {
-        maxPolyphony: MAX_CONCURRENT_NOTES,
-        voice: Tone.Synth,
-        options: {
-          oscillator: { type: 'triangle' },
-          envelope: {
-            attack: 0.005,
-            decay: 0.3,
-            sustain: sustain ? 0.4 : 0.1,
-            release: sustain ? 1.0 : 0.3,
-          },
-        }
-      }).toDestination();
-      toneSynthRef.current = synth;
-    }
+    // Use the existing sampler
+    const sampler = toneSamplerRef.current;
+    if (!sampler) return;
     
     const stepDurationMs = stepInterval;
     const startStep = fromStep !== undefined ? fromStep : (currentStep >= 0 ? currentStep : 0);
     
     // Track which notes have been triggered to avoid duplicates
     const triggeredNotes = new Set<string>();
-    
-    // Track currently playing notes for cleanup
-    const activeNotes = new Map<string, { freq: number; endStep: number }>();
     
     setIsPlaying(true);
     onPlaybackChange?.(true);  // 通知父组件播放已开始
@@ -612,8 +652,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     const updatePlayhead = () => {
       if (playbackIdRef.current !== currentPlaybackId) return;
       
-      // Check if synth is still valid
-      if (!toneSynthRef.current) return;
+      // Check if sampler is still valid
+      if (!toneSamplerRef.current) return;
       
       const elapsed = performance.now() - playStartTime;
       const currentPos = startStep + (elapsed / stepDurationMs);
@@ -629,14 +669,14 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
               if (!triggeredNotes.has(noteKey)) {
                 triggeredNotes.add(noteKey);
                 
-                const midi = (note.octave + 1) * 12 + note.pitch;
-                const freq = Tone.Frequency(midi, "midi").toFrequency();
+                // Use note name instead of frequency for Sampler
+                const noteName = getNoteName(note.pitch, note.octave);
                 const durSec = Math.max(0.05, note.duration * stepDurationMs / 1000);
                 
                 try {
-                  synth.triggerAttackRelease(freq, durSec);
+                  sampler.triggerAttackRelease(noteName, durSec);
                 } catch (e) {
-                  // Synth may have been disposed
+                  // Sampler may have been disposed
                   return;
                 }
               }
@@ -678,7 +718,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
       // Check if playback should end
       if (currentPos > lastNoteEndTime) {
         playbackIdRef.current++;
-        cleanupSynth();
+        cleanupSampler();
         setIsPlaying(false);
         return;
       }
@@ -687,7 +727,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     };
     
     animationFrameRef.current = requestAnimationFrame(updatePlayhead);
-  }, [notes, noteIndex, currentStep, lastNoteEndTime, stepInterval, sustain, cleanupSynth, onPlaybackChange]);
+  }, [notes, noteIndex, currentStep, lastNoteEndTime, stepInterval, isSamplerLoading, cleanupSampler, onPlaybackChange]);
 
   // Wrapper for normal playback (from current position)
   const startPlayback = useCallback(() => {
@@ -801,7 +841,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
   }, [pausePlayback, updatePlayheadPosition]);
 
   // Cleanup on unmount - properly dispose all audio resources
-  useEffect(() => () => disposeSynth(), [disposeSynth]);
+  useEffect(() => () => disposeSampler(), [disposeSampler]);
 
   // Stop playback when page/view changes (isVisible becomes false)
   useEffect(() => {
@@ -810,31 +850,22 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     }
   }, [isVisible, isPlaying, pausePlayback]);
 
-  const scrollbarStyles = `
-    .piano-scroll::-webkit-scrollbar { height: 8px; }
-    .piano-scroll::-webkit-scrollbar-track { background: var(--bg-secondary, #1e293b); }
-    .piano-scroll::-webkit-scrollbar-thumb { background: var(--accent-3, #7C85EB); border-radius: 4px; }
-    .piano-scroll::-webkit-scrollbar-corner {background-color: transparent;display: none; /* 完全隐藏角落 */ }
-  `;
-
   return (
-    <div className={`piano-editor-container backdrop-blur-md border rounded-xl p-6 shadow-2xl ${className}`}
-         style={mergeStyles(bgStyles.tertiary, borderStyles.accent3, { borderWidth: '1px' })}>
-      <style>{scrollbarStyles}</style>
+    <div className={`piano-editor-container backdrop-blur-md border rounded-xl p-6 shadow-2xl ${className}`}>
       
       {/* Header - fixed layout */}
       <div className="flex flex-col gap-3 mb-4">
         {/* Title row */}
         <div className="flex items-center gap-3 flex-wrap">
-          <h3 className="text-xl font-serif flex items-center gap-2 shrink-0" style={textStyles.accent3}>
+          <h3 className="text-xl font-serif flex items-center gap-2 shrink-0 piano-text-accent3">
             <span className="text-2xl">♪</span> 魔法乐谱编辑器
           </h3>
           {scoreMetadata.title && (
-            <span className="text-sm px-2 py-0.5 rounded shrink-0" style={mergeStyles(bgStyles.secondary, textStyles.accent1)}>
+            <span className="text-sm px-2 py-0.5 rounded shrink-0 piano-bg-secondary piano-text-accent1">
               {scoreMetadata.title}
             </span>
           )}
-          <span className="text-xs px-2 py-0.5 rounded shrink-0" style={mergeStyles(bgStyles.secondary, textStyles.secondary)}>
+          <span className="text-xs px-2 py-0.5 rounded shrink-0 piano-bg-secondary piano-text-secondary">
             {notes.length} 音符
           </span>
         </div>
@@ -844,19 +875,18 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
           {/* Sustain toggle */}
           <button
             onClick={() => setSustain(prev => !prev)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${sustain ? 'ring-2 ring-purple-400' : ''}`}
-            style={sustain ? mergeStyles(buttonStyles.primary, { color: 'white' }) : mergeStyles(bgStyles.secondary, textStyles.secondary)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${sustain ? 'ring-2 ring-purple-400 piano-btn-primary' : 'piano-btn-secondary'}`}
             title={sustain ? '延音开启 - 音符会自然衰减' : '延音关闭 - 音符快速停止'}
           >
             {sustain ? '延音 ✓' : '延音'}
           </button>
           
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={bgStyles.secondary}>
-            <button onClick={() => setBpm(prev => Math.max(40, prev - 10))} className="p-1 rounded hover:bg-white/10" style={textStyles.secondary}>
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg piano-bg-secondary">
+            <button onClick={() => setBpm(prev => Math.max(40, prev - 10))} className="p-1 rounded hover:bg-white/10 piano-text-secondary">
               <Minus size={14} />
             </button>
-            <span className="text-xs font-mono w-16 text-center" style={textStyles.accent1}>{bpm} BPM</span>
-            <button onClick={() => setBpm(prev => Math.min(240, prev + 10))} className="p-1 rounded hover:bg-white/10" style={textStyles.secondary}>
+            <span className="text-xs font-mono w-16 text-center piano-text-accent1">{bpm} BPM</span>
+            <button onClick={() => setBpm(prev => Math.min(240, prev + 10))} className="p-1 rounded hover:bg-white/10 piano-text-secondary">
               <Plus size={14} />
             </button>
           </div>
@@ -865,8 +895,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
             <select
               value={selectedScore}
               onChange={(e) => loadScore(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border text-sm"
-              style={inputStyles.default}
+              className="px-3 py-1.5 rounded-lg border text-sm piano-input"
             >
               <option value="">加载乐谱...</option>
               {availableScores.map(score => <option key={score} value={score}>{score}</option>)}
@@ -880,8 +909,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
           {/* Jump to start button */}
           <button
             onClick={jumpToStart}
-            className="p-2 rounded-full hover:bg-white/10"
-            style={textStyles.secondary}
+            className="p-2 rounded-full hover:bg-white/10 piano-text-secondary"
             title="跳转到开头"
           >
             <SkipBack size={20} />
@@ -891,24 +919,31 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
           {isUserScrolling && isPlaying && (
             <button
               onClick={jumpToPlayhead}
-              className="p-2 rounded-full hover:bg-white/10 animate-pulse"
-              style={textStyles.accent3}
+              className="p-2 rounded-full hover:bg-white/10 animate-pulse piano-text-accent3"
               title="跳转到播放位置"
             >
               <Crosshair size={20} />
             </button>
           )}
           
+          {/* Sampler loading indicator */}
+          {isSamplerLoading && (
+            <span className="flex items-center gap-1 px-2 py-1 rounded text-xs piano-bg-secondary piano-text-secondary">
+              <Loader2 size={14} className="animate-spin" />
+              加载钢琴音色中...
+            </span>
+          )}
+          
           <button 
             onClick={togglePlayback}
-            disabled={notes.length === 0}
+            disabled={notes.length === 0 || isSamplerLoading}
             className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold transition-all text-white hover:opacity-90 ${
-              isPlaying ? 'shadow-[0_0_15px_rgba(222,185,154,0.5)]' : ''
-            } ${notes.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-            style={isPlaying ? buttonStyles.active : buttonStyles.primary}
+              isPlaying ? 'shadow-[0_0_15px_rgba(222,185,154,0.5)] piano-btn-active' : 'piano-btn-primary'
+            } ${(notes.length === 0 || isSamplerLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title={isSamplerLoading ? '正在加载钢琴音色...' : (notes.length === 0 ? '没有音符可播放' : (isPlaying ? '暂停' : '播放'))}
           >
-            {isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />}
-            {isPlaying ? '暂停' : '播放'}
+            {isSamplerLoading ? <Loader2 size={16} className="animate-spin" /> : (isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />)}
+            {isSamplerLoading ? '加载中' : (isPlaying ? '暂停' : '播放')}
           </button>
         </div>
       </div>
@@ -916,16 +951,16 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
       {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin" style={textStyles.accent3} />
+          <Loader2 className="w-8 h-8 animate-spin piano-text-accent3" />
         </div>
       )}
 
       {/* Piano Grid - always shown */}
       {!isLoading && (
-        <div className="flex border rounded" style={mergeStyles(borderStyles.subtle, bgStyles.primary)}>
+        <div className="flex border rounded piano-border-subtle piano-bg-primary">
           {/* Duration selector panel - vertical on left */}
-          <div className="flex flex-col border-r z-30" style={{ width: `${DURATION_PALETTE_WIDTH}px`, ...borderStyles.subtle, ...bgStyles.secondary }}>
-            <div className="h-6 border-b flex items-center justify-center text-[10px]" style={mergeStyles(borderStyles.subtle, textStyles.secondary)}>
+          <div className="flex flex-col border-r z-30 piano-border-subtle piano-bg-secondary" style={{ width: `${DURATION_PALETTE_WIDTH}px` }}>
+            <div className="h-6 border-b flex items-center justify-center text-[10px] piano-border-subtle piano-text-secondary">
               时值
             </div>
             <div className="flex flex-col flex-1 py-2">
@@ -933,11 +968,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
                 <button
                   key={opt.value}
                   onClick={() => setSelectedDuration(opt.value)}
-                  className={`flex flex-col items-center justify-center py-3 transition-all hover:bg-white/10 ${selectedDuration === opt.value ? 'ring-2 ring-inset ring-purple-400' : ''}`}
-                  style={selectedDuration === opt.value 
-                    ? mergeStyles(buttonStyles.primary, { color: 'white' })
-                    : mergeStyles({ backgroundColor: 'transparent' }, textStyles.secondary)
-                  }
+                  className={`flex flex-col items-center justify-center py-3 transition-all hover:bg-white/10 ${selectedDuration === opt.value ? 'ring-2 ring-inset ring-purple-400 piano-btn-primary' : 'piano-text-secondary'}`}
                   title={`${opt.label}音符 (${opt.steps}步)`}
                 >
                   <span className="text-xl leading-none">{opt.icon}</span>
@@ -952,19 +983,13 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
             {/* Fixed ruler row - scrolls horizontally only */}
             <div className="flex shrink-0" style={{ height: '24px' }}>
               {/* Key label header - fixed */}
-              <div className="shrink-0 border-b border-r flex items-center justify-center text-[10px]" 
-                style={{ 
-                  width: `${KEY_LABEL_WIDTH}px`, 
-                  borderColor: cssVar('--bg-tertiary'), 
-                  ...bgStyles.secondary, 
-                  ...textStyles.secondary 
-                }}>
+              <div className="shrink-0 border-b border-r flex items-center justify-center text-[10px] piano-border-subtle piano-bg-secondary piano-text-secondary" 
+                style={{ width: `${KEY_LABEL_WIDTH}px` }}>
                 音符
               </div>
               {/* Ruler - scrolls with grid horizontally */}
               <div 
-                className="flex-1 overflow-hidden relative border-b"
-                style={{ borderColor: cssVar('--bg-tertiary'), ...bgStyles.secondary }}
+                className="flex-1 overflow-hidden relative border-b piano-border-subtle piano-bg-secondary"
               >
                 <div 
                   ref={rulerContainerRef}
@@ -985,12 +1010,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
                       <div 
                         key={i} 
                         onClick={() => handleRulerClick(i)}
-                        className={`text-[10px] text-center flex items-center justify-center cursor-pointer hover:bg-white/10 ${isBeatStart ? 'font-bold' : ''}`} 
+                        className={`text-[10px] text-center flex items-center justify-center cursor-pointer hover:bg-white/10 ${isBeatStart ? 'font-bold' : ''} piano-ruler-cell ${isBeatStart ? 'beat-start' : ''} ${currentStep === i ? 'current' : ''} ${i % 4 === 3 ? 'piano-ruler-border-beat' : 'piano-ruler-border-step'}`} 
                         style={{ 
-                          width: `${CELL_WIDTH}px`, flexShrink: 0, height: '100%',
-                          color: currentStep === i ? cssVar('--accent-3') : isBeatStart ? cssVar('--accent-1') : cssVar('--text-secondary'),
-                          backgroundColor: currentStep === i ? 'rgba(124, 133, 235, 0.2)' : 'transparent',
-                          borderRight: i % 4 === 3 ? `2px solid ${cssVar('--accent-1')}` : `1px solid ${cssVar('--bg-tertiary')}`
+                          width: `${CELL_WIDTH}px`, flexShrink: 0, height: '100%'
                         }}
                       >
                         {isBeatStart ? i / 4 + 1 : '·'}
@@ -1034,13 +1056,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
                   {PIANO_KEYS.map((key, idx) => (
                     <div 
                       key={`${key.octave}-${key.pitch}`}
-                      className="flex items-center text-xs border-b"
+                      className={`flex items-center text-xs border-b piano-border-subtle ${key.isBlack ? 'piano-key-black' : 'piano-key-white'}`}
                       style={{ 
                         width: `${KEY_LABEL_WIDTH}px`,
-                        height: `${ROW_HEIGHT}px`,
-                        backgroundColor: key.isBlack ? cssVar('--bg-primary') : cssVar('--bg-secondary'),
-                        color: key.isBlack ? cssVar('--text-secondary') : cssVar('--text-primary'),
-                        borderColor: cssVar('--bg-tertiary')
+                        height: `${ROW_HEIGHT}px`
                       }}
                     >
                       <span className="flex-1 text-right pr-2">{key.name}{key.octave}</span>
@@ -1058,23 +1077,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
 
                 {/* Grid area - uses CSS background for grid lines */}
                 <div
-                  className="absolute cursor-crosshair"
+                  className="absolute cursor-crosshair piano-grid"
                   style={{ 
                     left: `${KEY_LABEL_WIDTH}px`,
                     top: 0,
                     width: `${totalSteps * CELL_WIDTH}px`,
-                    height: `${TOTAL_KEYS * ROW_HEIGHT}px`,
-                    backgroundColor: cssVar('--bg-primary'),
-                    backgroundImage: `
-                      ${GRID_BACKGROUND_CSS},
-                      repeating-linear-gradient(
-                        to bottom,
-                        transparent 0px,
-                        transparent ${ROW_HEIGHT - 1}px,
-                        ${cssVar('--bg-tertiary')} ${ROW_HEIGHT - 1}px,
-                        ${cssVar('--bg-tertiary')} ${ROW_HEIGHT}px
-                      )
-                    `
+                    height: `${TOTAL_KEYS * ROW_HEIGHT}px`
                   }}
                   onClick={(e) => {
                     // Event delegation: calculate which cell was clicked
@@ -1091,13 +1099,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
                   {/* Playhead - highest z-index, positioned via ref for performance */}
                   <div 
                     ref={playheadRef}
-                    className="absolute top-0 bottom-0 z-50 pointer-events-none"
+                    className="absolute top-0 bottom-0 z-50 pointer-events-none piano-playhead"
                     style={{ 
                       width: '2px', 
                       left: 0,
                       transform: `translateX(${playheadPosition}px)`,
-                      backgroundColor: `${cssVar('--accent-1')}e6`, 
-                      boxShadow: `0 0 12px ${cssVar('--accent-1')}cc`,
                       willChange: 'transform'
                     }}
                   />
@@ -1132,14 +1138,14 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
       {/* Position indicator */}
       {!isLoading && currentStep >= 0 && (
         <div className="mt-2 flex items-center justify-center">
-          <span className="text-xs font-mono px-2 py-1 rounded" style={mergeStyles(bgStyles.secondary, textStyles.accent3)}>
+          <span className="text-xs font-mono px-2 py-1 rounded piano-bg-secondary piano-text-accent3">
             第 {Math.floor(currentStep / 4) + 1} 拍 · 第 {(currentStep % 4) + 1} 步
           </span>
         </div>
       )}
       
       {!isLoading && (
-        <p className="text-xs mt-2 text-right" style={textStyles.secondary}>
+        <p className="text-xs mt-2 text-right piano-text-secondary">
           点击网格添加/移除音符。ABC乐谱自动解析为网格显示。
         </p>
       )}
