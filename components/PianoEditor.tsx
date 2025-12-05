@@ -75,10 +75,6 @@ const PIANO_KEYS: PianoKey[] = (() => {
     }
   }
   
-  // Octave 0: only A, A#, B (lowest)
-  keys.push({ name: 'B', pitch: 11, octave: 0, isBlack: false });
-  keys.push({ name: 'A#', pitch: 10, octave: 0, isBlack: true });
-  keys.push({ name: 'A', pitch: 9, octave: 0, isBlack: false });
   
   return keys;
 })();

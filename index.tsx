@@ -851,7 +851,7 @@ const App: React.FC = () => {
                     {userProfile?.bio || "\"一位用代码和色彩编织新世界的旅行者。\""}
                     <br/>
                     <span
-                        className="text-base mt-3 block font-mono bg-black/20 inline-block px-4 py-1 rounded-full border"
+                        className="text-base mt-3 block font-mono inline-block px-4 py-1 rounded-full border"
                         style={mergeStyles(textStyles.accent1, { borderColor: `${cssVar('--accent-1')}33` })}>
             Unity • Graphic • C++ • Art
           </span>
