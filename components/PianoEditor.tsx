@@ -665,20 +665,20 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         }
         setCurrentStep(0);
         updatePlayheadPosition(0);
-        setIsUserScrolling(false);
-        isUserScrollingRef.current = false;
         setActiveKeys(new Map()); // Clear active keys
         // Scroll to start with programmatic scroll flag
         if (scrollContainerRef.current) {
             isProgrammaticScrollRef.current = true;
             scrollContainerRef.current.scrollLeft = 0;
-            requestAnimationFrame(() => {
-                isProgrammaticScrollRef.current = false;
-            });
+            // Reset flag synchronously after scroll is set (scroll event fires synchronously)
+            isProgrammaticScrollRef.current = false;
         }
+        // Enable auto-follow after jumping to start
+        setIsUserScrolling(false);
+        isUserScrollingRef.current = false;
     }, [isPlaying, pausePlayback, updatePlayheadPosition]);
 
-    // Jump to current playhead position
+    // Jump to current playhead position and enable auto-follow
     const jumpToPlayhead = useCallback(() => {
         if (scrollContainerRef.current) {
             const c = scrollContainerRef.current;
@@ -687,12 +687,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
             // Calculate scroll position to align playhead with target position (same as auto-scroll)
             const playheadTargetPosition = KEY_LABEL_WIDTH; // Match auto-scroll position
             c.scrollLeft = Math.max(0, playheadPosition - playheadTargetPosition + KEY_LABEL_WIDTH);
+            // Reset flag synchronously after scroll is set (scroll event fires synchronously)
+            isProgrammaticScrollRef.current = false;
+            // Enable auto-follow after jumping to playhead
             setIsUserScrolling(false);
             isUserScrollingRef.current = false;
-            // Reset flag after scroll event is processed
-            requestAnimationFrame(() => {
-                isProgrammaticScrollRef.current = false;
-            });
         }
     }, [playheadPosition]);
 
@@ -843,7 +842,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                     const smoothFactor = 0.15;
                     const newScroll = currentScroll + scrollDiff * smoothFactor;
                     if (Math.abs(scrollDiff) > 1) {
+                        // Set flag to prevent scroll event from triggering user scroll detection
+                        isProgrammaticScrollRef.current = true;
                         c.scrollLeft = Math.max(0, newScroll);
+                        // Reset flag synchronously after scroll is set (scroll event fires synchronously)
+                        isProgrammaticScrollRef.current = false;
                     }
                 }
             }
