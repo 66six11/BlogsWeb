@@ -4,6 +4,15 @@ import {ChatMessage} from '../types';
 import {CustomSparkleIcon} from './CustomIcons';
 import {LayeredCharacterIcon} from './LayeredCharacterIcon';
 import {X, Send} from 'lucide-react';
+import { 
+    cardStyles, 
+    buttonStyles, 
+    inputStyles, 
+    textStyles, 
+    gradientStyles, 
+    panelStyles, 
+    mergeStyles 
+} from '../utils/styles';
 
 const MagicChat: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -45,6 +54,34 @@ const MagicChat: React.FC = () => {
         }
     };
 
+    // Style definitions using the styles utility
+    const windowStyle = mergeStyles(
+        cardStyles.primary,
+        { borderColor: 'var(--accent-3)' }
+    );
+
+    const headerStyle = mergeStyles(
+        gradientStyles.accentGradient,
+        { borderBottom: '1px solid var(--accent-3)' }
+    );
+
+    const userMessageStyle = mergeStyles(
+        buttonStyles.primary,
+        { color: 'white' }
+    );
+
+    const botMessageStyle = mergeStyles(
+        cardStyles.secondary,
+        textStyles.primary
+    );
+
+    const loadingDotStyle = { backgroundColor: 'var(--accent-2)' };
+
+    const inputAreaStyle = mergeStyles(
+        panelStyles.header,
+        { borderTop: '1px solid var(--bg-tertiary)' }
+    );
+
     return (
 
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
@@ -68,31 +105,23 @@ const MagicChat: React.FC = () => {
                     {/* 聊天窗口主体 */}
                     <div
                         className="magic-chat-window w-80 md:w-96 h-96 backdrop-blur-xl rounded-2xl shadow-2xl flex flex-col overflow-hidden transform transition-all animate-fade-in-up"
-                        style={{
-                            backgroundColor: 'var(--bg-secondary, rgba(15, 23, 42, 0.95))',
-                            borderColor: 'var(--accent-3, #7C85EB)',
-                            borderWidth: '1px',
-                            borderStyle: 'solid'
-                        }}>
+                        style={windowStyle}>
 
                         {/* Header */}
                         <div
                             className="p-4 flex justify-between items-center"
-                            style={{
-                                background: `linear-gradient(to right, var(--accent-3, #7C85EB), var(--bg-tertiary, #334155))`,
-                                borderBottom: '1px solid var(--accent-3, #7C85EB)'
-                            }}>
+                            style={headerStyle}>
                             <div className="flex items-center gap-10">
                                 <div className="w-10 h-10"/>
                                 <div>
-                                    <h3 className="font-serif font-bold" style={{ color: 'var(--text-primary, #f1f5f9)' }}>伊蕾娜</h3>
-                                    <p className="text-[10px]" style={{ color: 'var(--accent-1, #deb99a)' }}>灰烬魔女</p>
+                                    <h3 className="font-serif font-bold" style={textStyles.primary}>伊蕾娜</h3>
+                                    <p className="text-[10px]" style={textStyles.accent1}>灰烬魔女</p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setIsOpen(false)}
                                 className="hover:opacity-80 transition-colors"
-                                style={{ color: 'var(--text-secondary, #94a3b8)' }}
+                                style={textStyles.secondary}
                             >
                                 <X size={20}/>
                             </button>
@@ -108,17 +137,7 @@ const MagicChat: React.FC = () => {
                                         className={`max-w-[80%] p-3 rounded-lg text-sm ${
                                             msg.role === 'user' ? 'rounded-tr-none' : 'rounded-tl-none'
                                         }`}
-                                        style={msg.role === 'user' 
-                                            ? { 
-                                                backgroundColor: 'var(--accent-3, #7C85EB)', 
-                                                color: 'white' 
-                                            }
-                                            : { 
-                                                backgroundColor: 'var(--bg-tertiary, #334155)', 
-                                                color: 'var(--text-primary, #e2e8f0)',
-                                                border: '1px solid var(--bg-tertiary, #475569)'
-                                            }
-                                        }>
+                                        style={msg.role === 'user' ? userMessageStyle : botMessageStyle}>
                                         {msg.text}
                                     </div>
                                 </div>
@@ -127,16 +146,13 @@ const MagicChat: React.FC = () => {
                                 <div className="flex justify-start">
                                     <div
                                         className="p-3 rounded-lg rounded-tl-none flex gap-1"
-                                        style={{
-                                            backgroundColor: 'var(--bg-tertiary, #334155)',
-                                            border: '1px solid var(--bg-tertiary, #475569)'
-                                        }}>
+                                        style={botMessageStyle}>
                                         <span className="w-2 h-2 rounded-full animate-bounce"
-                                              style={{ backgroundColor: 'var(--accent-2, #c493b1)', animationDelay: '0ms' }}/>
+                                              style={{ ...loadingDotStyle, animationDelay: '0ms' }}/>
                                         <span className="w-2 h-2 rounded-full animate-bounce"
-                                              style={{ backgroundColor: 'var(--accent-2, #c493b1)', animationDelay: '150ms' }}/>
+                                              style={{ ...loadingDotStyle, animationDelay: '150ms' }}/>
                                         <span className="w-2 h-2 rounded-full animate-bounce"
-                                              style={{ backgroundColor: 'var(--accent-2, #c493b1)', animationDelay: '300ms' }}/>
+                                              style={{ ...loadingDotStyle, animationDelay: '300ms' }}/>
                                     </div>
                                 </div>
                             )}
@@ -146,10 +162,7 @@ const MagicChat: React.FC = () => {
                         {/* Input */}
                         <div 
                             className="p-3 flex gap-2"
-                            style={{
-                                backgroundColor: 'var(--bg-primary, #0f172a)',
-                                borderTop: '1px solid var(--bg-tertiary, #334155)'
-                            }}>
+                            style={inputAreaStyle}>
                             <input
                                 type="text"
                                 value={input}
@@ -157,17 +170,13 @@ const MagicChat: React.FC = () => {
                                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                                 placeholder="向魔女提问..."
                                 className="flex-1 text-sm rounded-lg px-3 py-2 outline-none transition-colors"
-                                style={{
-                                    backgroundColor: 'var(--bg-secondary, #1e293b)',
-                                    color: 'var(--text-primary, #e2e8f0)',
-                                    border: '1px solid var(--bg-tertiary, #334155)'
-                                }}
+                                style={inputStyles.default}
                             />
                             <button
                                 onClick={handleSend}
                                 disabled={isLoading || !input.trim()}
                                 className="p-2 text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
-                                style={{ backgroundColor: 'var(--accent-3, #7C85EB)' }}
+                                style={buttonStyles.primary}
                             >
                                 <Send size={16}/>
                             </button>
@@ -180,9 +189,7 @@ const MagicChat: React.FC = () => {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="group relative w-14 h-14 rounded-full shadow-[0_0_20px_rgba(147,51,234,0.5)] flex items-center justify-center text-white hover:scale-110 transition-transform duration-300 overflow-visible"
-                style={{
-                    background: `linear-gradient(to bottom right, var(--accent-3, #7C85EB), var(--accent-2, #c493b1))`
-                }}
+                style={gradientStyles.buttonGradient}
             >
                 <div className="absolute inset-0 rounded-full border border-white/20 animate-ping opacity-20"/>
                 {isOpen ? (
