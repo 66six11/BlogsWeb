@@ -591,6 +591,7 @@ const App: React.FC = () => {
 
     // Audio State - managed by MusicPlayer component
     const [musicAnalyser, setMusicAnalyser] = useState<AnalyserNode | null>(null);
+    const [isScorePlaying, setIsScorePlaying] = useState(false);  // 乐谱播放状态，用于暂停 BGM
 
     // Video Ref
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -598,6 +599,11 @@ const App: React.FC = () => {
     // Callback when music player analyser is ready
     const handleAnalyserReady = useCallback((analyser: AnalyserNode) => {
         setMusicAnalyser(analyser);
+    }, []);
+
+    // 乐谱播放状态变化回调
+    const handleScorePlaybackChange = useCallback((isPlaying: boolean) => {
+        setIsScorePlaying(isPlaying);
     }, []);
 
     // --- Initialization Effects ---
@@ -750,6 +756,7 @@ const App: React.FC = () => {
                     <MusicPlayer
                         onAnalyserReady={handleAnalyserReady}
                         autoPlayTrigger={!showWelcome}
+                        externalPause={isScorePlaying}
                     />
                 </div>
             </div>
@@ -1100,7 +1107,7 @@ const App: React.FC = () => {
                 <p className="text-slate-300">创作一段旋律。即使是魔女也需要从学习中休息一下。</p>
             </div>
 
-            <PianoEditor className="w-full" isVisible={currentView === View.MUSIC}/>
+            <PianoEditor className="w-full" isVisible={currentView === View.MUSIC} onPlaybackChange={handleScorePlaybackChange}/>
 
             <div
                 className="mt-8 text-center max-w-2xl mx-auto bg-slate-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">

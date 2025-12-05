@@ -1,0 +1,219 @@
+/* Theme CSS Variables and Styles */
+
+/* CSS Variables for theming */
+:root {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --accent-1: #deb99a;
+  --accent-2: #7C85EB;
+  --accent-3: #c493b1;
+}
+
+:root.light {
+  --bg-primary: #F7F8F3;
+  --bg-secondary: #EBECF2;
+  --bg-tertiary: #e3d8d8;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --accent-1: #deb99a;
+  --accent-2: #7C85EB;
+  --accent-3: #c493b1;
+}
+
+:root.dark {
+  --bg-primary: #3b3442;
+  --bg-secondary: #4d4658;
+  --bg-tertiary: #897b8c;
+  --text-primary: #f1f5f9;
+  --text-secondary: #e2e8f0;
+  --accent-1: #deb99a;
+  --accent-2: #c493b1;
+  --accent-3: #7C85EB;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* Theme transition animations */
+:root {
+  transition: all 0.5s ease;
+}
+
+:root *,
+:root *::before,
+:root *::after {
+  transition: background-color 0.5s ease, 
+              border-color 0.5s ease, 
+              color 0.5s ease,
+              box-shadow 0.5s ease;
+}
+
+/* Exclude animations from transition (they need immediate response) */
+:root .animate-pulse,
+:root .animate-spin,
+:root .animate-float,
+:root [class*="transition-transform"],
+:root [class*="transition-opacity"],
+:root [class*="transition-all"]:not(.theme-transition) {
+  transition-property: transform, opacity;
+}
+
+/* Theme-aware component overrides */
+:root.light .nav-bar,
+:root.light nav {
+  background-color: rgba(247, 248, 243, 0.6) !important;
+  border-color: var(--bg-tertiary) !important;
+}
+
+:root.light .nav-bar *,
+:root.light nav span,
+:root.light nav button {
+  color: var(--text-primary) !important;
+}
+
+:root.light .card,
+:root.light .bg-slate-900\/60,
+:root.light .bg-slate-900\/80 {
+  background-color: rgba(235, 236, 242, 0.3) !important;
+}
+
+:root.light .welcome-bg {
+  background-color: rgba(235, 236, 242, 1) !important;
+}
+
+:root.light .text-slate-100,
+:root.light .text-slate-200,
+:root.light .text-white {
+  color: var(--text-primary) !important;
+}
+
+:root.light .text-slate-300,
+:root.light .text-slate-400,
+:root.light .text-slate-500 {
+  color: var(--text-secondary) !important;
+}
+
+:root.light .border-white\/10,
+:root.light .border-slate-700,
+:root.light .border-slate-800 {
+  border-color: var(--bg-tertiary) !important;
+}
+
+:root.light footer {
+  background-color: rgba(227, 216, 216, 0.95) !important;
+}
+
+:root.dark .nav-bar,
+:root.dark nav {
+  background-color: rgba(59, 52, 66, 0.6) !important;
+}
+
+:root.dark .card,
+:root.dark .bg-slate-900\/60,
+:root.dark .bg-slate-900\/80 {
+  background-color: rgba(77, 70, 88, 0.6) !important;
+}
+
+/* Accent color styling */
+:root.light .text-amber-400,
+:root.light .text-amber-200,
+:root.light .text-amber-500 {
+  color: var(--accent-1) !important;
+}
+
+:root.light .text-purple-300,
+:root.light .text-purple-200,
+:root.light .text-purple-400 {
+  color: var(--accent-2) !important;
+}
+
+:root.dark .text-amber-400,
+:root.dark .text-amber-200 {
+  color: var(--accent-1) !important;
+}
+
+:root.dark .text-purple-300,
+:root.dark .text-purple-200 {
+  color: var(--accent-2) !important;
+}
+
+/* Button styling for themes */
+:root.light .bg-purple-600 {
+  background-color: var(--accent-2) !important;
+}
+
+:root.dark .bg-purple-600 {
+  background-color: var(--accent-3) !important;
+}
+
+/* 修复 Light 模式下标题和文章可读性 */
+:root.light h1,
+:root.light h2,
+:root.light h3,
+:root.light .section-title {
+  color: #1e293b !important;
+}
+
+:root.light .card-title,
+:root.light .post-title {
+  color: #334155 !important;
+}
+
+:root.light .card-description,
+:root.light .post-excerpt,
+:root.light article p {
+  color: #475569 !important;
+}
+
+/* 强调色在 Light 模式下使用更深的变体 */
+:root.light .text-amber-200,
+:root.light .text-amber-400 {
+  color: #b45309 !important;
+}
+
+:root.light .text-purple-200,
+:root.light .text-purple-300 {
+  color: #6d28d9 !important;
+}
+
+/* 卡片背景在 Light 模式下增加不透明度 */
+:root.light .bg-black\/30,
+:root.light .bg-slate-900\/50 {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent-3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-2);
+}
+
+#loading-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--accent-1);
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  opacity: 1;
+  transition: opacity 0.5s;
+}

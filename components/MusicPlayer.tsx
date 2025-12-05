@@ -6,6 +6,7 @@ interface MusicPlayerProps {
   onAnalyserReady?: (analyser: AnalyserNode) => void;
   className?: string;
   autoPlayTrigger?: boolean; // When this changes to true, auto-start playing
+  externalPause?: boolean;  // 新增：外部控制暂停（如乐谱播放时）
 }
 
 export interface MusicPlayerRef {
@@ -17,7 +18,7 @@ interface MusicTrack {
   url: string;
 }
 
-const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserReady, className = '', autoPlayTrigger }, ref) => {
+const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserReady, className = '', autoPlayTrigger, externalPause }, ref) => {
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -25,6 +26,7 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
   const [volume, setVolume] = useState(MEDIA_CONFIG.music.defaultVolume);
   const [isMuted, setIsMuted] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [wasPlayingBeforeExternalPause, setWasPlayingBeforeExternalPause] = useState(false);  // 记录外部暂停前的播放状态
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -205,6 +207,27 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
       togglePlay();
     }
   }, [autoPlayTrigger]);
+
+  // 外部控制暂停/恢复（乐谱播放时暂停 BGM）
+  useEffect(() => {
+    if (externalPause && isPlaying) {
+      // 记录暂停前的状态并暂停
+      setWasPlayingBeforeExternalPause(true);
+      fadeVolume(0, () => {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      });
+    } else if (!externalPause && wasPlayingBeforeExternalPause) {
+      // 外部暂停解除，恢复播放
+      setWasPlayingBeforeExternalPause(false);
+      if (audioRef.current) {
+        audioRef.current.play().then(() => {
+          setIsPlaying(true);
+          fadeVolume(isMuted ? 0 : volume);
+        }).catch(console.error);
+      }
+    }
+  }, [externalPause]);
 
   const toggleMute = () => {
     if (!gainNodeRef.current) return;
