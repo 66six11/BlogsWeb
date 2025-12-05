@@ -890,7 +890,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
             // Parse to Note[] using ScoreParser - always display in grid
             const parsed = parseScore(content);
             setNotes(parsed.notes);
-            pushToHistory(parsed.notes);
             // Reset history when loading a new score
             historyRef.current = { states: [[...parsed.notes]], cursor: 0 };
             setScoreMetadata(parsed.metadata);
@@ -1004,6 +1003,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const handleDragEnd = useCallback(() => {
         isDraggingRef.current = false;
         setIsDragging(false);
+        // hasDraggedRef is reset in handleGridClick, not here, because:
+        // The click event fires after mouseUp, and we need hasDraggedRef to 
+        // distinguish between a drag-release (should not toggle note) and
+        // a simple click (should toggle note).
     }, []);
 
     // Handle grid click - only toggle note if not dragged
