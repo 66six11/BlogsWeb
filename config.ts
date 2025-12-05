@@ -111,7 +111,7 @@ export const ICON_COLORS = {
   // Secondary icon color
   secondary: '#6979D9',
   // Accent icon color
-  accent: '#F00608',
+  accent: '#d56464',
   // Default icon color
   default: '#fbbf24', // Amber/Gold
 };

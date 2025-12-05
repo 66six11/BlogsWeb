@@ -79,7 +79,13 @@ body {
 :root [class*="transition-all"]:not(.theme-transition) {
   transition-property: transform, opacity;
 }
-
+:root .bg-slate-900
+{
+    background-color: var(--bg-primary) !important;
+}
+:root .bg-slate-950\/80 {
+    background-color: var(--bg-primary) !important;
+}
 /* Theme-aware component overrides */
 :root.light .nav-bar,
 :root.light nav {
@@ -532,7 +538,7 @@ body {
 }
 
 .piano-editor-container .piano-text-accent3 {
-  color: var(--accent-3);
+  color: var(--text-secondary);
 }
 
 /* Piano editor backgrounds */

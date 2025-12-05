@@ -1,5 +1,5 @@
 import React from 'react';
-import { ICON_COLORS } from '../config';
+import {ICON_COLORS} from '../config';
 
 interface IconProps {
     className?: string;
@@ -10,12 +10,12 @@ interface IconProps {
 }
 
 export const CustomSparkleIcon = ({
-    className, 
-    size = 24,
-    primaryColor = ICON_COLORS.primary,
-    secondaryColor = ICON_COLORS.secondary,
-    accentColor = ICON_COLORS.accent,
-}: IconProps) => (
+                                      className,
+                                      size = 24,
+                                      primaryColor = ICON_COLORS.primary,
+                                      secondaryColor = ICON_COLORS.secondary,
+                                      accentColor = ICON_COLORS.accent,
+                                  }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg"
          className={className}>
         <g clipPath="url(#clip0_2005_83)">
@@ -47,12 +47,12 @@ export const CustomSparkleIcon = ({
 );
 
 export const CustomWitchIcon = ({
-    className, 
-    size = 48,
-    primaryColor = ICON_COLORS.primary,
-    secondaryColor = ICON_COLORS.secondary,
-    accentColor = ICON_COLORS.accent,
-}: IconProps) => (
+                                    className,
+                                    size = 48,
+                                    primaryColor = ICON_COLORS.primary,
+                                    secondaryColor = ICON_COLORS.secondary,
+                                    accentColor = ICON_COLORS.accent,
+                                }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"
          className={className}>
         <g clipPath="url(#clip0_2008_68)">
@@ -180,17 +180,17 @@ export const CustomWitchIcon = ({
     </svg>
 );
 // 六芒星图标 - 基于 loading.io/icon/f5eull
-export const HexagramIcon: React.FC<{ 
-    size?: number; 
+export const HexagramIcon: React.FC<{
+    size?: number;
     className?: string;
     primaryColor?: string;
     secondaryColor?: string;
 }> = ({
-    size = 24,
-    className = '',
-    primaryColor = 'rgb(251, 191, 36)',
-    secondaryColor = 'rgb(251, 143, 36)',
-}) => {
+          size = 24,
+          className = '',
+          primaryColor = 'rgb(251, 191, 36)',
+          secondaryColor = 'rgb(251, 143, 36)',
+      }) => {
     // 修复后的CSS动画
     const animationStyles = `
     @keyframes animate {
@@ -233,7 +233,7 @@ export const HexagramIcon: React.FC<{
         >
             <style>{animationStyles}</style>
 
-            <g style={{ transformOrigin: '50px 50px', transform: 'scale(0.8)' }}>
+            <g style={{transformOrigin: '50px 50px', transform: 'scale(0.8)'}}>
                 <g>
                     {/* 六边形路径 */}
                     <g style={{
@@ -306,3 +306,73 @@ export const HexagramIcon: React.FC<{
         </svg>
     );
 };
+
+// 全音符图标组件
+export const WholeNoteIcon: React.FC<IconProps> = ({
+    className,
+    size = 24,
+}) => (
+    <svg width={size} height={size} viewBox="0 0 240 240" className={className} xmlns="http://www.w3.org/2000/svg">
+        <path d="M122.106,210c-24.521,0-46.333-14.148-60.054-35.986V65.988C75.773,44.148,97.585,30,122.106,30
+            c22.952,0,44.035,12.688,57.989,32.921C169.997,67.75,163.019,78.06,163.019,90c0,16.568,13.432,30,30,30c16.568,0,30-13.432,30-30
+            c0-3.926-0.762-7.672-2.133-11.107C205.999,32.281,166.685,0,122.106,0C64.14,0,16.981,53.832,16.981,120S64.14,240,122.106,240
+            c41.503,0,78.517-27.303,95.601-70.003H184.56C170.773,194.727,147.52,210,122.106,210z" fill="currentColor" />
+    </svg>
+);
+
+// 二分音符图标组件 (在文件中是半音符.svg)
+export const HalfNoteIcon: React.FC<IconProps> = ({
+    className,
+    size = 24,
+}) => (
+    <svg width={size} height={size} viewBox="0 0 290.281 290.281" className={className} xmlns="http://www.w3.org/2000/svg">
+        <path d="M205.367,0h-30v173.645c-6.239-2.565-13.111-3.921-20.305-3.921c-17.458,0-35.266,7.796-48.858,21.388
+            c-25.343,25.343-28.515,63.407-7.071,84.853c9.232,9.232,22.016,14.316,35.995,14.316c17.458,0,35.266-7.796,48.858-21.388
+            c11.843-11.843,19.307-26.842,21.018-42.233c0.244-2.199,0.364-6.538,0.364-6.538V0z M175.187,223.346
+            c-0.947,8.523-5.472,17.393-12.414,24.335c-7.89,7.89-18.225,12.601-27.645,12.601c-4.221,0-10.211-0.959-14.781-5.529
+            c-9.582-9.583-6.344-29.012,7.071-42.426c7.89-7.891,18.225-12.602,27.645-12.602c4.221,0,10.212,0.959,14.782,5.529
+            C175.602,211.012,175.663,219.061,175.187,223.346z" fill="currentColor" />
+    </svg>
+);
+
+// 四分音符图标组件
+export const QuarterNoteIcon: React.FC<IconProps> = ({
+    className,
+    size = 24,
+}) => (
+    <svg width={size} height={size} viewBox="0 0 290.281 290.281" className={className} xmlns="http://www.w3.org/2000/svg">
+        <path d="M205.367,0h-30v173.646c-6.239-2.566-13.111-3.922-20.305-3.922c-17.458,0-35.266,7.796-48.857,21.388
+            c-25.344,25.343-28.516,63.407-7.072,84.853c9.232,9.232,22.016,14.316,35.995,14.316c17.458,0,35.266-7.796,48.857-21.388
+            c11.843-11.843,19.308-26.842,21.018-42.234c0.244-2.198,0.355-4.38,0.355-6.537h0.01V0z" fill="currentColor" />
+    </svg>
+);
+
+// 八分音符图标组件 (在文件中是第八音符.svg)
+export const EighthNoteIcon: React.FC<IconProps> = ({
+    className,
+    size = 24,
+}) => (
+    <svg width={size} height={size} viewBox="0 0 290.281 290.281" className={className} xmlns="http://www.w3.org/2000/svg">
+        <path d="M209.329,79.238C183.062,55.09,169.178,27.69,169.178,0h-30v173.645
+            c-6.239-2.564-13.111-3.921-20.305-3.921c-17.458,0-35.266,7.796-48.857,21.388c-25.344,25.343-28.516,63.407-7.072,84.853
+            c9.232,9.232,22.016,14.316,35.995,14.316c17.458,0,35.266-7.796,48.857-21.388c11.843-11.843,19.308-26.842,21.018-42.234
+            c0.244-2.198,0.354-4.379,0.354-6.537h0.01V80.106c5.808,7.304,12.425,14.394,19.848,21.218
+            c31.772,29.21,25.067,66.542,9.671,89.637l24.962,16.641C247.357,172.054,252.117,118.576,209.329,79.238z" fill="currentColor" />
+    </svg>
+);
+
+// 十六分音符图标组件 (在文件中是第十六音符.svg)
+export const SixteenthNoteIcon: React.FC<IconProps> = ({
+    className,
+    size = 24,
+}) => (
+    <svg width={size} height={size} viewBox="0 0 370 370" className={className} xmlns="http://www.w3.org/2000/svg">
+        <path d="M249.189,79.238C222.922,55.09,209.037,27.69,209.037,0h-30v253.364
+            c-6.239-2.564-13.111-3.921-20.305-3.921c-17.458,0-35.266,7.796-48.857,21.388c-25.344,25.343-28.516,63.407-7.072,84.853
+            c9.232,9.232,22.016,14.316,35.995,14.316c17.458,0,35.266-7.796,48.857-21.388c11.843-11.843,19.308-26.842,21.018-42.234
+            c0.244-2.198,0.355-4.379,0.355-6.537h0.01V159.826c5.808,7.304,12.425,14.393,19.848,21.217
+            c31.773,29.21,25.067,66.542,9.672,89.637l24.961,16.641c17.785-26.678,24.904-63.452,9.265-96.772
+            C287.573,156.367,285.576,112.691,249.189,79.238z M209.043,80.115c5.807,7.301,12.422,14.387,19.842,21.209
+            c19.909,18.303,24.707,39.794,21.73,58.974c-0.471-0.448-0.941-0.896-1.425-1.341C223.047,134.924,209.176,107.67,209.043,80.115z" fill="currentColor" />
+    </svg>
+);
