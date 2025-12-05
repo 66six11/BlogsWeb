@@ -267,11 +267,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const audioPoolRef = useRef<AudioNodePool | null>(null);
     const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
-    const isProgrammaticScrollRef = useRef(false); // Flag to ignore scroll events during auto-follow playhead scrolling
     const toneSamplerRef = useRef<Tone.Sampler | null>(null); // Tone.js sampler for piano sound
     const playheadRef = useRef<HTMLDivElement>(null); // Playhead DOM ref for direct manipulation
     const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
-    const prevPlayheadViewportXRef = useRef<number | null>(null); // Track previous playhead viewport X for detecting left edge entry
     const [rulerScrollOffset, setRulerScrollOffset] = useState(0); // Track ruler scroll position
 
     // History for undo/redo
@@ -560,11 +558,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
 
     // Handle user scroll - stop auto-follow when user manually scrolls
     const handleUserScroll = useCallback(() => {
-        // Ignore scroll events triggered by programmatic scrolling
-        if (isProgrammaticScrollRef.current) {
-            return;
-        }
-        
         if (isPlaying) {
             setIsUserScrolling(true);
             isUserScrollingRef.current = true;
@@ -727,7 +720,6 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         onPlaybackChange?.(true);  // 通知父组件播放已开始
         setIsUserScrolling(false);
         isUserScrollingRef.current = false;
-        prevPlayheadViewportXRef.current = null; // Reset previous playhead position tracking
 
         // Real-time playback loop
         const playStartTime = performance.now();
@@ -817,20 +809,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                 // Calculate the scroll position to keep playhead at target position
                 const targetScrollLeft = px - playheadTargetPosition + KEY_LABEL_WIDTH;
 
-                // Calculate playhead position in viewport
+                // Check if playhead is visible in current view
                 const playheadViewportX = px - c.scrollLeft + KEY_LABEL_WIDTH;
-                const leftEdge = KEY_LABEL_WIDTH;
-                
-                // Detect if playhead is entering from the left side of the viewport
-                // On first frame (prevX is null), we don't trigger to avoid false positives
-                const prevX = prevPlayheadViewportXRef.current;
-                const isEnteringFromLeft = prevX !== null && prevX < leftEdge && playheadViewportX >= leftEdge;
-                
-                // Update previous position for next frame
-                prevPlayheadViewportXRef.current = playheadViewportX;
+                const isPlayheadVisible = playheadViewportX >= KEY_LABEL_WIDTH && playheadViewportX <= c.clientWidth - CELL_WIDTH * 2;
 
-                if (isEnteringFromLeft && isUserScrollingRef.current) {
-                    // Playhead entered viewport from left edge - resume auto-scroll
+                if (isPlayheadVisible && isUserScrollingRef.current) {
+                    // User scrolled away but playhead is now visible again - resume auto-scroll
                     setIsUserScrolling(false);
                     isUserScrollingRef.current = false;
                 }
@@ -843,13 +827,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                     const smoothFactor = 0.15;
                     const newScroll = currentScroll + scrollDiff * smoothFactor;
                     if (Math.abs(scrollDiff) > 1) {
-                        // Set flag to prevent scroll event from triggering user scroll detection during auto-follow
-                        isProgrammaticScrollRef.current = true;
                         c.scrollLeft = Math.max(0, newScroll);
-                        // Reset flag in next frame - scroll event fires synchronously, so it will be handled before this callback
-                        requestAnimationFrame(() => {
-                            isProgrammaticScrollRef.current = false;
-                        });
                     }
                 }
             }
