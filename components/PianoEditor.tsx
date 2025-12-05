@@ -283,6 +283,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     try {
       Tone.Transport.stop();
       Tone.Transport.cancel();
+      Tone.Transport.position = 0;
       if (toneSynthRef.current) {
         toneSynthRef.current.releaseAll();
         toneSynthRef.current.dispose();
@@ -335,10 +336,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   }, [playheadPosition]);
 
   // Play using Tone.js for professional piano sound - can start from any step
+  // Uses real-time triggering instead of pre-scheduling for reliable jumps
   const startPlaybackFromStep = useCallback(async (fromStep?: number) => {
     if (notes.length === 0) return;
     
-    // Clean up any existing synth resources first (but don't change isPlaying yet)
+    // Clean up any existing synth resources first
     cleanupSynth();
     
     // Increment playback ID to invalidate any old callbacks
@@ -348,9 +350,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     await Tone.start();
     
     // Small delay to ensure clean audio state
-    await new Promise(resolve => setTimeout(resolve, 20));
+    await new Promise(resolve => setTimeout(resolve, 30));
     
-    // Check if we're still the current playback (in case another action was called)
+    // Check if we're still the current playback
     if (playbackIdRef.current !== currentPlaybackId) return;
     
     // Create piano-like synth with PolySynth for polyphony
@@ -369,44 +371,66 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     }).toDestination();
     toneSynthRef.current = synth;
     
-    const stepDurationSec = stepInterval / 1000;
+    const stepDurationMs = stepInterval;
     const startStep = fromStep !== undefined ? fromStep : (currentStep >= 0 ? currentStep : 0);
     
-    // Set BPM
-    Tone.Transport.bpm.value = bpm;
+    // Track which notes have been triggered to avoid duplicates
+    const triggeredNotes = new Set<string>();
     
-    // Schedule notes with Tone.js - use fresh timestamp
-    const now = Tone.now();
-    for (const note of notes) {
-      if (note.startTime >= startStep) {
-        const midi = (note.octave + 1) * 12 + note.pitch;
-        const freq = Tone.Frequency(midi, "midi").toFrequency();
-        const offsetSec = (note.startTime - startStep) * stepDurationSec;
-        const durSec = Math.max(0.05, note.duration * stepDurationSec);
-        
-        synth.triggerAttackRelease(freq, durSec, now + offsetSec);
-      }
-    }
+    // Track currently playing notes for cleanup
+    const activeNotes = new Map<string, { freq: number; endStep: number }>();
     
     setIsPlaying(true);
     setIsUserScrolling(false);
     isUserScrollingRef.current = false;
     
-    // Animate playhead smoothly using requestAnimationFrame
+    // Real-time playback loop
     const playStartTime = performance.now();
+    let lastProcessedStep = startStep - 1;
+    
     const updatePlayhead = () => {
       if (playbackIdRef.current !== currentPlaybackId) return;
       
-      const elapsed = (performance.now() - playStartTime) / 1000;
-      const pos = startStep + (elapsed / stepDurationSec);
+      // Check if synth is still valid
+      if (!toneSynthRef.current) return;
       
-      setPlayheadPosition(pos * CELL_WIDTH);
-      setCurrentStep(Math.floor(pos));
+      const elapsed = performance.now() - playStartTime;
+      const currentPos = startStep + (elapsed / stepDurationMs);
+      const currentStepFloor = Math.floor(currentPos);
+      
+      // Trigger notes that should start at this step
+      if (currentStepFloor > lastProcessedStep) {
+        for (let step = lastProcessedStep + 1; step <= currentStepFloor; step++) {
+          for (const note of notes) {
+            if (note.startTime === step) {
+              const noteKey = `${note.octave}-${note.pitch}-${note.startTime}`;
+              if (!triggeredNotes.has(noteKey)) {
+                triggeredNotes.add(noteKey);
+                
+                const midi = (note.octave + 1) * 12 + note.pitch;
+                const freq = Tone.Frequency(midi, "midi").toFrequency();
+                const durSec = Math.max(0.05, note.duration * stepDurationMs / 1000);
+                
+                try {
+                  synth.triggerAttackRelease(freq, durSec);
+                } catch (e) {
+                  // Synth may have been disposed
+                  return;
+                }
+              }
+            }
+          }
+        }
+        lastProcessedStep = currentStepFloor;
+      }
+      
+      setPlayheadPosition(currentPos * CELL_WIDTH);
+      setCurrentStep(currentStepFloor);
       
       // Auto-scroll
       if (scrollContainerRef.current) {
         const c = scrollContainerRef.current;
-        const px = pos * CELL_WIDTH;
+        const px = currentPos * CELL_WIDTH;
         const isPlayheadVisible = px >= c.scrollLeft && px <= c.scrollLeft + c.clientWidth - CELL_WIDTH * 2;
         
         if (isPlayheadVisible && isUserScrollingRef.current) {
@@ -421,7 +445,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
         }
       }
       
-      if (pos > lastNoteEndTime) {
+      // Check if playback should end
+      if (currentPos > lastNoteEndTime) {
         playbackIdRef.current++;
         cleanupSynth();
         setIsPlaying(false);
@@ -432,7 +457,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     };
     
     animationFrameRef.current = requestAnimationFrame(updatePlayhead);
-  }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, cleanupSynth, bpm]);
+  }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, cleanupSynth]);
 
   // Wrapper for normal playback (from current position)
   const startPlayback = useCallback(() => {
