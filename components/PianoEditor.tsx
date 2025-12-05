@@ -267,7 +267,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const audioPoolRef = useRef<AudioNodePool | null>(null);
     const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
-    const isProgrammaticScrollRef = useRef(false); // Flag to distinguish programmatic scrolling from user scrolling
+    const isProgrammaticScrollRef = useRef(false); // Flag to ignore scroll events during auto-follow playhead scrolling
     const toneSamplerRef = useRef<Tone.Sampler | null>(null); // Tone.js sampler for piano sound
     const playheadRef = useRef<HTMLDivElement>(null); // Playhead DOM ref for direct manipulation
     const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
@@ -843,10 +843,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                     const smoothFactor = 0.15;
                     const newScroll = currentScroll + scrollDiff * smoothFactor;
                     if (Math.abs(scrollDiff) > 1) {
-                        // Set flag to prevent scroll event from triggering user scroll detection
+                        // Set flag to prevent scroll event from triggering user scroll detection during auto-follow
                         isProgrammaticScrollRef.current = true;
                         c.scrollLeft = Math.max(0, newScroll);
-                        // Reset flag after scroll is processed (use requestAnimationFrame to ensure scroll event is handled first)
+                        // Reset flag in next frame - scroll event fires synchronously, so it will be handled before this callback
                         requestAnimationFrame(() => {
                             isProgrammaticScrollRef.current = false;
                         });
