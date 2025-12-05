@@ -2,72 +2,84 @@
 
 /* CSS Variables for theming */
 :root {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --accent-1: #deb99a;
-  --accent-2: #7C85EB;
-  --accent-3: #c493b1;
-  /* RGB versions for rgba() usage */
-  --bg-primary-rgb: 15, 23, 42;
-  --bg-secondary-rgb: 30, 41, 59;
-  --accent-1-rgb: 222, 185, 154;
-  --accent-3-rgb: 196, 147, 177;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --accent-1: #deb99a;
+    --accent-2: #7C85EB;
+    --accent-3: #c493b1;
+    /* RGB versions for rgba() usage */
+    --bg-primary-rgb: 15, 23, 42;
+    --bg-secondary-rgb: 30, 41, 59;
+    --accent-1-rgb: 222, 185, 154;
+    --accent-3-rgb: 196, 147, 177;
+    --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.3);
+    --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.3);
+    --bg-tertiary-translucent: rgb(from var(--bg-tertiary) r g b / 0.3);
 }
 
 :root.light {
-  --bg-primary: #F7F8F3;
-  --bg-secondary: #EBECF2;
-  --bg-tertiary: rgba(227, 216, 216, 0.74);
-  --text-primary: #1e293b;
-  --text-secondary: #475569;
-  --accent-1: #deb99a;
-  --accent-2: #7C85EB;
-  --accent-3: #c493b1;
-  /* RGB versions for rgba() usage */
-  --bg-primary-rgb: 247, 248, 243;
-  --bg-secondary-rgb: 235, 236, 242;
-  --accent-1-rgb: 222, 185, 154;
-  --accent-3-rgb: 196, 147, 177;
+    --bg-primary: #F7F8F3;
+    --bg-secondary: #EBECF2;
+    --bg-tertiary: rgba(227, 216, 216, 0.74);
+    --text-primary: #1e293b;
+    --text-secondary: #475569;
+    --accent-1: #deb99a;
+    --accent-2: #7C85EB;
+    --accent-3: #c493b1;
+    /* RGB versions for rgba() usage */
+    --bg-primary-rgb: 247, 248, 243;
+    --bg-secondary-rgb: 235, 236, 242;
+    --accent-1-rgb: 222, 185, 154;
+    --accent-3-rgb: 196, 147, 177;
+    --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.3);
+    --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.3);
+    --bg-tertiary-translucent: rgb(from var(--bg-tertiary) r g b / 0.3);
 }
 
 :root.dark {
-  --bg-primary: #3b3442;
-  --bg-secondary: #4d4658;
-  --bg-tertiary: #897b8c;
-  --text-primary: #f1f5f9;
-  --text-secondary: #e2e8f0;
-  --accent-1: #deb99a;
-  --accent-2: #c493b1;
-  --accent-3: #7C85EB;
-  /* RGB versions for rgba() usage */
-  --bg-primary-rgb: 59, 52, 66;
-  --bg-secondary-rgb: 77, 70, 88;
-  --accent-1-rgb: 222, 185, 154;
-  --accent-3-rgb: 124, 133, 235;
+    --bg-primary: #3b3442;
+    --bg-secondary: #4d4658;
+    --bg-tertiary: #897b8c;
+    --text-primary: #f1f5f9;
+    --text-secondary: #e2e8f0;
+    --accent-1: #deb99a;
+    --accent-2: #c493b1;
+    --accent-3: #7C85EB;
+    /* RGB versions for rgba() usage */
+    --bg-primary-rgb: 59, 52, 66;
+    --bg-secondary-rgb: 77, 70, 88;
+    --bg-tertiary-rgb: 59, 52, 66;
+    --accent-1-rgb: 222, 185, 154;
+    --accent-3-rgb: 124, 133, 235;
+    --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.5);
+    --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.5);
+    --bg-tertiary-translucent: rgb(from var(--bg-tertiary) r g b / 0.5);
 }
 
 body {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  overflow-x: hidden;
-  transition: background-color 0.5s ease, color 0.5s ease;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 /* Theme transition animations */
 :root {
-  transition: all 0.5s ease;
+    transition: all 0.5s ease;
 }
+
+/*图片元素不透明度*/
 
 :root *,
 :root *::before,
 :root *::after {
-  transition: background-color 0.5s ease, 
-              border-color 0.5s ease, 
-              color 0.5s ease,
-              box-shadow 0.5s ease;
+    transition: background-color 0.5s ease,
+    border-color 0.5s ease,
+    color 0.5s ease,
+    box-shadow 0.5s ease;
 }
 
 /* Exclude animations from transition (they need immediate response) */
@@ -77,101 +89,103 @@ body {
 :root [class*="transition-transform"],
 :root [class*="transition-opacity"],
 :root [class*="transition-all"]:not(.theme-transition) {
-  transition-property: transform, opacity;
+    transition-property: transform, opacity;
 }
-:root .bg-slate-900
-{
+
+:root .bg-slate-900 {
     background-color: var(--bg-primary) !important;
 }
+
 :root .bg-slate-950\/80 {
     background-color: var(--bg-primary) !important;
 }
+
 /* Theme-aware component overrides */
 :root.light .nav-bar,
 :root.light nav {
-  background-color: rgba(247, 248, 243, 0.6) !important;
-  border-color: var(--bg-tertiary) !important;
+    background-color: rgba(247, 248, 243, 0.6) !important;
+    border-color: var(--bg-tertiary) !important;
 }
 
 :root.light .nav-bar *,
 :root.light nav span,
 :root.light nav button {
-  color: var(--text-primary) !important;
+    color: var(--text-primary) !important;
 }
 
 :root.light .card,
 :root.light .bg-slate-900\/60,
 :root.light .bg-slate-900\/80 {
-  background-color: rgba(235, 236, 242, 0.3) !important;
+    background-color: rgba(235, 236, 242, 0.3) !important;
 }
 
 :root.light .welcome-bg {
-  background-color: rgba(235, 236, 242, 1) !important;
+    background-color: rgba(235, 236, 242, 1) !important;
 }
 
 :root.light .text-slate-100,
 :root.light .text-slate-200,
 :root.light .text-white {
-  color: var(--text-primary) !important;
+    color: var(--text-primary) !important;
 }
 
 :root.light .text-slate-300,
 :root.light .text-slate-400,
 :root.light .text-slate-500 {
-  color: var(--text-secondary) !important;
+    color: var(--text-secondary) !important;
 }
 
 :root.light .border-white\/10,
 :root.light .border-slate-700,
 :root.light .border-slate-800 {
-  border-color: var(--bg-tertiary) !important;
+    border-color: var(--bg-tertiary) !important;
 }
 
 :root.light footer {
-  background-color: rgba(227, 216, 216, 0.95) !important;
+    background-color: rgba(227, 216, 216, 0.95) !important;
 }
 
 :root.dark .nav-bar,
 :root.dark nav {
-  background-color: rgba(59, 52, 66, 0.6) !important;
+    background-color: rgba(59, 52, 66, 0.6) !important;
 }
 
 :root.dark .card,
 :root.dark .bg-slate-900\/60,
 :root.dark .bg-slate-900\/80 {
-  background-color: rgba(77, 70, 88, 0.6) !important;
+    background-color: rgba(77, 70, 88, 0.6) !important;
 }
 
 /* Accent color styling */
 :root.light .text-amber-400,
 :root.light .text-amber-200,
 :root.light .text-amber-500 {
-  color: var(--accent-1) !important;
+    color: var(--accent-1) !important;
 }
 
 :root.light .text-purple-300,
 :root.light .text-purple-200,
 :root.light .text-purple-400 {
-  color: var(--accent-2) !important;
+    color: var(--accent-2) !important;
 }
 
 :root.dark .text-amber-400,
 :root.dark .text-amber-200 {
-  color: var(--accent-1) !important;
+    color: var(--accent-1) !important;
 }
 
 :root.dark .text-purple-300,
 :root.dark .text-purple-200 {
-  color: var(--accent-2) !important;
+    color: var(--accent-2) !important;
 }
 
 /* Button styling for themes */
 :root.light .bg-purple-600 {
-  background-color: var(--accent-2) !important;
+    background-color: var(--accent-2) !important;
 }
 
 :root.dark .bg-purple-600 {
-  background-color: var(--accent-3) !important;
+    background-color: var(--accent-3) !important;
 }
 
 /* 修复 Light 模式下标题和文章可读性 */
@@ -179,64 +193,67 @@ body {
 :root.light h2,
 :root.light h3,
 :root.light .section-title {
-  color: #1e293b !important;
+    color: #1e293b !important;
 }
 
 :root.light .card-title,
 :root.light .post-title {
-  color: #334155 !important;
+    color: #334155 !important;
 }
 
 :root.light .card-description,
 :root.light .post-excerpt,
 :root.light article p {
-  color: #475569 !important;
+    color: #475569 !important;
 }
 
 /* 强调色在 Light 模式下使用更深的变体 */
 :root.light .text-amber-200,
 :root.light .text-amber-400 {
-  color: #b45309 !important;
+    color: #b45309 !important;
 }
 
 :root.light .text-purple-200,
 :root.light .text-purple-300 {
-  color: #6d28d9 !important;
+    color: #6d28d9 !important;
 }
 
 /* 卡片背景在 Light 模式下增加不透明度 */
 :root.light .bg-black\/30,
 :root.light .bg-slate-900\/50 {
-  background-color: rgba(255, 255, 255, 0.8) !important;
+    background-color: rgba(255, 255, 255, 0.8) !important;
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+    width: 8px;
+    height: 8px;
 }
+
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
-  border-radius: 4px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: var(--accent-3);
-  border-radius: 4px;
+    background: var(--accent-3);
+    border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-2);
+    background: var(--accent-2);
 }
 
 #loading-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: var(--accent-1);
-  font-family: 'Playfair Display', serif;
-  font-size: 1.5rem;
-  opacity: 1;
-  transition: opacity 0.5s;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--accent-1);
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    opacity: 1;
+    transition: opacity 0.5s;
 }
 
 /* ====================================
@@ -246,261 +263,261 @@ body {
 
 /* --- Background Styles --- */
 .theme-bg-primary {
-  background-color: var(--bg-primary);
+    background-color: var(--bg-primary);
 }
 
 .theme-bg-secondary {
-  background-color: var(--bg-secondary);
+    background-color: var(--bg-secondary-translucent);
 }
 
 .theme-bg-tertiary {
-  background-color: var(--bg-tertiary);
+    background-color: var(--bg-tertiary);
 }
 
 .theme-bg-primary-translucent {
-  background-color: rgba(var(--bg-primary-rgb, 15, 23, 42), 0.8);
+    background-color: rgba(var(--bg-primary-rgb, 15, 23, 42), 0.8);
 }
 
 .theme-bg-secondary-translucent {
-  background-color: rgba(var(--bg-secondary-rgb, 30, 41, 59), 0.5);
+    background-color: rgba(var(--bg-secondary-rgb, 30, 41, 59), 0.5);
 }
 
 /* --- Text Styles --- */
 .theme-text-primary {
-  color: var(--text-primary);
+    color: var(--text-primary);
 }
 
 .theme-text-secondary {
-  color: var(--text-secondary);
+    color: var(--text-secondary);
 }
 
 .theme-text-accent1 {
-  color: var(--accent-1);
+    color: var(--accent-1);
 }
 
 .theme-text-accent2 {
-  color: var(--accent-2);
+    color: var(--accent-2);
 }
 
 .theme-text-accent3 {
-  color: var(--accent-3);
+    color: var(--accent-3);
 }
 
 /* --- Border Styles --- */
 .theme-border-subtle {
-  border-color: var(--bg-tertiary);
+    border-color: var(--bg-tertiary);
 }
 
 .theme-border-accent1 {
-  border-color: var(--accent-1);
+    border-color: var(--accent-1);
 }
 
 .theme-border-accent2 {
-  border-color: var(--accent-2);
+    border-color: var(--accent-2);
 }
 
 .theme-border-accent3 {
-  border-color: var(--accent-3);
+    border-color: var(--accent-3);
 }
 
 /* --- Card Styles --- */
 .theme-card-primary {
-  background-color: var(--bg-secondary);
-  border-color: var(--bg-tertiary);
-  border-width: 1px;
-  border-style: solid;
+    background-color: var(--bg-secondary);
+    border-color: var(--bg-tertiary);
+    border-width: 1px;
+    border-style: solid;
 }
 
 .theme-card-secondary {
-  background-color: var(--bg-primary);
-  border-color: var(--bg-tertiary);
-  border-width: 1px;
-  border-style: solid;
+    background-color: var(--bg-primary);
+    border-color: var(--bg-tertiary);
+    border-width: 1px;
+    border-style: solid;
 }
 
 /* --- Button Styles --- */
 .theme-btn-primary {
-  background-color: var(--accent-3);
-  color: white;
+    background-color: var(--accent-3);
+    color: white;
 }
 
 .theme-btn-secondary {
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
-  border-color: var(--bg-tertiary);
-  border-width: 1px;
-  border-style: solid;
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-color: var(--bg-tertiary);
+    border-width: 1px;
+    border-style: solid;
 }
 
 .theme-btn-ghost {
-  background-color: transparent;
-  color: var(--text-secondary);
+    background-color: transparent;
+    color: var(--text-secondary);
 }
 
 .theme-btn-active {
-  background-color: var(--accent-1);
-  color: white;
+    background-color: var(--accent-1);
+    color: white;
 }
 
 /* --- Input Styles --- */
 .theme-input {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border-color: var(--bg-tertiary);
-  border-width: 1px;
-  border-style: solid;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--bg-tertiary);
+    border-width: 1px;
+    border-style: solid;
 }
 
 /* --- Panel Styles --- */
 .theme-panel-dropdown {
-  background-color: var(--bg-primary);
-  border-color: var(--bg-tertiary);
-  border-width: 1px;
-  border-style: solid;
+    background-color: var(--bg-primary);
+    border-color: var(--bg-tertiary);
+    border-width: 1px;
+    border-style: solid;
 }
 
 .theme-panel-header {
-  background-color: var(--bg-secondary);
-  border-color: var(--bg-tertiary);
+    background-color: var(--bg-secondary);
+    border-color: var(--bg-tertiary);
 }
 
 /* --- Gradient Styles --- */
 .theme-gradient-accent {
-  background: linear-gradient(to right, var(--accent-3), var(--bg-tertiary));
+    background: linear-gradient(to right, var(--accent-3), var(--bg-tertiary));
 }
 
 .theme-gradient-button {
-  background: linear-gradient(to bottom right, var(--accent-3), var(--accent-2));
+    background: linear-gradient(to bottom right, var(--accent-3), var(--accent-2));
 }
 
 /* --- Music Player Specific Styles --- */
 .music-player-btn-playing {
-  background-color: rgba(var(--accent-1-rgb), 0.2);
-  border-color: var(--accent-1);
-  color: var(--accent-1);
+    background-color: rgba(var(--accent-1-rgb), 0.2);
+    border-color: var(--accent-1);
+    color: var(--accent-1);
 }
 
 .music-player-volume-slider {
-  background-color: var(--bg-tertiary);
-  accent-color: var(--accent-1);
+    background-color: var(--bg-tertiary);
+    accent-color: var(--accent-1);
 }
 
 /* --- Magic Chat Specific Styles --- */
 .magic-chat-window {
-  background-color: var(--bg-secondary);
-  border-color: var(--accent-3);
-  border-width: 1px;
-  border-style: solid;
+    background-color: var(--bg-secondary);
+    border-color: var(--accent-3);
+    border-width: 1px;
+    border-style: solid;
 }
 
 .magic-chat-header {
-  background: linear-gradient(to right, var(--accent-3), var(--bg-tertiary));
-  border-bottom: 1px solid var(--accent-3);
+    background: linear-gradient(to right, var(--accent-3), var(--bg-tertiary));
+    border-bottom: 1px solid var(--accent-3);
 }
 
 .magic-chat-user-message {
-  background-color: var(--accent-3);
-  color: white;
+    background-color: var(--accent-3);
+    color: white;
 }
 
 .magic-chat-bot-message {
-  background-color: var(--bg-primary);
-  border-color: var(--bg-tertiary);
-  border-width: 1px;
-  border-style: solid;
-  color: var(--text-primary);
+    background-color: var(--bg-primary);
+    border-color: var(--bg-tertiary);
+    border-width: 1px;
+    border-style: solid;
+    color: var(--text-primary);
 }
 
 .magic-chat-loading-dot {
-  background-color: var(--accent-2);
+    background-color: var(--accent-2);
 }
 
 .magic-chat-input-area {
-  background-color: var(--bg-secondary);
-  border-top: 1px solid var(--bg-tertiary);
+    background-color: var(--bg-secondary);
+    border-top: 1px solid var(--bg-tertiary);
 }
 
 /* --- Theme Toggle Specific Styles --- */
 .theme-toggle-dark {
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
-  border-color: var(--bg-tertiary);
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-color: var(--bg-tertiary);
 }
 
 .theme-toggle-light {
-  background-color: var(--accent-1);
-  opacity: 0.3;
-  border-color: var(--accent-1);
-  color: var(--text-primary);
+    background-color: var(--accent-1);
+    opacity: 0.3;
+    border-color: var(--accent-1);
+    color: var(--text-primary);
 }
 
 /* --- Navigation Styles --- */
 .nav-bar {
-  background-color: var(--bg-secondary);
-  border-color: var(--bg-tertiary);
+    background-color: var(--bg-secondary);
+    border-color: var(--bg-tertiary);
 }
 
 .nav-button-active {
-  border-color: var(--accent-1);
+    border-color: var(--accent-1);
 }
 
 .nav-button-pills-container {
-  background-color: var(--bg-primary);
-  border-color: var(--bg-tertiary);
+    background-color: var(--bg-primary);
+    border-color: var(--bg-tertiary);
 }
 
 /* --- Footer Styles --- */
 .theme-footer {
-  background-color: var(--bg-primary);
-  border-color: var(--bg-tertiary);
-  color: var(--text-secondary);
+    background-color: var(--bg-primary);
+    border-color: var(--bg-tertiary);
+    color: var(--text-secondary);
 }
 
 .theme-footer-link {
-  color: var(--accent-1);
+    color: var(--accent-1);
 }
 
 /* --- Additional helper classes for index.tsx --- */
 .avatar-gradient-bg {
-  background: linear-gradient(to top right, var(--accent-3), var(--accent-1));
+    background: linear-gradient(to top right, var(--accent-3), var(--accent-1));
 }
 
 .avatar-border {
-  border-color: var(--bg-primary);
-  background-color: var(--bg-tertiary);
+    border-color: var(--bg-primary);
+    background-color: var(--bg-tertiary);
 }
 
 .accent-border-light {
-  border-color: rgba(var(--accent-1-rgb), 0.2);
+    border-color: rgba(var(--accent-1-rgb), 0.2);
 }
 
 .accent3-border {
-  border-color: rgba(var(--accent-3-rgb), 0.5);
+    border-color: rgba(var(--accent-3-rgb), 0.5);
 }
 
 .welcome-enter-btn {
-  background: linear-gradient(to right, var(--accent-3), var(--accent-1));
+    background: linear-gradient(to right, var(--accent-3), var(--accent-1));
 }
 
 .category-badge {
-  background-color: rgba(var(--accent-3-rgb), 0.2);
-  border-color: rgba(var(--accent-3-rgb), 0.3);
+    background-color: rgba(var(--accent-3-rgb), 0.2);
+    border-color: rgba(var(--accent-3-rgb), 0.3);
 }
 
 .project-card-overlay {
-  background-color: rgba(var(--accent-3-rgb), 0.2);
+    background-color: rgba(var(--accent-3-rgb), 0.2);
 }
 
 .bg-overlay-dark {
-  background-color: rgba(var(--bg-primary-rgb), 0.6);
+    background-color: rgba(var(--bg-primary-rgb), 0.6);
 }
 
 .selection-accent::selection {
-  background-color: var(--accent-1);
+    background-color: var(--accent-1);
 }
 
 .about-profile-border {
-  border-color: var(--text-primary);
+    border-color: var(--accent-1);
 }
 
 /* ====================================
@@ -509,170 +526,166 @@ body {
 
 /* Playhead line */
 .piano-playhead {
-  background-color: var(--accent-1);
-  opacity: 0.9;
-  box-shadow: 0 0 12px var(--accent-1);
+    background-color: var(--accent-1);
+    opacity: 0.9;
+    box-shadow: 0 0 12px var(--accent-1);
 }
 
 /* Piano editor container */
 .piano-editor-container {
-  background-color: var(--bg-tertiary);
-  border-color: var(--accent-3);
+    background-color: var(--bg-tertiary);
+    border-color: var(--accent-3);
 }
 
 /* Piano editor text colors */
 .piano-editor-container .piano-title {
-  color: var(--accent-3);
+    color: var(--accent-3);
 }
 
 .piano-editor-container .piano-text-primary {
-  color: var(--text-primary);
+    color: var(--text-primary);
 }
 
 .piano-editor-container .piano-text-secondary {
-  color: var(--text-secondary);
+    color: var(--text-secondary);
 }
 
 .piano-editor-container .piano-text-accent1 {
-  color: var(--accent-1);
+    color: var(--accent-1);
 }
 
 .piano-editor-container .piano-text-accent3 {
-  color: var(--text-secondary);
+    color: var(--text-secondary);
 }
 
 /* Piano editor backgrounds */
 .piano-editor-container .piano-bg-primary {
-  background-color: var(--bg-primary);
+    background-color: var(--bg-primary);
 }
 
 .piano-editor-container .piano-bg-secondary {
-  background-color: var(--bg-secondary);
+    background-color: var(--bg-secondary);
 }
 
 .piano-editor-container .piano-bg-tertiary {
-  background-color: var(--bg-tertiary);
+    background-color: var(--bg-tertiary);
 }
 
 /* Piano editor borders */
 .piano-editor-container .piano-border-subtle {
-  border-color: var(--bg-tertiary);
+    border-color: var(--bg-tertiary);
 }
 
 .piano-editor-container .piano-border-accent3 {
-  border-color: var(--accent-3);
+    border-color: var(--accent-3);
 }
 
 /* Piano editor buttons */
 .piano-editor-container .piano-btn-primary {
-  background-color: var(--accent-3);
-  color: white;
+    background-color: var(--accent-3);
+    color: white;
 }
 
 .piano-editor-container .piano-btn-active {
-  background-color: var(--accent-1);
-  color: white;
+    background-color: var(--accent-1);
+    color: white;
 }
 
 .piano-editor-container .piano-btn-secondary {
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
 }
 
 /* Piano editor input */
 .piano-editor-container .piano-input {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border-color: var(--bg-tertiary);
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--bg-tertiary);
 }
 
 /* Piano key styling */
 .piano-editor-container .piano-key-white {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border-color: var(--bg-tertiary);
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--bg-tertiary);
 }
 
 .piano-editor-container .piano-key-black {
-  background-color: var(--bg-primary);
-  color: var(--text-secondary);
-  border-color: var(--bg-tertiary);
+    background-color: var(--bg-primary);
+    color: var(--text-secondary);
+    border-color: var(--bg-tertiary);
 }
 
 /* Piano grid styling */
 .piano-editor-container .piano-grid {
-  background-color: var(--bg-primary);
+    background-color: var(--bg-primary);
 }
 
 /* Piano ruler cell */
 .piano-editor-container .piano-ruler-cell {
-  color: var(--text-secondary);
-  border-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-color: var(--bg-tertiary);
 }
 
 .piano-editor-container .piano-ruler-cell.beat-start {
-  color: var(--accent-1);
+    color: var(--accent-1);
 }
 
 .piano-editor-container .piano-ruler-cell.current {
-  color: var(--accent-3);
-  background-color: rgba(124, 133, 235, 0.2);
+    color: var(--accent-3);
+    background-color: rgba(124, 133, 235, 0.2);
 }
 
 /* Piano ruler border */
 .piano-editor-container .piano-ruler-border-beat {
-  border-right: 2px solid var(--accent-1);
+    border-right: 2px solid var(--accent-1);
 }
 
 .piano-editor-container .piano-ruler-border-step {
-  border-right: 1px solid var(--bg-tertiary);
+    border-right: 1px solid var(--bg-tertiary);
 }
 
 /* Piano grid background pattern */
 .piano-editor-container .piano-grid {
-  background-color: var(--bg-primary);
-  background-image: 
-    /* Beat separator lines (every 4 cells) */
-    repeating-linear-gradient(
-      to right,
-      transparent 0px,
-      transparent 98px,
-      var(--accent-1) 98px,
-      var(--accent-1) 100px
+    background-color: var(--bg-primary);
+    background-image: /* Beat separator lines (every 4 cells) */ repeating-linear-gradient(
+            to right,
+            transparent 0px,
+            transparent 98px,
+            var(--accent-1) 98px,
+            var(--accent-1) 100px
     ),
-    /* Step separator lines */
-    repeating-linear-gradient(
-      to right,
-      transparent 0px,
-      transparent 24px,
-      var(--bg-tertiary) 24px,
-      var(--bg-tertiary) 25px
+        /* Step separator lines */ repeating-linear-gradient(
+            to right,
+            transparent 0px,
+            transparent 24px,
+            var(--bg-tertiary) 24px,
+            var(--bg-tertiary) 25px
     ),
-    /* Row separator lines */
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0px,
-      transparent 31px,
-      var(--bg-tertiary) 31px,
-      var(--bg-tertiary) 32px
+        /* Row separator lines */ repeating-linear-gradient(
+            to bottom,
+            transparent 0px,
+            transparent 31px,
+            var(--bg-tertiary) 31px,
+            var(--bg-tertiary) 32px
     );
 }
 
 /* Piano scroll custom scrollbar */
 .piano-editor-container .piano-scroll::-webkit-scrollbar {
-  height: 8px;
+    height: 8px;
 }
 
 .piano-editor-container .piano-scroll::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+    background: var(--bg-secondary);
 }
 
 .piano-editor-container .piano-scroll::-webkit-scrollbar-thumb {
-  background: var(--accent-3);
-  border-radius: 4px;
+    background: var(--accent-3);
+    border-radius: 4px;
 }
 
 .piano-editor-container .piano-scroll::-webkit-scrollbar-corner {
-  background-color: transparent;
-  display: none;
+    background-color: transparent;
+    display: none;
 }

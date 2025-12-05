@@ -159,7 +159,7 @@ const getNoteColor = (octave: number, pitch: number): string => {
 };
 
 // Duration options with visual icons
-const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number; icon: JSX.Element }[] = [
+const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number; icon: Element }[] = [
     {value: 'sixteenth', label: '16分', steps: 1, icon: <SixteenthNoteIcon size={20}/>},
     {value: 'eighth', label: '8分', steps: 2, icon: <EighthNoteIcon size={20}/>},
     {value: 'quarter', label: '4分', steps: 4, icon: <QuarterNoteIcon size={20}/>},
@@ -267,6 +267,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const audioPoolRef = useRef<AudioNodePool | null>(null);
     const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
+    const wasLeftOutsideViewRef = useRef<boolean>(false); // 上一帧是否在左侧视窗外
+    const isProgrammaticScrollRef = useRef(false); // Flag to ignore scroll events during programmatic scroll
     const toneSamplerRef = useRef<Tone.Sampler | null>(null); // Tone.js sampler for piano sound
     const playheadRef = useRef<HTMLDivElement>(null); // Playhead DOM ref for direct manipulation
     const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
@@ -558,6 +560,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
 
     // Handle user scroll - stop auto-follow when user manually scrolls
     const handleUserScroll = useCallback(() => {
+        // Ignore scroll events triggered by programmatic scrolling (e.g., jumpToPlayhead)
+        if (isProgrammaticScrollRef.current) {
+            return;
+        }
+        
         if (isPlaying) {
             setIsUserScrolling(true);
             isUserScrollingRef.current = true;
@@ -659,26 +666,36 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         }
         setCurrentStep(0);
         updatePlayheadPosition(0);
+        setActiveKeys(new Map()); // Clear active keys
+        // Scroll to start with programmatic scroll flag
+        if (scrollContainerRef.current) {
+            isProgrammaticScrollRef.current = true;
+            scrollContainerRef.current.scrollLeft = 0;
+            // Reset flag synchronously after scroll is set (scroll event fires synchronously)
+            isProgrammaticScrollRef.current = false;
+        }
+        // Enable auto-follow after jumping to start
         setIsUserScrolling(false);
         isUserScrollingRef.current = false;
-        setActiveKeys(new Map()); // Clear active keys
-        // Scroll to start
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollLeft = 0;
-        }
     }, [isPlaying, pausePlayback, updatePlayheadPosition]);
 
-    // Jump to current playhead position
+    // Jump to current playhead position and enable auto-follow
     const jumpToPlayhead = useCallback(() => {
-        if (scrollContainerRef.current) {
-            const c = scrollContainerRef.current;
-            // Calculate scroll position to align playhead with target position
-            const playheadTargetPosition = KEY_LABEL_WIDTH + CELL_WIDTH * 4;
-            c.scrollLeft = Math.max(0, playheadPosition - playheadTargetPosition + KEY_LABEL_WIDTH);
-            setIsUserScrolling(false);
-            isUserScrollingRef.current = false;
-        }
-    }, [playheadPosition]);
+        if (!scrollContainerRef.current) return;
+        const c = scrollContainerRef.current;
+
+        const px = currentStep * CELL_WIDTH; // 世界坐标
+        const playheadTargetPosition = 20;   // 与上面保持一致
+
+        const targetScrollLeft = Math.max(0, px - playheadTargetPosition);
+
+        isProgrammaticScrollRef.current = true;
+        c.scrollLeft = targetScrollLeft;
+        isProgrammaticScrollRef.current = false;
+
+        setIsUserScrolling(false);
+        isUserScrollingRef.current = false;
+    }, [currentStep]);
 
     // Play using Tone.js Sampler for realistic piano sound - can start from any step
     // Uses real-time triggering instead of pre-scheduling for reliable jumps
@@ -827,7 +844,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                     const smoothFactor = 0.15;
                     const newScroll = currentScroll + scrollDiff * smoothFactor;
                     if (Math.abs(scrollDiff) > 1) {
+                        // Set flag to prevent scroll event from triggering user scroll detection
+                        isProgrammaticScrollRef.current = true;
                         c.scrollLeft = Math.max(0, newScroll);
+                        // Reset flag synchronously after scroll is set (scroll event fires synchronously)
+                        isProgrammaticScrollRef.current = false;
                     }
                 }
             }

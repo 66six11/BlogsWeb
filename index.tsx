@@ -376,9 +376,9 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({content}) => {
                         continue;
                     }
 
-                    // D. Obsidian Images ![[...]]
-                    if (trimmed.match(/!\[\[(.*?)\]\]/)) {
-                        const match = trimmed.match(/!\[\[(.*?)\]\]/);
+                    // D. Obsidian Images ![[...]] - handle optional |size parameter
+                    if (trimmed.match(/!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/)) {
+                        const match = trimmed.match(/!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/);
                         if (match) {
                             const imageName = match[1];
                             const encodedName = encodeURIComponent(imageName);
@@ -389,7 +389,7 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({content}) => {
                                     <img
                                         src={imageUrl}
                                         alt={imageName}
-                                        className="max-w-full md:max-w-lg rounded-lg border border-white/10 shadow-lg"
+                                        className="max-w-full md:max-w-lg rounded-lg border border-white/10 shadow-lg opacity-100"
                                         onError={(e) => {
                                             (e.target as HTMLImageElement).style.display = 'none';
                                         }}
@@ -402,15 +402,20 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({content}) => {
                         }
                     }
 
-                    // E. Standard Images ![...](...)
-                    const imgMatch = line.match(/^!\[(.*?)\]\((.*?)\)/);
+                    // E. Standard Images ![...](...)  - handle optional |size in alt text
+                    // Obsidian size formats can be: |100, |100x200, |small, etc.
+                    const imgMatch = line.match(/^!\[(\|[^\]]*)?([^\]]*?)?\]\((.*?)\)/);
                     if (imgMatch) {
+                        // imgMatch[1] is the optional size prefix (e.g., "|300", "|100x200", etc.)
+                        // imgMatch[2] is the actual alt text, imgMatch[3] is the URL
+                        const altText = imgMatch[2] || '';
+                        const imageUrl = imgMatch[3];
                         result.push(
                             <div key={key} className="my-6 flex flex-col items-center">
-                                <img src={imgMatch[2]} alt={imgMatch[1]}
-                                     className="max-w-full rounded-lg border border-white/10 shadow-lg"/>
-                                {imgMatch[1] &&
-                                    <span className="text-xs text-slate-500 mt-2 italic">{imgMatch[1]}</span>}
+                                <img src={imageUrl} alt={altText}
+                                     className="max-w-full rounded-lg border border-white/10 shadow-lg opacity-100"/>
+                                {altText &&
+                                    <span className="text-xs text-slate-500 mt-2 italic">{altText}</span>}
                             </div>
                         );
                         i++;
@@ -799,14 +804,13 @@ const App: React.FC = () => {
         <div
             className="flex flex-col items-center justify-center flex-1 text-center px-4 relative overflow-hidden w-full h-full">
             <div
-                className="relative z-10 animate-fade-in-up backdrop-blur-md p-8 md:p-12 rounded-3xl border shadow-2xl max-w-4xl flex flex-col items-center opacity-90 theme-bg-secondary theme-border-subtle">
+                className="relative z-10 animate-fade-in-up backdrop-blur-md p-8 md:p-12 rounded-3xl border shadow-2xl max-w-4xl flex flex-col items-center theme-bg-secondary theme-border-subtle">
                 <div
                     className="w-32 h-32 mx-auto mb-8 relative group cursor-pointer"
                     onClick={() => setCurrentView(View.ABOUT)}
                     title="关于我"
                 >
-                    <div
-                        className="absolute inset-0 rounded-full animate-spin-slow opacity-80 blur-md group-hover:blur-xl transition-all avatar-gradient-bg"></div>
+                    <div className="absolute inset-0 rounded-full animate-spin-slow opacity-80 blur-md group-hover:blur-xl transition-all avatar-gradient-bg"></div>
                     <img
                         src={userProfile?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=Elaina&clothing=graphicShirt&top=hat&hairColor=silverGray"}
                         alt="Avatar"
@@ -991,7 +995,7 @@ const App: React.FC = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {PROJECTS.map(project => (
                     <div key={project.id}
-                         className="group rounded-xl overflow-hidden border transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md opacity-90 theme-bg-secondary theme-border-subtle">
+                         className="group rounded-xl overflow-hidden border transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md theme-bg-secondary theme-border-subtle">
                         <div className="h-48 overflow-hidden relative">
                             <div
                                 className="absolute inset-0 group-hover:bg-transparent transition-colors z-10 project-card-overlay"/>
@@ -1024,7 +1028,7 @@ const App: React.FC = () => {
     const renderAbout = () => (
         <div className="max-w-4xl mx-auto py-12 px-4 animate-fade-in-up relative z-10">
             <div
-                className="backdrop-blur-md border rounded-2xl p-8 md:p-12 shadow-2xl relative overflow-hidden opacity-90 theme-bg-secondary theme-border-subtle">
+                className="backdrop-blur-md border rounded-2xl p-8 md:p-12 shadow-2xl relative overflow-hidden  theme-bg-secondary theme-border-subtle">
                 {/* Decorative Corner */}
                 <div className="absolute top-0 right-0 p-4 opacity-10">
                     <CustomWitchIcon size={120} className="theme-text-accent1"/>
@@ -1032,8 +1036,8 @@ const App: React.FC = () => {
 
                 <div className="flex flex-col md:flex-row gap-10 items-center">
                     <div className="w-48 h-48 flex-shrink-0 relative">
-                        <div
-                            className="absolute inset-0 rounded-full blur-lg opacity-20 animate-pulse theme-bg-primary"></div>
+
+                        <div className="absolute inset-0 rounded-full animate-spin-slow opacity-80 blur-md group-hover:blur-xl transition-all avatar-gradient-bg"></div>
                         <img
                             src={userProfile?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=Elaina&clothing=graphicShirt&top=hat&hairColor=silverGray"}
                             alt="Profile"
@@ -1213,7 +1217,7 @@ const App: React.FC = () => {
                 <MagicChat/>
 
                 <footer
-                    className="hidden md:block backdrop-blur-md border-t py-8 text-center text-sm mt-auto opacity-90 theme-footer theme-bg-primary theme-border-subtle theme-text-secondary">
+                    className="hidden md:block backdrop-blur-md border-t py-2 text-center text-sm mt-auto opacity-90 theme-footer theme-bg-primary theme-border-subtle theme-text-secondary">
                     <p>© {new Date().getFullYear()} {userProfile?.name || AUTHOR_NAME}. 灵感来自《魔女之旅》。</p>
                     <div className="flex justify-center gap-4 mt-2">
                         <a href={userProfile?.html_url || "#"}
