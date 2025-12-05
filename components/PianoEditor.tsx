@@ -88,6 +88,47 @@ const DEFAULT_BPM = 120;
 const VISIBLE_STEP_BUFFER = 10; // Extra steps to render beyond visible area
 const MAX_CONCURRENT_NOTES = 32; // Limit concurrent oscillators for large scores
 
+// Salamander Grand Piano sampler configuration
+const SALAMANDER_BASE_URL = "https://tonejs.github.io/audio/salamander/";
+const SALAMANDER_SAMPLES: Record<string, string> = {
+  A0: "A0.mp3",
+  C1: "C1.mp3",
+  "D#1": "Ds1.mp3",
+  "F#1": "Fs1.mp3",
+  A1: "A1.mp3",
+  C2: "C2.mp3",
+  "D#2": "Ds2.mp3",
+  "F#2": "Fs2.mp3",
+  A2: "A2.mp3",
+  C3: "C3.mp3",
+  "D#3": "Ds3.mp3",
+  "F#3": "Fs3.mp3",
+  A3: "A3.mp3",
+  C4: "C4.mp3",
+  "D#4": "Ds4.mp3",
+  "F#4": "Fs4.mp3",
+  A4: "A4.mp3",
+  C5: "C5.mp3",
+  "D#5": "Ds5.mp3",
+  "F#5": "Fs5.mp3",
+  A5: "A5.mp3",
+  C6: "C6.mp3",
+  "D#6": "Ds6.mp3",
+  "F#6": "Fs6.mp3",
+  A6: "A6.mp3",
+  C7: "C7.mp3",
+  "D#7": "Ds7.mp3",
+  "F#7": "Fs7.mp3",
+  A7: "A7.mp3",
+  C8: "C8.mp3"
+};
+
+// Convert pitch (0-11) and octave to note name string (e.g., "C4", "D#5")
+const PITCH_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const getNoteName = (pitch: number, octave: number): string => {
+  return `${PITCH_NAMES[pitch]}${octave}`;
+};
+
 // CSS background grid pattern - replaces DOM elements for grid lines
 const GRID_BACKGROUND_CSS = `
   repeating-linear-gradient(
@@ -235,6 +276,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
   const [bpm, setBpm] = useState<number>(DEFAULT_BPM);
   const [scoreMetadata, setScoreMetadata] = useState<ScoreMetadata>({ bpm: DEFAULT_BPM });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSamplerLoading, setIsSamplerLoading] = useState(true); // Sampler loading state
   const [sustain, setSustain] = useState(true); // Sustain/延音 toggle, default on
   const [isUserScrolling, setIsUserScrolling] = useState(false); // Track if user manually scrolled
   const [selectedVoice, setSelectedVoice] = useState<string>('all'); // Voice filter
@@ -249,7 +291,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
   const audioPoolRef = useRef<AudioNodePool | null>(null);
   const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
-  const toneSynthRef = useRef<Tone.PolySynth | null>(null); // Tone.js synth
+  const toneSamplerRef = useRef<Tone.Sampler | null>(null); // Tone.js sampler for piano sound
   const playheadRef = useRef<HTMLDivElement>(null); // Playhead DOM ref for direct manipulation
   const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
   const [rulerScrollOffset, setRulerScrollOffset] = useState(0); // Track ruler scroll position
@@ -401,7 +443,54 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     return result;
   }, [filteredNotes, visibleRange, keyRowIndex]);
   
-  // Initialize
+  // Initialize sampler on component mount (preload strategy)
+  useEffect(() => {
+    let mounted = true;
+    
+    const initSampler = async () => {
+      try {
+        // Create sampler with Salamander Grand Piano samples
+        const sampler = new Tone.Sampler({
+          urls: SALAMANDER_SAMPLES,
+          baseUrl: SALAMANDER_BASE_URL,
+          release: sustain ? 1.0 : 0.3,
+          onload: () => {
+            if (mounted) {
+              setIsSamplerLoading(false);
+            }
+          },
+          onerror: (error) => {
+            console.error('Error loading sampler:', error);
+            if (mounted) {
+              setIsSamplerLoading(false);
+            }
+          }
+        }).toDestination();
+        
+        toneSamplerRef.current = sampler;
+      } catch (error) {
+        console.error('Error initializing sampler:', error);
+        if (mounted) {
+          setIsSamplerLoading(false);
+        }
+      }
+    };
+    
+    initSampler();
+    
+    return () => {
+      mounted = false;
+    };
+  }, []); // Only run once on mount
+  
+  // Update sampler release based on sustain setting
+  useEffect(() => {
+    if (toneSamplerRef.current) {
+      toneSamplerRef.current.release = sustain ? 1.0 : 0.3;
+    }
+  }, [sustain]);
+  
+  // Initialize notes and available scores
   useEffect(() => {
     setNotes([
       { pitch: 4, octave: 4, startTime: 0, duration: 2 },
@@ -465,9 +554,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     updateVisibleRange();
   }, [totalSteps, updateVisibleRange]);
 
-  // Internal function to stop playback sounds without disposing synth
-  // Only releases currently playing notes - synth stays alive for reuse
-  const cleanupSynth = useCallback(() => {
+  // Internal function to stop playback sounds without disposing sampler
+  // Only releases currently playing notes - sampler stays alive for reuse
+  const cleanupSampler = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
@@ -483,41 +572,42 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
       audioContextRef.current = null;
     }
     
-    // Stop Tone.js transport and release all notes, but keep synth alive
+    // Stop Tone.js transport and release all notes, but keep sampler alive
     try {
       Tone.Transport.stop();
       Tone.Transport.cancel();
       Tone.Transport.position = 0;
-      if (toneSynthRef.current) {
+      if (toneSamplerRef.current) {
         // Release all playing notes immediately to prevent stuck sounds
-        toneSynthRef.current.releaseAll();
+        toneSamplerRef.current.releaseAll();
       }
     } catch (e) {
       console.error('Error stopping Tone.js:', e);
     }
   }, []);
 
-  // Full cleanup function for component unmount - disposes the synth
-  const disposeSynth = useCallback(() => {
-    cleanupSynth();
+  // Full cleanup function for component unmount - disposes the sampler
+  const disposeSampler = useCallback(() => {
+    cleanupSampler();
     try {
-      if (toneSynthRef.current) {
-        toneSynthRef.current.dispose();
-        toneSynthRef.current = null;
+      if (toneSamplerRef.current) {
+        toneSamplerRef.current.dispose();
+        toneSamplerRef.current = null;
       }
     } catch (e) {
-      console.error('Error disposing Tone.js synth:', e);
+      console.error('Error disposing Tone.js sampler:', e);
     }
-  }, [cleanupSynth]);
+  }, [cleanupSampler]);
 
   // Pause playback - keep position
   const pausePlayback = useCallback(() => {
     playbackIdRef.current++;
-    cleanupSynth();
+    cleanupSampler();
     setIsPlaying(false);
     onPlaybackChange?.(false);  // 通知父组件播放已暂停
     // Keep currentStep and playheadPosition - don't reset
-  }, [cleanupSynth, onPlaybackChange]);
+  }, [cleanupSampler, onPlaybackChange]);
+
 
   // Stop and reset to beginning
   const stopPlayback = useCallback(() => {
@@ -552,13 +642,19 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     }
   }, [playheadPosition]);
 
-  // Play using Tone.js for professional piano sound - can start from any step
+  // Play using Tone.js Sampler for realistic piano sound - can start from any step
   // Uses real-time triggering instead of pre-scheduling for reliable jumps
   const startPlaybackFromStep = useCallback(async (fromStep?: number) => {
     if (notes.length === 0) return;
     
-    // Clean up any currently playing notes first (but keep synth)
-    cleanupSynth();
+    // Check if sampler is loaded
+    if (isSamplerLoading || !toneSamplerRef.current) {
+      console.warn('Sampler not loaded yet');
+      return;
+    }
+    
+    // Clean up any currently playing notes first (but keep sampler)
+    cleanupSampler();
     
     // Increment playback ID to invalidate any old callbacks
     const currentPlaybackId = ++playbackIdRef.current;
@@ -572,33 +668,15 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     // Check if we're still the current playback
     if (playbackIdRef.current !== currentPlaybackId) return;
     
-    // Reuse existing synth or create a new one
-    let synth = toneSynthRef.current;
-    if (!synth) {
-      synth = new Tone.PolySynth(Tone.Synth, {
-        maxPolyphony: MAX_CONCURRENT_NOTES,
-        voice: Tone.Synth,
-        options: {
-          oscillator: { type: 'triangle' },
-          envelope: {
-            attack: 0.005,
-            decay: 0.3,
-            sustain: sustain ? 0.4 : 0.1,
-            release: sustain ? 1.0 : 0.3,
-          },
-        }
-      }).toDestination();
-      toneSynthRef.current = synth;
-    }
+    // Use the existing sampler
+    const sampler = toneSamplerRef.current;
+    if (!sampler) return;
     
     const stepDurationMs = stepInterval;
     const startStep = fromStep !== undefined ? fromStep : (currentStep >= 0 ? currentStep : 0);
     
     // Track which notes have been triggered to avoid duplicates
     const triggeredNotes = new Set<string>();
-    
-    // Track currently playing notes for cleanup
-    const activeNotes = new Map<string, { freq: number; endStep: number }>();
     
     setIsPlaying(true);
     onPlaybackChange?.(true);  // 通知父组件播放已开始
@@ -612,8 +690,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     const updatePlayhead = () => {
       if (playbackIdRef.current !== currentPlaybackId) return;
       
-      // Check if synth is still valid
-      if (!toneSynthRef.current) return;
+      // Check if sampler is still valid
+      if (!toneSamplerRef.current) return;
       
       const elapsed = performance.now() - playStartTime;
       const currentPos = startStep + (elapsed / stepDurationMs);
@@ -629,14 +707,14 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
               if (!triggeredNotes.has(noteKey)) {
                 triggeredNotes.add(noteKey);
                 
-                const midi = (note.octave + 1) * 12 + note.pitch;
-                const freq = Tone.Frequency(midi, "midi").toFrequency();
+                // Use note name instead of frequency for Sampler
+                const noteName = getNoteName(note.pitch, note.octave);
                 const durSec = Math.max(0.05, note.duration * stepDurationMs / 1000);
                 
                 try {
-                  synth.triggerAttackRelease(freq, durSec);
+                  sampler.triggerAttackRelease(noteName, durSec);
                 } catch (e) {
-                  // Synth may have been disposed
+                  // Sampler may have been disposed
                   return;
                 }
               }
@@ -678,7 +756,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
       // Check if playback should end
       if (currentPos > lastNoteEndTime) {
         playbackIdRef.current++;
-        cleanupSynth();
+        cleanupSampler();
         setIsPlaying(false);
         return;
       }
@@ -687,7 +765,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     };
     
     animationFrameRef.current = requestAnimationFrame(updatePlayhead);
-  }, [notes, noteIndex, currentStep, lastNoteEndTime, stepInterval, sustain, cleanupSynth, onPlaybackChange]);
+  }, [notes, noteIndex, currentStep, lastNoteEndTime, stepInterval, isSamplerLoading, cleanupSampler, onPlaybackChange]);
 
   // Wrapper for normal playback (from current position)
   const startPlayback = useCallback(() => {
@@ -801,7 +879,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
   }, [pausePlayback, updatePlayheadPosition]);
 
   // Cleanup on unmount - properly dispose all audio resources
-  useEffect(() => () => disposeSynth(), [disposeSynth]);
+  useEffect(() => () => disposeSampler(), [disposeSampler]);
 
   // Stop playback when page/view changes (isVisible becomes false)
   useEffect(() => {
@@ -899,16 +977,25 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
             </button>
           )}
           
+          {/* Sampler loading indicator */}
+          {isSamplerLoading && (
+            <span className="flex items-center gap-1 px-2 py-1 rounded text-xs" style={mergeStyles(bgStyles.secondary, textStyles.secondary)}>
+              <Loader2 size={14} className="animate-spin" />
+              加载钢琴音色中...
+            </span>
+          )}
+          
           <button 
             onClick={togglePlayback}
-            disabled={notes.length === 0}
+            disabled={notes.length === 0 || isSamplerLoading}
             className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold transition-all text-white hover:opacity-90 ${
               isPlaying ? 'shadow-[0_0_15px_rgba(222,185,154,0.5)]' : ''
-            } ${notes.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            } ${(notes.length === 0 || isSamplerLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
             style={isPlaying ? buttonStyles.active : buttonStyles.primary}
+            title={isSamplerLoading ? '正在加载钢琴音色...' : (notes.length === 0 ? '没有音符可播放' : (isPlaying ? '暂停' : '播放'))}
           >
-            {isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />}
-            {isPlaying ? '暂停' : '播放'}
+            {isSamplerLoading ? <Loader2 size={16} className="animate-spin" /> : (isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />)}
+            {isSamplerLoading ? '加载中' : (isPlaying ? '暂停' : '播放')}
           </button>
         </div>
       </div>
