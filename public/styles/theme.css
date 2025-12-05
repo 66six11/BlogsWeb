@@ -217,3 +217,177 @@ body {
   opacity: 1;
   transition: opacity 0.5s;
 }
+
+/* ====================================
+   Piano Editor Styles
+   ==================================== */
+
+/* Playhead line */
+.piano-playhead {
+  background-color: var(--accent-1);
+  opacity: 0.9;
+  box-shadow: 0 0 12px var(--accent-1);
+}
+
+/* Piano editor container */
+.piano-editor-container {
+  background-color: var(--bg-tertiary);
+  border-color: var(--accent-3);
+}
+
+/* Piano editor text colors */
+.piano-editor-container .piano-title {
+  color: var(--accent-3);
+}
+
+.piano-editor-container .piano-text-primary {
+  color: var(--text-primary);
+}
+
+.piano-editor-container .piano-text-secondary {
+  color: var(--text-secondary);
+}
+
+.piano-editor-container .piano-text-accent1 {
+  color: var(--accent-1);
+}
+
+.piano-editor-container .piano-text-accent3 {
+  color: var(--accent-3);
+}
+
+/* Piano editor backgrounds */
+.piano-editor-container .piano-bg-primary {
+  background-color: var(--bg-primary);
+}
+
+.piano-editor-container .piano-bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.piano-editor-container .piano-bg-tertiary {
+  background-color: var(--bg-tertiary);
+}
+
+/* Piano editor borders */
+.piano-editor-container .piano-border-subtle {
+  border-color: var(--bg-tertiary);
+}
+
+.piano-editor-container .piano-border-accent3 {
+  border-color: var(--accent-3);
+}
+
+/* Piano editor buttons */
+.piano-editor-container .piano-btn-primary {
+  background-color: var(--accent-3);
+  color: white;
+}
+
+.piano-editor-container .piano-btn-active {
+  background-color: var(--accent-1);
+  color: white;
+}
+
+.piano-editor-container .piano-btn-secondary {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+/* Piano editor input */
+.piano-editor-container .piano-input {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--bg-tertiary);
+}
+
+/* Piano key styling */
+.piano-editor-container .piano-key-white {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--bg-tertiary);
+}
+
+.piano-editor-container .piano-key-black {
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
+  border-color: var(--bg-tertiary);
+}
+
+/* Piano grid styling */
+.piano-editor-container .piano-grid {
+  background-color: var(--bg-primary);
+}
+
+/* Piano ruler cell */
+.piano-editor-container .piano-ruler-cell {
+  color: var(--text-secondary);
+  border-color: var(--bg-tertiary);
+}
+
+.piano-editor-container .piano-ruler-cell.beat-start {
+  color: var(--accent-1);
+}
+
+.piano-editor-container .piano-ruler-cell.current {
+  color: var(--accent-3);
+  background-color: rgba(124, 133, 235, 0.2);
+}
+
+/* Piano ruler border */
+.piano-editor-container .piano-ruler-border-beat {
+  border-right: 2px solid var(--accent-1);
+}
+
+.piano-editor-container .piano-ruler-border-step {
+  border-right: 1px solid var(--bg-tertiary);
+}
+
+/* Piano grid background pattern */
+.piano-editor-container .piano-grid {
+  background-color: var(--bg-primary);
+  background-image: 
+    /* Beat separator lines (every 4 cells) */
+    repeating-linear-gradient(
+      to right,
+      transparent 0px,
+      transparent 98px,
+      var(--accent-1) 98px,
+      var(--accent-1) 100px
+    ),
+    /* Step separator lines */
+    repeating-linear-gradient(
+      to right,
+      transparent 0px,
+      transparent 24px,
+      var(--bg-tertiary) 24px,
+      var(--bg-tertiary) 25px
+    ),
+    /* Row separator lines */
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 31px,
+      var(--bg-tertiary) 31px,
+      var(--bg-tertiary) 32px
+    );
+}
+
+/* Piano scroll custom scrollbar */
+.piano-editor-container .piano-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.piano-editor-container .piano-scroll::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.piano-editor-container .piano-scroll::-webkit-scrollbar-thumb {
+  background: var(--accent-3);
+  border-radius: 4px;
+}
+
+.piano-editor-container .piano-scroll::-webkit-scrollbar-corner {
+  background-color: transparent;
+  display: none;
+}

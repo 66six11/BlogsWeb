@@ -4,17 +4,6 @@ import { Play, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair } from '
 import { MEDIA_CONFIG } from '../config';
 import { parseScore, ScoreMetadata, NOTE_DURATION_STEPS, NoteDurationType } from './ScoreParser';
 import * as Tone from 'tone';
-import { 
-    bgStyles, 
-    textStyles, 
-    buttonStyles, 
-    cardStyles, 
-    panelStyles, 
-    inputStyles, 
-    borderStyles,
-    mergeStyles,
-    cssVar 
-} from '../utils/styles';
 
 // Throttle helper for scroll performance
 const THROTTLE_MS = 16; // ~60fps
@@ -128,24 +117,6 @@ const PITCH_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#',
 const getNoteName = (pitch: number, octave: number): string => {
   return `${PITCH_NAMES[pitch]}${octave}`;
 };
-
-// CSS background grid pattern - replaces DOM elements for grid lines
-const GRID_BACKGROUND_CSS = `
-  repeating-linear-gradient(
-    to right,
-    transparent 0px,
-    transparent ${CELL_WIDTH * 4 - 2}px,
-    var(--accent-1, #deb99a) ${CELL_WIDTH * 4 - 2}px,
-    var(--accent-1, #deb99a) ${CELL_WIDTH * 4}px
-  ),
-  repeating-linear-gradient(
-    to right,
-    transparent 0px,
-    transparent ${CELL_WIDTH - 1}px,
-    var(--bg-tertiary, #334155) ${CELL_WIDTH - 1}px,
-    var(--bg-tertiary, #334155) ${CELL_WIDTH}px
-  )
-`;
 
 // 八度基础色相 (0-8 八度)
 const OCTAVE_HUES: Record<number, number> = {
@@ -879,31 +850,22 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     }
   }, [isVisible, isPlaying, pausePlayback]);
 
-  const scrollbarStyles = `
-    .piano-scroll::-webkit-scrollbar { height: 8px; }
-    .piano-scroll::-webkit-scrollbar-track { background: var(--bg-secondary, #1e293b); }
-    .piano-scroll::-webkit-scrollbar-thumb { background: var(--accent-3, #7C85EB); border-radius: 4px; }
-    .piano-scroll::-webkit-scrollbar-corner {background-color: transparent;display: none; /* 完全隐藏角落 */ }
-  `;
-
   return (
-    <div className={`piano-editor-container backdrop-blur-md border rounded-xl p-6 shadow-2xl ${className}`}
-         style={mergeStyles(bgStyles.tertiary, borderStyles.accent3, { borderWidth: '1px' })}>
-      <style>{scrollbarStyles}</style>
+    <div className={`piano-editor-container backdrop-blur-md border rounded-xl p-6 shadow-2xl ${className}`}>
       
       {/* Header - fixed layout */}
       <div className="flex flex-col gap-3 mb-4">
         {/* Title row */}
         <div className="flex items-center gap-3 flex-wrap">
-          <h3 className="text-xl font-serif flex items-center gap-2 shrink-0" style={textStyles.accent3}>
+          <h3 className="text-xl font-serif flex items-center gap-2 shrink-0 piano-text-accent3">
             <span className="text-2xl">♪</span> 魔法乐谱编辑器
           </h3>
           {scoreMetadata.title && (
-            <span className="text-sm px-2 py-0.5 rounded shrink-0" style={mergeStyles(bgStyles.secondary, textStyles.accent1)}>
+            <span className="text-sm px-2 py-0.5 rounded shrink-0 piano-bg-secondary piano-text-accent1">
               {scoreMetadata.title}
             </span>
           )}
-          <span className="text-xs px-2 py-0.5 rounded shrink-0" style={mergeStyles(bgStyles.secondary, textStyles.secondary)}>
+          <span className="text-xs px-2 py-0.5 rounded shrink-0 piano-bg-secondary piano-text-secondary">
             {notes.length} 音符
           </span>
         </div>
@@ -913,19 +875,18 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
           {/* Sustain toggle */}
           <button
             onClick={() => setSustain(prev => !prev)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${sustain ? 'ring-2 ring-purple-400' : ''}`}
-            style={sustain ? mergeStyles(buttonStyles.primary, { color: 'white' }) : mergeStyles(bgStyles.secondary, textStyles.secondary)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${sustain ? 'ring-2 ring-purple-400 piano-btn-primary' : 'piano-btn-secondary'}`}
             title={sustain ? '延音开启 - 音符会自然衰减' : '延音关闭 - 音符快速停止'}
           >
             {sustain ? '延音 ✓' : '延音'}
           </button>
           
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={bgStyles.secondary}>
-            <button onClick={() => setBpm(prev => Math.max(40, prev - 10))} className="p-1 rounded hover:bg-white/10" style={textStyles.secondary}>
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg piano-bg-secondary">
+            <button onClick={() => setBpm(prev => Math.max(40, prev - 10))} className="p-1 rounded hover:bg-white/10 piano-text-secondary">
               <Minus size={14} />
             </button>
-            <span className="text-xs font-mono w-16 text-center" style={textStyles.accent1}>{bpm} BPM</span>
-            <button onClick={() => setBpm(prev => Math.min(240, prev + 10))} className="p-1 rounded hover:bg-white/10" style={textStyles.secondary}>
+            <span className="text-xs font-mono w-16 text-center piano-text-accent1">{bpm} BPM</span>
+            <button onClick={() => setBpm(prev => Math.min(240, prev + 10))} className="p-1 rounded hover:bg-white/10 piano-text-secondary">
               <Plus size={14} />
             </button>
           </div>
@@ -934,8 +895,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
             <select
               value={selectedScore}
               onChange={(e) => loadScore(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border text-sm"
-              style={inputStyles.default}
+              className="px-3 py-1.5 rounded-lg border text-sm piano-input"
             >
               <option value="">加载乐谱...</option>
               {availableScores.map(score => <option key={score} value={score}>{score}</option>)}
@@ -949,8 +909,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
           {/* Jump to start button */}
           <button
             onClick={jumpToStart}
-            className="p-2 rounded-full hover:bg-white/10"
-            style={textStyles.secondary}
+            className="p-2 rounded-full hover:bg-white/10 piano-text-secondary"
             title="跳转到开头"
           >
             <SkipBack size={20} />
@@ -960,8 +919,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
           {isUserScrolling && isPlaying && (
             <button
               onClick={jumpToPlayhead}
-              className="p-2 rounded-full hover:bg-white/10 animate-pulse"
-              style={textStyles.accent3}
+              className="p-2 rounded-full hover:bg-white/10 animate-pulse piano-text-accent3"
               title="跳转到播放位置"
             >
               <Crosshair size={20} />
@@ -970,7 +928,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
           
           {/* Sampler loading indicator */}
           {isSamplerLoading && (
-            <span className="flex items-center gap-1 px-2 py-1 rounded text-xs" style={mergeStyles(bgStyles.secondary, textStyles.secondary)}>
+            <span className="flex items-center gap-1 px-2 py-1 rounded text-xs piano-bg-secondary piano-text-secondary">
               <Loader2 size={14} className="animate-spin" />
               加载钢琴音色中...
             </span>
@@ -980,9 +938,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
             onClick={togglePlayback}
             disabled={notes.length === 0 || isSamplerLoading}
             className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold transition-all text-white hover:opacity-90 ${
-              isPlaying ? 'shadow-[0_0_15px_rgba(222,185,154,0.5)]' : ''
+              isPlaying ? 'shadow-[0_0_15px_rgba(222,185,154,0.5)] piano-btn-active' : 'piano-btn-primary'
             } ${(notes.length === 0 || isSamplerLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
-            style={isPlaying ? buttonStyles.active : buttonStyles.primary}
             title={isSamplerLoading ? '正在加载钢琴音色...' : (notes.length === 0 ? '没有音符可播放' : (isPlaying ? '暂停' : '播放'))}
           >
             {isSamplerLoading ? <Loader2 size={16} className="animate-spin" /> : (isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />)}
@@ -994,16 +951,16 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
       {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin" style={textStyles.accent3} />
+          <Loader2 className="w-8 h-8 animate-spin piano-text-accent3" />
         </div>
       )}
 
       {/* Piano Grid - always shown */}
       {!isLoading && (
-        <div className="flex border rounded" style={mergeStyles(borderStyles.subtle, bgStyles.primary)}>
+        <div className="flex border rounded piano-border-subtle piano-bg-primary">
           {/* Duration selector panel - vertical on left */}
-          <div className="flex flex-col border-r z-30" style={{ width: `${DURATION_PALETTE_WIDTH}px`, ...borderStyles.subtle, ...bgStyles.secondary }}>
-            <div className="h-6 border-b flex items-center justify-center text-[10px]" style={mergeStyles(borderStyles.subtle, textStyles.secondary)}>
+          <div className="flex flex-col border-r z-30 piano-border-subtle piano-bg-secondary" style={{ width: `${DURATION_PALETTE_WIDTH}px` }}>
+            <div className="h-6 border-b flex items-center justify-center text-[10px] piano-border-subtle piano-text-secondary">
               时值
             </div>
             <div className="flex flex-col flex-1 py-2">
@@ -1011,11 +968,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
                 <button
                   key={opt.value}
                   onClick={() => setSelectedDuration(opt.value)}
-                  className={`flex flex-col items-center justify-center py-3 transition-all hover:bg-white/10 ${selectedDuration === opt.value ? 'ring-2 ring-inset ring-purple-400' : ''}`}
-                  style={selectedDuration === opt.value 
-                    ? mergeStyles(buttonStyles.primary, { color: 'white' })
-                    : mergeStyles({ backgroundColor: 'transparent' }, textStyles.secondary)
-                  }
+                  className={`flex flex-col items-center justify-center py-3 transition-all hover:bg-white/10 ${selectedDuration === opt.value ? 'ring-2 ring-inset ring-purple-400 piano-btn-primary' : 'piano-text-secondary'}`}
                   title={`${opt.label}音符 (${opt.steps}步)`}
                 >
                   <span className="text-xl leading-none">{opt.icon}</span>
@@ -1030,19 +983,13 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
             {/* Fixed ruler row - scrolls horizontally only */}
             <div className="flex shrink-0" style={{ height: '24px' }}>
               {/* Key label header - fixed */}
-              <div className="shrink-0 border-b border-r flex items-center justify-center text-[10px]" 
-                style={{ 
-                  width: `${KEY_LABEL_WIDTH}px`, 
-                  borderColor: cssVar('--bg-tertiary'), 
-                  ...bgStyles.secondary, 
-                  ...textStyles.secondary 
-                }}>
+              <div className="shrink-0 border-b border-r flex items-center justify-center text-[10px] piano-border-subtle piano-bg-secondary piano-text-secondary" 
+                style={{ width: `${KEY_LABEL_WIDTH}px` }}>
                 音符
               </div>
               {/* Ruler - scrolls with grid horizontally */}
               <div 
-                className="flex-1 overflow-hidden relative border-b"
-                style={{ borderColor: cssVar('--bg-tertiary'), ...bgStyles.secondary }}
+                className="flex-1 overflow-hidden relative border-b piano-border-subtle piano-bg-secondary"
               >
                 <div 
                   ref={rulerContainerRef}
@@ -1063,12 +1010,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
                       <div 
                         key={i} 
                         onClick={() => handleRulerClick(i)}
-                        className={`text-[10px] text-center flex items-center justify-center cursor-pointer hover:bg-white/10 ${isBeatStart ? 'font-bold' : ''}`} 
+                        className={`text-[10px] text-center flex items-center justify-center cursor-pointer hover:bg-white/10 ${isBeatStart ? 'font-bold' : ''} piano-ruler-cell ${isBeatStart ? 'beat-start' : ''} ${currentStep === i ? 'current' : ''} ${i % 4 === 3 ? 'piano-ruler-border-beat' : 'piano-ruler-border-step'}`} 
                         style={{ 
-                          width: `${CELL_WIDTH}px`, flexShrink: 0, height: '100%',
-                          color: currentStep === i ? cssVar('--accent-3') : isBeatStart ? cssVar('--accent-1') : cssVar('--text-secondary'),
-                          backgroundColor: currentStep === i ? 'rgba(124, 133, 235, 0.2)' : 'transparent',
-                          borderRight: i % 4 === 3 ? `2px solid ${cssVar('--accent-1')}` : `1px solid ${cssVar('--bg-tertiary')}`
+                          width: `${CELL_WIDTH}px`, flexShrink: 0, height: '100%'
                         }}
                       >
                         {isBeatStart ? i / 4 + 1 : '·'}
@@ -1112,13 +1056,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
                   {PIANO_KEYS.map((key, idx) => (
                     <div 
                       key={`${key.octave}-${key.pitch}`}
-                      className="flex items-center text-xs border-b"
+                      className={`flex items-center text-xs border-b piano-border-subtle ${key.isBlack ? 'piano-key-black' : 'piano-key-white'}`}
                       style={{ 
                         width: `${KEY_LABEL_WIDTH}px`,
-                        height: `${ROW_HEIGHT}px`,
-                        backgroundColor: key.isBlack ? cssVar('--bg-primary') : cssVar('--bg-secondary'),
-                        color: key.isBlack ? cssVar('--text-secondary') : cssVar('--text-primary'),
-                        borderColor: cssVar('--bg-tertiary')
+                        height: `${ROW_HEIGHT}px`
                       }}
                     >
                       <span className="flex-1 text-right pr-2">{key.name}{key.octave}</span>
@@ -1136,23 +1077,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
 
                 {/* Grid area - uses CSS background for grid lines */}
                 <div
-                  className="absolute cursor-crosshair"
+                  className="absolute cursor-crosshair piano-grid"
                   style={{ 
                     left: `${KEY_LABEL_WIDTH}px`,
                     top: 0,
                     width: `${totalSteps * CELL_WIDTH}px`,
-                    height: `${TOTAL_KEYS * ROW_HEIGHT}px`,
-                    backgroundColor: cssVar('--bg-primary'),
-                    backgroundImage: `
-                      ${GRID_BACKGROUND_CSS},
-                      repeating-linear-gradient(
-                        to bottom,
-                        transparent 0px,
-                        transparent ${ROW_HEIGHT - 1}px,
-                        ${cssVar('--bg-tertiary')} ${ROW_HEIGHT - 1}px,
-                        ${cssVar('--bg-tertiary')} ${ROW_HEIGHT}px
-                      )
-                    `
+                    height: `${TOTAL_KEYS * ROW_HEIGHT}px`
                   }}
                   onClick={(e) => {
                     // Event delegation: calculate which cell was clicked
@@ -1169,13 +1099,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
                   {/* Playhead - highest z-index, positioned via ref for performance */}
                   <div 
                     ref={playheadRef}
-                    className="absolute top-0 bottom-0 z-50 pointer-events-none"
+                    className="absolute top-0 bottom-0 z-50 pointer-events-none piano-playhead"
                     style={{ 
                       width: '2px', 
                       left: 0,
                       transform: `translateX(${playheadPosition}px)`,
-                      backgroundColor: `${cssVar('--accent-1')}e6`, 
-                      boxShadow: `0 0 12px ${cssVar('--accent-1')}cc`,
                       willChange: 'transform'
                     }}
                   />
@@ -1210,14 +1138,14 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
       {/* Position indicator */}
       {!isLoading && currentStep >= 0 && (
         <div className="mt-2 flex items-center justify-center">
-          <span className="text-xs font-mono px-2 py-1 rounded" style={mergeStyles(bgStyles.secondary, textStyles.accent3)}>
+          <span className="text-xs font-mono px-2 py-1 rounded piano-bg-secondary piano-text-accent3">
             第 {Math.floor(currentStep / 4) + 1} 拍 · 第 {(currentStep % 4) + 1} 步
           </span>
         </div>
       )}
       
       {!isLoading && (
-        <p className="text-xs mt-2 text-right" style={textStyles.secondary}>
+        <p className="text-xs mt-2 text-right piano-text-secondary">
           点击网格添加/移除音符。ABC乐谱自动解析为网格显示。
         </p>
       )}
