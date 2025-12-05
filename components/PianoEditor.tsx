@@ -262,8 +262,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     updateVisibleRange();
   }, [totalSteps, updateVisibleRange]);
 
-  // Pause playback - keep position
-  const pausePlayback = useCallback(() => {
+  // Common cleanup logic for stopping playback (without callbacks)
+  const cleanupPlayback = useCallback(() => {
     playbackIdRef.current++;
     
     if (animationFrameRef.current) {
@@ -291,11 +291,16 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     } catch (e) {}
     
     setIsPlaying(false);
+  }, []);
+
+  // Pause playback - keep position
+  const pausePlayback = useCallback(() => {
+    cleanupPlayback();
     // Keep currentStep and playheadPosition - don't reset
     
     // Notify parent that playback ended (resume BGM)
     onPlayEnd?.();
-  }, [onPlayEnd]);
+  }, [cleanupPlayback, onPlayEnd]);
 
   // Stop and reset to beginning
   const stopPlayback = useCallback(() => {
@@ -338,31 +343,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     onPlayStart?.();
     
     // Stop any existing playback (but don't call onPlayEnd since we're restarting)
-    playbackIdRef.current++;
-    
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = 0;
-    }
-    
-    if (audioPoolRef.current) {
-      audioPoolRef.current.clear();
-      audioPoolRef.current = null;
-    }
-    
-    if (audioContextRef.current) {
-      try { audioContextRef.current.close(); } catch (e) {}
-      audioContextRef.current = null;
-    }
-    
-    // Stop Tone.js transport and synth
-    try {
-      Tone.Transport.stop();
-      Tone.Transport.cancel();
-      if (toneSynthRef.current) {
-        toneSynthRef.current.releaseAll();
-      }
-    } catch (e) {}
+    cleanupPlayback();
     
     // Start Tone.js
     await Tone.start();
@@ -445,7 +426,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
     };
     
     animationFrameRef.current = requestAnimationFrame(updatePlayhead);
-  }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, pausePlayback, bpm, onPlayStart]);
+  }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, pausePlayback, bpm, onPlayStart, cleanupPlayback]);
 
   // Wrapper for normal playback (from current position)
   const startPlayback = useCallback(() => {
