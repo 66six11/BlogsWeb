@@ -5,6 +5,31 @@ import { MEDIA_CONFIG } from '../config';
 import { parseScore, ScoreMetadata, NOTE_DURATION_STEPS, NoteDurationType } from './ScoreParser';
 import * as Tone from 'tone';
 
+// Throttle helper for scroll performance
+const THROTTLE_MS = 16; // ~60fps
+function throttle<T extends (...args: Parameters<T>) => void>(fn: T, delay: number): T {
+  let lastCall = 0;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  return ((...args: Parameters<T>) => {
+    const now = performance.now();
+    const remaining = delay - (now - lastCall);
+    if (remaining <= 0) {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      lastCall = now;
+      fn(...args);
+    } else if (!timeoutId) {
+      timeoutId = setTimeout(() => {
+        lastCall = performance.now();
+        timeoutId = null;
+        fn(...args);
+      }, remaining);
+    }
+  }) as T;
+}
+
 const MIN_STEPS = 32;
 const PITCHES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
 // Full 88-key piano range: A0 to C8 (octaves 0-8, but octave 0 only has A, A#, B, and octave 8 only has C)
@@ -112,6 +137,116 @@ class AudioNodePool {
   }
 }
 
+// NoteRow component - memoized for performance
+interface NoteRowProps {
+  octave: number;
+  pitchIndex: number;
+  pitchName: string;
+  oIdx: number;
+  visibleRange: { start: number; end: number };
+  isPartOfNote: (octave: number, pitch: number, step: number) => { isStart: boolean; isMiddle: boolean; isEnd: boolean; note?: Note };
+  toggleNote: (octaveIndex: number, pitchIndex: number, step: number) => void;
+}
+
+const NoteRow = React.memo<NoteRowProps>(({ 
+  octave, 
+  pitchIndex, 
+  pitchName, 
+  oIdx, 
+  visibleRange, 
+  isPartOfNote, 
+  toggleNote 
+}) => {
+  return (
+    <div className="relative h-8 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)' }}>
+      {/* Grid cells layer (below notes) */}
+      <div className="absolute inset-0 flex z-0">
+        {/* Left spacer for virtual scroll */}
+        <div style={{ width: `${visibleRange.start * CELL_WIDTH}px`, flexShrink: 0 }} />
+        
+        {/* Visible grid cells */}
+        {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
+          const step = visibleRange.start + idx;
+          return (
+            <div 
+              key={step} 
+              onClick={() => toggleNote(oIdx, pitchIndex, step)}
+              className="cursor-pointer hover:bg-white/5"
+              style={{ 
+                width: `${CELL_WIDTH}px`, height: '100%', flexShrink: 0,
+                borderRight: step % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
+              }}
+            />
+          );
+        })}
+      </div>
+      
+      {/* Notes layer (above grid) */}
+      <div className="absolute inset-0 flex z-10 pointer-events-none">
+        {/* Left spacer for virtual scroll */}
+        <div style={{ width: `${visibleRange.start * CELL_WIDTH}px`, flexShrink: 0 }} />
+        
+        {/* Visible notes */}
+        {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
+          const step = visibleRange.start + idx;
+          const noteInfo = isPartOfNote(octave, 11 - pitchIndex, step);
+          const { isStart, isMiddle, isEnd } = noteInfo;
+          const isActive = isStart || isMiddle;
+          
+          if (!isActive) {
+            return <div key={step} style={{ width: `${CELL_WIDTH}px`, flexShrink: 0 }} />;
+          }
+          
+          // Get note color based on pitch (rainbow spectrum)
+          const pitchValue = 11 - pitchIndex;
+          const noteColor = PITCH_COLORS[pitchValue] || 'var(--accent-3, #a855f7)';
+          
+          // Determine border radius for unified note block appearance
+          let borderRadius = '0';
+          if (isStart && isEnd) {
+            borderRadius = '4px'; // Single cell note
+          } else if (isStart) {
+            borderRadius = '4px 0 0 4px'; // Start of multi-cell note
+          } else if (isEnd) {
+            borderRadius = '0 4px 4px 0'; // End of multi-cell note
+          }
+          
+          return (
+            <div 
+              key={step}
+              className="relative pointer-events-auto"
+              style={{ width: `${CELL_WIDTH}px`, height: '100%', flexShrink: 0 }}
+              onClick={() => toggleNote(oIdx, pitchIndex, step)}
+            >
+              <div 
+                className="absolute" 
+                style={{ 
+                  backgroundColor: noteColor,
+                  boxShadow: `0 0 10px ${noteColor}80`,
+                  borderRadius,
+                  top: '2px',
+                  bottom: '2px',
+                  left: isStart ? '2px' : '0',
+                  right: isEnd ? '2px' : '0',
+                  borderLeft: isStart ? '3px solid rgba(255,255,255,0.5)' : 'none'
+                }} 
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}, (prev, next) => {
+  // Custom comparison function - only re-render when necessary
+  return prev.visibleRange.start === next.visibleRange.start &&
+         prev.visibleRange.end === next.visibleRange.end &&
+         prev.octave === next.octave &&
+         prev.pitchIndex === next.pitchIndex &&
+         prev.isPartOfNote === next.isPartOfNote &&
+         prev.toggleNote === next.toggleNote;
+});
+
 interface PianoEditorProps {
   className?: string;
   isVisible?: boolean; // Stop playback when not visible (page switched)
@@ -144,11 +279,21 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isUserScrollingRef = useRef(false); // Ref version for use in animation loop
   const toneSynthRef = useRef<Tone.PolySynth | null>(null); // Tone.js synth
+  const playheadRef = useRef<HTMLDivElement>(null); // Playhead DOM ref for direct manipulation
+  const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
   const [rulerScrollOffset, setRulerScrollOffset] = useState(0); // Track ruler scroll position
   
   // Virtual scroll state
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: MIN_STEPS });
   
+  // Helper to update playhead position via both ref and state
+  const updatePlayheadPosition = useCallback((px: number) => {
+    setPlayheadPosition(px);
+    if (playheadRef.current) {
+      playheadRef.current.style.transform = `translateX(${px}px)`;
+    }
+  }, []);
+
   // Derived values
   const stepInterval = useMemo(() => Math.round(60000 / bpm / 4), [bpm]);
   
@@ -169,51 +314,37 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     return notes.filter(n => (n.voice || 'V1') === selectedVoice);
   }, [notes, selectedVoice]);
 
-  // O(1) note lookup for grid - includes duration info
-  // Index notes by start position for fast start detection
-  const noteStartIndex = useMemo(() => {
-    const map = new Map<string, Note>();
-    for (const note of filteredNotes) {
-      map.set(`${note.octave}-${note.pitch}-${note.startTime}`, note);
-    }
-    return map;
-  }, [filteredNotes]);
+  // Unified note index structure - combines all indexes in a single useMemo for reduced memory and computation
+  const noteIndex = useMemo(() => {
+    const byPosition = new Map<string, Note>();      // Start position index (octave-pitch-startTime -> Note)
+    const byPitch = new Map<string, Note[]>();       // Pitch index (octave-pitch -> Note[]), sorted for binary search
+    const byStep = new Map<number, Note[]>();        // Step index (step -> Note[]), for O(1) playback lookup
 
-  // Spatial index: maps each (octave, pitch) to a sorted array of notes for fast range lookup
-  // This enables O(log n) lookup for any step instead of O(n)
-  const noteSpatialIndex = useMemo(() => {
-    const index = new Map<string, Note[]>();
     for (const note of filteredNotes) {
-      const key = `${note.octave}-${note.pitch}`;
-      if (!index.has(key)) {
-        index.set(key, []);
-      }
-      index.get(key)!.push(note);
+      // Start position index
+      byPosition.set(`${note.octave}-${note.pitch}-${note.startTime}`, note);
+
+      // Pitch index
+      const pitchKey = `${note.octave}-${note.pitch}`;
+      if (!byPitch.has(pitchKey)) byPitch.set(pitchKey, []);
+      byPitch.get(pitchKey)!.push(note);
+
+      // Step index
+      if (!byStep.has(note.startTime)) byStep.set(note.startTime, []);
+      byStep.get(note.startTime)!.push(note);
     }
-    // Sort each array by startTime for binary search
-    for (const arr of index.values()) {
+
+    // Sort pitch index arrays by startTime for binary search
+    for (const arr of byPitch.values()) {
       arr.sort((a, b) => a.startTime - b.startTime);
     }
-    return index;
-  }, [filteredNotes]);
 
-  // Index notes by step for O(1) playback lookup
-  // Maps each step to all notes that START at that step
-  // Uses filteredNotes to respect voice filtering
-  const notesByStep = useMemo(() => {
-    const map = new Map<number, Note[]>();
-    for (const note of filteredNotes) {
-      if (!map.has(note.startTime)) {
-        map.set(note.startTime, []);
-      }
-      map.get(note.startTime)!.push(note);
-    }
-    return map;
+    return { byPosition, byPitch, byStep };
   }, [filteredNotes]);
 
   const getNoteAt = useCallback((octave: number, pitch: number, step: number): Note | undefined => {
-    return noteStartIndex.get(`${octave}-${pitch}-${step}`);
-  }, [noteStartIndex]);
+    return noteIndex.byPosition.get(`${octave}-${pitch}-${step}`);
+  }, [noteIndex]);
 
   // Binary search to find the note containing a step
   const findNoteAtStep = useCallback((notesArr: Note[], step: number): Note | undefined => {
@@ -239,7 +370,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   // O(log n) check if a cell is part of a sustained note (for visual display)
   const isPartOfNote = useCallback((octave: number, pitch: number, step: number): { isStart: boolean; isMiddle: boolean; isEnd: boolean; note?: Note } => {
     const key = `${octave}-${pitch}`;
-    const notesAtPitch = noteSpatialIndex.get(key);
+    const notesAtPitch = noteIndex.byPitch.get(key);
     
     if (!notesAtPitch || notesAtPitch.length === 0) {
       return { isStart: false, isMiddle: false, isEnd: false };
@@ -257,7 +388,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     const isMiddle = !isStart && step < note.startTime + note.duration;
     
     return { isStart, isMiddle, isEnd, note };
-  }, [noteSpatialIndex, findNoteAtStep]);
+  }, [noteIndex, findNoteAtStep]);
 
   // Check if a note is active at a specific position (for grid display)
   const isNoteActive = useCallback((octave: number, pitch: number, step: number): boolean => {
@@ -275,8 +406,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     setAvailableScores(MEDIA_CONFIG.scores.files);
   }, []);
 
-  // Update visible range on scroll for virtual scrolling
-  const updateVisibleRange = useCallback(() => {
+  // Update visible range on scroll for virtual scrolling - throttled for performance
+  const updateVisibleRangeCore = useCallback(() => {
     if (!scrollContainerRef.current) return;
     const container = scrollContainerRef.current;
     const scrollLeft = container.scrollLeft;
@@ -285,8 +416,20 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     const startStep = Math.max(0, Math.floor(scrollLeft / CELL_WIDTH) - VISIBLE_STEP_BUFFER);
     const endStep = Math.min(totalSteps, Math.ceil((scrollLeft + clientWidth) / CELL_WIDTH) + VISIBLE_STEP_BUFFER);
     
-    setVisibleRange({ start: startStep, end: endStep });
+    // Avoid redundant state updates
+    setVisibleRange(prev => {
+      if (prev.start === startStep && prev.end === endStep) {
+        return prev;
+      }
+      return { start: startStep, end: endStep };
+    });
   }, [totalSteps]);
+
+  // Throttled version of updateVisibleRange (~60fps)
+  const updateVisibleRange = useMemo(
+    () => throttle(updateVisibleRangeCore, THROTTLE_MS),
+    [updateVisibleRangeCore]
+  );
 
   // Handle user scroll - stop auto-follow when user manually scrolls
   const handleUserScroll = useCallback(() => {
@@ -374,8 +517,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   const stopPlayback = useCallback(() => {
     pausePlayback();
     setCurrentStep(0);
-    setPlayheadPosition(0);
-  }, [pausePlayback]);
+    updatePlayheadPosition(0);
+  }, [pausePlayback, updatePlayheadPosition]);
 
   // Jump to beginning
   const jumpToStart = useCallback(() => {
@@ -384,14 +527,14 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
       pausePlayback();
     }
     setCurrentStep(0);
-    setPlayheadPosition(0);
+    updatePlayheadPosition(0);
     setIsUserScrolling(false);
     isUserScrollingRef.current = false;
     // Scroll to start
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollLeft = 0;
     }
-  }, [isPlaying, pausePlayback]);
+  }, [isPlaying, pausePlayback, updatePlayheadPosition]);
 
   // Jump to current playhead position
   const jumpToPlayhead = useCallback(() => {
@@ -472,7 +615,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
       // Trigger notes that should start at this step - O(1) lookup per step
       if (currentStepFloor > lastProcessedStep) {
         for (let step = lastProcessedStep + 1; step <= currentStepFloor; step++) {
-          const notesAtStep = notesByStep.get(step);
+          const notesAtStep = noteIndex.byStep.get(step);
           if (notesAtStep) {
             for (const note of notesAtStep) {
               const noteKey = `${note.octave}-${note.pitch}-${note.startTime}`;
@@ -496,13 +639,21 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
         lastProcessedStep = currentStepFloor;
       }
       
-      setPlayheadPosition(currentPos * CELL_WIDTH);
-      setCurrentStep(currentStepFloor);
+      // Update playhead position directly via ref (no React re-render)
+      const px = currentPos * CELL_WIDTH;
+      if (playheadRef.current) {
+        playheadRef.current.style.transform = `translateX(${px}px)`;
+      }
+      
+      // Only update currentStep state when step actually changes (for position indicator)
+      if (currentStepFloor !== lastStepRef.current) {
+        lastStepRef.current = currentStepFloor;
+        setCurrentStep(currentStepFloor);
+      }
       
       // Auto-scroll
       if (scrollContainerRef.current) {
         const c = scrollContainerRef.current;
-        const px = currentPos * CELL_WIDTH;
         const isPlayheadVisible = px >= c.scrollLeft && px <= c.scrollLeft + c.clientWidth - CELL_WIDTH * 2;
         
         if (isPlayheadVisible && isUserScrollingRef.current) {
@@ -529,7 +680,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     };
     
     animationFrameRef.current = requestAnimationFrame(updatePlayhead);
-  }, [notes, notesByStep, currentStep, lastNoteEndTime, stepInterval, sustain, cleanupSynth]);
+  }, [notes, noteIndex, currentStep, lastNoteEndTime, stepInterval, sustain, cleanupSynth]);
 
   // Wrapper for normal playback (from current position)
   const startPlayback = useCallback(() => {
@@ -539,7 +690,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   // Handle ruler click - move playhead, and if playing, restart from that position
   const handleRulerClick = useCallback((step: number) => {
     setCurrentStep(step);
-    setPlayheadPosition(step * CELL_WIDTH);
+    updatePlayheadPosition(step * CELL_WIDTH);
     setIsUserScrolling(false);
     isUserScrollingRef.current = false;
     
@@ -547,13 +698,13 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     if (isPlaying) {
       startPlaybackFromStep(step);
     }
-  }, [isPlaying, startPlaybackFromStep]);
+  }, [isPlaying, startPlaybackFromStep, updatePlayheadPosition]);
 
   // Load score - always parse to Note[] for grid display
   const loadScore = useCallback(async (scoreName: string) => {
     pausePlayback();
     setCurrentStep(0);
-    setPlayheadPosition(0);
+    updatePlayheadPosition(0);
     
     if (!scoreName) {
       setAbcContent('');
@@ -583,7 +734,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
       console.error('Error loading score:', e);
       setIsLoading(false);
     }
-  }, [stopPlayback]);
+  }, [pausePlayback, updatePlayheadPosition]);
 
   // Toggle note in grid - uses selected duration
   const toggleNote = useCallback((octaveIndex: number, pitchIndex: number, step: number) => {
@@ -613,11 +764,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   const clearAll = useCallback(() => {
     pausePlayback();
     setCurrentStep(0);
-    setPlayheadPosition(0);
+    updatePlayheadPosition(0);
     setNotes([]);
     setAbcContent('');
     setSelectedScore('');
-  }, [pausePlayback]);
+  }, [pausePlayback, updatePlayheadPosition]);
 
   // Cleanup on unmount - properly dispose all audio resources
   useEffect(() => () => disposeSynth(), [disposeSynth]);
@@ -862,95 +1013,34 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
                 }}
               >
                 <div className="relative" style={{ width: `${totalSteps * CELL_WIDTH}px`, minWidth: `${totalSteps * CELL_WIDTH}px` }}>
-                  {/* Playhead - highest z-index */}
-                  {playheadPosition >= 0 && (
-                    <div className="absolute top-0 bottom-0 z-50 pointer-events-none"
-                      style={{ width: '2px', left: `${playheadPosition}px`, backgroundColor: 'rgba(251, 191, 36, 0.9)', boxShadow: '0 0 12px rgba(251, 191, 36, 0.8)' }}
-                    />
-                  )}
+                  {/* Playhead - highest z-index, positioned via ref for performance */}
+                  <div 
+                    ref={playheadRef}
+                    className="absolute top-0 bottom-0 z-50 pointer-events-none"
+                    style={{ 
+                      width: '2px', 
+                      left: 0,
+                      transform: `translateX(${playheadPosition}px)`,
+                      backgroundColor: 'rgba(251, 191, 36, 0.9)', 
+                      boxShadow: '0 0 12px rgba(251, 191, 36, 0.8)',
+                      willChange: 'transform'
+                    }}
+                  />
 
-                  {/* Note grid - virtual scrolling */}
+                  {/* Note grid - virtual scrolling with memoized NoteRow components */}
                   {OCTAVES.map((octave, oIdx) => (
                     <React.Fragment key={octave}>
                       {PITCHES.map((noteName, pIdx) => (
-                        <div key={`${octave}-${noteName}`} className="relative h-8 border-b" style={{ borderColor: 'var(--bg-tertiary, #334155)' }}>
-                          {/* Grid cells layer (below notes) */}
-                          <div className="absolute inset-0 flex z-0">
-                            {/* Left spacer for virtual scroll */}
-                            <div style={{ width: `${visibleRange.start * CELL_WIDTH}px`, flexShrink: 0 }} />
-                            
-                            {/* Visible grid cells */}
-                            {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
-                              const step = visibleRange.start + idx;
-                              return (
-                                <div 
-                                  key={step} 
-                                  onClick={() => toggleNote(oIdx, pIdx, step)}
-                                  className="cursor-pointer hover:bg-white/5"
-                                  style={{ 
-                                    width: `${CELL_WIDTH}px`, height: '100%', flexShrink: 0,
-                                    borderRight: step % 4 === 3 ? '2px solid var(--accent-1, #deb99a)' : '1px solid var(--bg-tertiary, #334155)'
-                                  }}
-                                />
-                              );
-                            })}
-                          </div>
-                          
-                          {/* Notes layer (above grid) */}
-                          <div className="absolute inset-0 flex z-10 pointer-events-none">
-                            {/* Left spacer for virtual scroll */}
-                            <div style={{ width: `${visibleRange.start * CELL_WIDTH}px`, flexShrink: 0 }} />
-                            
-                            {/* Visible notes */}
-                            {Array.from({ length: visibleRange.end - visibleRange.start }).map((_, idx) => {
-                              const step = visibleRange.start + idx;
-                              const noteInfo = isPartOfNote(octave, 11 - pIdx, step);
-                              const { isStart, isMiddle, isEnd, note } = noteInfo;
-                              const isActive = isStart || isMiddle;
-                              
-                              if (!isActive) {
-                                return <div key={step} style={{ width: `${CELL_WIDTH}px`, flexShrink: 0 }} />;
-                              }
-                              
-                              // Get note color based on pitch (rainbow spectrum)
-                              const pitchValue = 11 - pIdx;
-                              const noteColor = PITCH_COLORS[pitchValue] || 'var(--accent-3, #a855f7)';
-                              
-                              // Determine border radius for unified note block appearance
-                              let borderRadius = '0';
-                              if (isStart && isEnd) {
-                                borderRadius = '4px'; // Single cell note
-                              } else if (isStart) {
-                                borderRadius = '4px 0 0 4px'; // Start of multi-cell note
-                              } else if (isEnd) {
-                                borderRadius = '0 4px 4px 0'; // End of multi-cell note
-                              }
-                              
-                              return (
-                                <div 
-                                  key={step}
-                                  className="relative pointer-events-auto"
-                                  style={{ width: `${CELL_WIDTH}px`, height: '100%', flexShrink: 0 }}
-                                  onClick={() => toggleNote(oIdx, pIdx, step)}
-                                >
-                                  <div 
-                                    className="absolute" 
-                                    style={{ 
-                                      backgroundColor: noteColor,
-                                      boxShadow: `0 0 10px ${noteColor}80`,
-                                      borderRadius,
-                                      top: '2px',
-                                      bottom: '2px',
-                                      left: isStart ? '2px' : '0',
-                                      right: isEnd ? '2px' : '0',
-                                      borderLeft: isStart ? '3px solid rgba(255,255,255,0.5)' : 'none'
-                                    }} 
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
+                        <NoteRow
+                          key={`${octave}-${noteName}`}
+                          octave={octave}
+                          pitchIndex={pIdx}
+                          pitchName={noteName}
+                          oIdx={oIdx}
+                          visibleRange={visibleRange}
+                          isPartOfNote={isPartOfNote}
+                          toggleNote={toggleNote}
+                        />
                       ))}
                     </React.Fragment>
                   ))}
