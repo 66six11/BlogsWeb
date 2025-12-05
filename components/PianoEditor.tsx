@@ -170,7 +170,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   }, [notes, selectedVoice]);
 
   // O(1) note lookup for grid - includes duration info
-  const activeNoteMap = useMemo(() => {
+  // Index notes by start position for fast start detection
+  const noteStartIndex = useMemo(() => {
     const map = new Map<string, Note>();
     for (const note of filteredNotes) {
       map.set(`${note.octave}-${note.pitch}-${note.startTime}`, note);
@@ -178,31 +179,84 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     return map;
   }, [filteredNotes]);
 
-  const getNoteAt = useCallback((octave: number, pitch: number, step: number): Note | undefined => {
-    return activeNoteMap.get(`${octave}-${pitch}-${step}`);
-  }, [activeNoteMap]);
-
-  // Check if a cell is part of a sustained note (for visual display)
-  const isPartOfNote = useCallback((octave: number, pitch: number, step: number): { isStart: boolean; isMiddle: boolean; isEnd: boolean; note?: Note } => {
-    // Check if this is the start of a note
-    const startNote = activeNoteMap.get(`${octave}-${pitch}-${step}`);
-    if (startNote) {
-      const isEnd = startNote.duration <= 1;
-      return { isStart: true, isMiddle: false, isEnd, note: startNote };
-    }
-    
-    // Check if this step is part of a longer note that started earlier
+  // Spatial index: maps each (octave, pitch) to a sorted array of notes for fast range lookup
+  // This enables O(log n) lookup for any step instead of O(n)
+  const noteSpatialIndex = useMemo(() => {
+    const index = new Map<string, Note[]>();
     for (const note of filteredNotes) {
-      if (note.octave === octave && note.pitch === pitch) {
-        if (step > note.startTime && step < note.startTime + note.duration) {
-          const isEnd = step === note.startTime + note.duration - 1;
-          return { isStart: false, isMiddle: true, isEnd, note };
-        }
+      const key = `${note.octave}-${note.pitch}`;
+      if (!index.has(key)) {
+        index.set(key, []);
+      }
+      index.get(key)!.push(note);
+    }
+    // Sort each array by startTime for binary search
+    for (const arr of index.values()) {
+      arr.sort((a, b) => a.startTime - b.startTime);
+    }
+    return index;
+  }, [filteredNotes]);
+
+  // Index notes by step for O(1) playback lookup
+  // Maps each step to all notes that START at that step
+  const notesByStep = useMemo(() => {
+    const map = new Map<number, Note[]>();
+    for (const note of notes) {
+      if (!map.has(note.startTime)) {
+        map.set(note.startTime, []);
+      }
+      map.get(note.startTime)!.push(note);
+    }
+    return map;
+  }, [notes]);
+
+  const getNoteAt = useCallback((octave: number, pitch: number, step: number): Note | undefined => {
+    return noteStartIndex.get(`${octave}-${pitch}-${step}`);
+  }, [noteStartIndex]);
+
+  // Binary search to find the note containing a step
+  const findNoteAtStep = useCallback((notesArr: Note[], step: number): Note | undefined => {
+    let left = 0;
+    let right = notesArr.length - 1;
+    
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2);
+      const note = notesArr[mid];
+      const noteEnd = note.startTime + note.duration;
+      
+      if (step >= note.startTime && step < noteEnd) {
+        return note;
+      } else if (step < note.startTime) {
+        right = mid - 1;
+      } else {
+        left = mid + 1;
       }
     }
+    return undefined;
+  }, []);
+
+  // O(log n) check if a cell is part of a sustained note (for visual display)
+  const isPartOfNote = useCallback((octave: number, pitch: number, step: number): { isStart: boolean; isMiddle: boolean; isEnd: boolean; note?: Note } => {
+    const key = `${octave}-${pitch}`;
+    const notesAtPitch = noteSpatialIndex.get(key);
     
-    return { isStart: false, isMiddle: false, isEnd: false };
-  }, [activeNoteMap, filteredNotes]);
+    if (!notesAtPitch || notesAtPitch.length === 0) {
+      return { isStart: false, isMiddle: false, isEnd: false };
+    }
+    
+    // Use binary search to find note at this step
+    const note = findNoteAtStep(notesAtPitch, step);
+    
+    if (!note) {
+      return { isStart: false, isMiddle: false, isEnd: false };
+    }
+    
+    const isStart = step === note.startTime;
+    const isEnd = step === note.startTime + note.duration - 1;
+    const isMiddle = !isStart && step < note.startTime + note.duration;
+    
+    return { isStart, isMiddle, isEnd, note };
+  }, [noteSpatialIndex, findNoteAtStep]);
 
   // Check if a note is active at a specific position (for grid display)
   const isNoteActive = useCallback((octave: number, pitch: number, step: number): boolean => {
@@ -414,11 +468,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
       const currentPos = startStep + (elapsed / stepDurationMs);
       const currentStepFloor = Math.floor(currentPos);
       
-      // Trigger notes that should start at this step
+      // Trigger notes that should start at this step - O(1) lookup per step
       if (currentStepFloor > lastProcessedStep) {
         for (let step = lastProcessedStep + 1; step <= currentStepFloor; step++) {
-          for (const note of notes) {
-            if (note.startTime === step) {
+          const notesAtStep = notesByStep.get(step);
+          if (notesAtStep) {
+            for (const note of notesAtStep) {
               const noteKey = `${note.octave}-${note.pitch}-${note.startTime}`;
               if (!triggeredNotes.has(noteKey)) {
                 triggeredNotes.add(noteKey);
@@ -473,7 +528,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     };
     
     animationFrameRef.current = requestAnimationFrame(updatePlayhead);
-  }, [notes, currentStep, lastNoteEndTime, stepInterval, sustain, cleanupSynth]);
+  }, [notes, notesByStep, currentStep, lastNoteEndTime, stepInterval, sustain, cleanupSynth]);
 
   // Wrapper for normal playback (from current position)
   const startPlayback = useCallback(() => {
