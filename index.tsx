@@ -804,7 +804,7 @@ const App: React.FC = () => {
         <div
             className="flex flex-col items-center justify-center flex-1 text-center px-4 relative overflow-hidden w-full h-full">
             <div
-                className="relative z-10 animate-fade-in-up backdrop-blur-md p-8 md:p-12 rounded-3xl border shadow-2xl max-w-4xl flex flex-col items-center opacity-90 theme-bg-secondary theme-border-subtle">
+                className="relative z-10 animate-fade-in-up backdrop-blur-md p-8 md:p-12 rounded-3xl border shadow-2xl max-w-4xl flex flex-col items-center theme-bg-secondary theme-border-subtle">
                 <div
                     className="w-32 h-32 mx-auto mb-8 relative group cursor-pointer"
                     onClick={() => setCurrentView(View.ABOUT)}
