@@ -1,5 +1,5 @@
 import React from 'react';
-import { ICON_COLORS } from '../config';
+import { ICON_COLORS, HEXAGRAM_COLORS } from '../config';
 
 interface IconProps {
     className?: string;
@@ -188,8 +188,8 @@ export const HexagramIcon: React.FC<{
 }> = ({
     size = 24,
     className = '',
-    primaryColor = 'rgb(251, 191, 36)',
-    secondaryColor = 'rgb(251, 143, 36)',
+    primaryColor = HEXAGRAM_COLORS.primary,
+    secondaryColor = HEXAGRAM_COLORS.secondary,
 }) => {
     // 修复后的CSS动画
     const animationStyles = `

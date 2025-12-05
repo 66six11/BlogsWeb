@@ -13,6 +13,19 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
 
     <script>
+      /**
+       * Tailwind CSS Configuration
+       * =================================================================================
+       * All color values are synchronized with config.ts color configurations.
+       * This provides Tailwind utility classes that match our theme system.
+       * 
+       * USAGE: Instead of using hardcoded Tailwind colors like bg-slate-900/60,
+       * use the semantic classes defined here or in theme.css:
+       *   - bg-card, bg-surface, bg-overlay (backgrounds)
+       *   - text-heading, text-body, text-muted, text-highlight (text)
+       *   - border-default, border-subtle, border-accent (borders)
+       * =================================================================================
+       */
       tailwind.config = {
         darkMode: 'class',
         theme: {
@@ -22,28 +35,121 @@
               serif: ['Playfair Display', 'serif'],
             },
             colors: {
-              magic: {
-                dark: '#0f172a',
-                purple: '#7c3aed',
-                gold: '#fbbf24',
+              // =============================================================
+              // Semantic colors using CSS variables (auto-adapts to theme)
+              // USE THESE instead of hardcoded slate/amber/purple colors
+              // =============================================================
+              
+              // Accent colors
+              accent: {
+                '1': 'var(--accent-1)',
+                '2': 'var(--accent-2)',
+                '3': 'var(--accent-3)',
               },
-              // Theme colors from config
-              theme: {
-                // Light mode
-                'light-primary': '#F7F8F3',
-                'light-secondary': '#EBECF2',
-                'light-tertiary': '#e3d8d8',
-                'light-accent1': '#deb99a',
-                'light-accent2': '#7C85EB',
-                'light-accent3': '#c493b1',
-                // Dark mode
-                'dark-primary': '#897b8c',
-                'dark-secondary': '#4d4658',
-                'dark-tertiary': '#3b3442',
-                'dark-accent1': '#deb99a',
-                'dark-accent2': '#c493b1',
-                'dark-accent3': '#7C85EB',
-              }
+              
+              // Background colors
+              card: 'var(--bg-card)',
+              'card-hover': 'var(--bg-card-hover)',
+              surface: 'var(--bg-surface)',
+              overlay: 'var(--bg-overlay)',
+              
+              // Semantic text colors
+              heading: 'var(--text-heading)',
+              body: 'var(--text-body)',
+              muted: 'var(--text-muted)',
+              highlight: 'var(--text-highlight)',
+              
+              // Border colors
+              'border-default': 'var(--border-default)',
+              'border-subtle': 'var(--border-subtle)',
+              'border-accent': 'var(--border-accent)',
+              
+              // =============================================================
+              // UI Status colors from UI_COLORS in config.ts
+              // =============================================================
+              ui: {
+                'success': 'var(--ui-success)',
+                'warning': 'var(--ui-warning)',
+                'error': 'var(--ui-error)',
+                'info': 'var(--ui-info)',
+                'button-primary': 'var(--ui-button-primary)',
+                'button-primary-hover': 'var(--ui-button-primary-hover)',
+                'button-secondary': 'var(--ui-button-secondary)',
+              },
+              
+              // =============================================================
+              // Callout colors from UI_COLORS.callout in config.ts
+              // =============================================================
+              callout: {
+                'info': 'var(--callout-info)',
+                'tip': 'var(--callout-tip)',
+                'warning': 'var(--callout-warning)',
+                'error': 'var(--callout-error)',
+                'question': 'var(--callout-question)',
+                'quote': 'var(--callout-quote)',
+                'example': 'var(--callout-example)',
+                'summary': 'var(--callout-summary)',
+              },
+              
+              // =============================================================
+              // Icon colors from ICON_COLORS in config.ts
+              // =============================================================
+              icon: {
+                'primary': 'var(--icon-primary)',
+                'secondary': 'var(--icon-secondary)',
+                'accent': 'var(--icon-accent)',
+                'default': 'var(--icon-default)',
+              },
+              
+              // =============================================================
+              // Scene/3D and glow colors
+              // =============================================================
+              scene: {
+                'particles': 'var(--scene-particles)',
+              },
+              glow: {
+                'gold': 'var(--glow-gold)',
+                'purple': 'var(--glow-purple)',
+              },
+              hexagram: {
+                'primary': 'var(--hexagram-primary)',
+                'secondary': 'var(--hexagram-secondary)',
+              },
+            },
+            // Background colors using CSS variables
+            backgroundColor: {
+              'theme-primary': 'var(--bg-primary)',
+              'theme-secondary': 'var(--bg-secondary)',
+              'theme-tertiary': 'var(--bg-tertiary)',
+              'card': 'var(--bg-card)',
+              'card-hover': 'var(--bg-card-hover)',
+              'surface': 'var(--bg-surface)',
+              'overlay': 'var(--bg-overlay)',
+              'code': 'var(--bg-code)',
+              'nav': 'var(--bg-nav)',
+              'input': 'var(--bg-input)',
+            },
+            // Text colors using CSS variables
+            textColor: {
+              'theme-primary': 'var(--text-primary)',
+              'theme-secondary': 'var(--text-secondary)',
+              'heading': 'var(--text-heading)',
+              'body': 'var(--text-body)',
+              'muted': 'var(--text-muted)',
+              'highlight': 'var(--text-highlight)',
+              'accent': 'var(--text-accent)',
+              'link': 'var(--text-link)',
+              'code': 'var(--text-code)',
+            },
+            // Border colors using CSS variables
+            borderColor: {
+              'theme-primary': 'var(--bg-primary)',
+              'theme-secondary': 'var(--bg-secondary)',
+              'theme-tertiary': 'var(--bg-tertiary)',
+              'default': 'var(--border-default)',
+              'subtle': 'var(--border-subtle)',
+              'accent': 'var(--border-accent)',
+              'focus': 'var(--border-focus)',
             },
             animation: {
               'float': 'float 6s ease-in-out infinite',

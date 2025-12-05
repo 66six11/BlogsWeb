@@ -10,7 +10,7 @@ import {
     GITHUB_USERNAME,
     GITHUB_REPO
 } from './constants';
-import {SITE_CONFIG} from './config';
+import {SITE_CONFIG, UI_COLORS} from './config';
 import PianoEditor from './components/PianoEditor';
 import MagicChat from './components/MagicChat';
 import Scene3D from './components/Scene3D';
@@ -104,27 +104,29 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({content}) => {
 
     const getCalloutStyles = (type: string) => {
         const t = type.toLowerCase();
+        // Using UI_COLORS.callout from config for consistent theming
+        const colors = UI_COLORS.callout;
         switch (t) {
             case 'note':
             case 'info':
             case 'todo':
                 return {
-                    color: 'border-blue-500 bg-blue-500/10 text-blue-200',
-                    icon: <Info size={18} className="text-blue-400"/>
+                    color: `border-[${colors.info}] bg-[${colors.info}]/10 text-blue-200`,
+                    icon: <Info size={18} style={{ color: colors.info }}/>
                 };
             case 'tip':
             case 'done':
             case 'success':
                 return {
-                    color: 'border-emerald-500 bg-emerald-500/10 text-emerald-200',
-                    icon: <CheckCircle size={18} className="text-emerald-400"/>
+                    color: `border-[${colors.tip}] bg-[${colors.tip}]/10 text-emerald-200`,
+                    icon: <CheckCircle size={18} style={{ color: colors.tip }}/>
                 };
             case 'warning':
             case 'attention':
             case 'caution':
                 return {
-                    color: 'border-orange-500 bg-orange-500/10 text-orange-200',
-                    icon: <AlertTriangle size={18} className="text-orange-400"/>
+                    color: `border-[${colors.warning}] bg-[${colors.warning}]/10 text-orange-200`,
+                    icon: <AlertTriangle size={18} style={{ color: colors.warning }}/>
                 };
             case 'fail':
             case 'failure':
@@ -132,37 +134,37 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({content}) => {
             case 'danger':
             case 'missing':
                 return {
-                    color: 'border-red-500 bg-red-500/10 text-red-200',
-                    icon: <XCircle size={18} className="text-red-400"/>
+                    color: `border-[${colors.error}] bg-[${colors.error}]/10 text-red-200`,
+                    icon: <XCircle size={18} style={{ color: colors.error }}/>
                 };
             case 'bug':
                 return {
-                    color: 'border-red-500 bg-red-500/10 text-red-200',
-                    icon: <Bug size={18} className="text-red-400"/>
+                    color: `border-[${colors.error}] bg-[${colors.error}]/10 text-red-200`,
+                    icon: <Bug size={18} style={{ color: colors.error }}/>
                 };
             case 'question':
             case 'help':
             case 'faq':
                 return {
-                    color: 'border-amber-500 bg-amber-500/10 text-amber-200',
-                    icon: <HelpCircle size={18} className="text-amber-400"/>
+                    color: `border-[${colors.question}] bg-[${colors.question}]/10 text-amber-200`,
+                    icon: <HelpCircle size={18} style={{ color: colors.question }}/>
                 };
             case 'example':
                 return {
-                    color: 'border-purple-500 bg-purple-500/10 text-purple-200',
-                    icon: <List size={18} className="text-purple-400"/>
+                    color: `border-[${colors.example}] bg-[${colors.example}]/10 text-purple-200`,
+                    icon: <List size={18} style={{ color: colors.example }}/>
                 };
             case 'quote':
             case 'cite':
                 return {
-                    color: 'border-slate-500 bg-slate-500/10 text-slate-300',
-                    icon: <Quote size={18} className="text-slate-400"/>
+                    color: `border-[${colors.quote}] bg-[${colors.quote}]/10 text-slate-300`,
+                    icon: <Quote size={18} style={{ color: colors.quote }}/>
                 };
             case 'summary':
             case 'abstract':
                 return {
-                    color: 'border-cyan-500 bg-cyan-500/10 text-cyan-200',
-                    icon: <Clipboard size={18} className="text-cyan-400"/>
+                    color: `border-[${colors.summary}] bg-[${colors.summary}]/10 text-cyan-200`,
+                    icon: <Clipboard size={18} style={{ color: colors.summary }}/>
                 };
             default:
                 return {
