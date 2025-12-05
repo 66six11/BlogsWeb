@@ -129,7 +129,7 @@ export const MEDIA_CONFIG = {
     folder: "/music",
     // List of music tracks - add more tracks here
     tracks: [
-      { name: '文学', file: '上田麗奈 - リテラチュア (文学) (Anime Size)_H.mp3' }
+      { name: 'リテラチュア', file: '上田麗奈 - リテラチュア (文学) (Anime Size)_H.mp3' }
     ],
     // Default volume (0-1)
     defaultVolume: 1,
@@ -144,7 +144,7 @@ export const MEDIA_CONFIG = {
   scores: {
     folder: "/scores",
     // List of available score files (supports both ABC notation and legacy format)
-    files: ['canon-in-d.abc', 'Flower Dance.abc', 'sample.txt', 'chords-demo.txt', 'canon-in-d.txt','魔女之旅.abc']
+    files: ['canon-in-d.abc', 'Flower Dance.abc','魔女之旅.abc']
   },
 };
 

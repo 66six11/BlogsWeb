@@ -940,7 +940,7 @@ const App: React.FC = () => {
                             <div
                                 className="text-center py-20 rounded-xl border"
                                 style={mergeStyles(bgStyles.secondary, borderStyles.subtle, textStyles.accent1, { opacity: 0.8 })}>
-                                <CustomSparkleIcon className="animate-spin inline-block mr-2"/> 正在召唤卷轴...
+                                <HexagramIcon className="animate-pulse inline-block mr-2" /> 正在召唤卷轴...
                             </div>
                         ) : isFetchingContent ? (
                             <div

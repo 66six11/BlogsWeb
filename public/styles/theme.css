@@ -15,7 +15,7 @@
 :root.light {
   --bg-primary: #F7F8F3;
   --bg-secondary: #EBECF2;
-  --bg-tertiary: #e3d8d8;
+  --bg-tertiary: rgba(227, 216, 216, 0.74);
   --text-primary: #1e293b;
   --text-secondary: #475569;
   --accent-1: #deb99a;
