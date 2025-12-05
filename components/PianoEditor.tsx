@@ -638,6 +638,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         playbackIdRef.current++;
         cleanupSampler();
         setIsPlaying(false);
+        setActiveKeys(new Map()); // Clear active keys on pause
         onPlaybackChange?.(false);  // 通知父组件播放已暂停
         // Keep currentStep and playheadPosition - don't reset
     }, [cleanupSampler, onPlaybackChange]);
@@ -660,6 +661,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         updatePlayheadPosition(0);
         setIsUserScrolling(false);
         isUserScrollingRef.current = false;
+        setActiveKeys(new Map()); // Clear active keys
         // Scroll to start
         if (scrollContainerRef.current) {
             scrollContainerRef.current.scrollLeft = 0;
@@ -670,7 +672,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const jumpToPlayhead = useCallback(() => {
         if (scrollContainerRef.current) {
             const c = scrollContainerRef.current;
-            c.scrollLeft = Math.max(0, playheadPosition - c.clientWidth / 2);
+            // Calculate scroll position to align playhead with target position
+            const playheadTargetPosition = KEY_LABEL_WIDTH + CELL_WIDTH * 4;
+            c.scrollLeft = Math.max(0, playheadPosition - playheadTargetPosition + KEY_LABEL_WIDTH);
             setIsUserScrolling(false);
             isUserScrollingRef.current = false;
         }
@@ -720,6 +724,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         // Real-time playback loop
         const playStartTime = performance.now();
         let lastProcessedStep = startStep - 1;
+        // Track active notes for key glow effect
+        const activeNoteEndTimes = new Map<string, { endTime: number; color: string }>();
 
         const updatePlayhead = () => {
             if (playbackIdRef.current !== currentPlaybackId) return;
@@ -751,12 +757,36 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                                     // Sampler may have been disposed
                                     return;
                                 }
+
+                                // Track active note for glow effect
+                                const keyId = `${note.octave}-${note.pitch}`;
+                                const endTimeMs = performance.now() + durSec * 1000;
+                                const color = getNoteColor(note.octave, note.pitch);
+                                activeNoteEndTimes.set(keyId, { endTime: endTimeMs, color });
                             }
                         }
                     }
                 }
                 lastProcessedStep = currentStepFloor;
             }
+
+            // Update active keys for glow effect
+            const now = performance.now();
+            const newActiveKeys = new Map<string, { color: string; endTime: number }>();
+            for (const [keyId, data] of activeNoteEndTimes) {
+                if (data.endTime > now) {
+                    newActiveKeys.set(keyId, data);
+                }
+            }
+            // Only update state if changed
+            setActiveKeys(prev => {
+                if (prev.size !== newActiveKeys.size) return newActiveKeys;
+                for (const [k, v] of prev) {
+                    const newV = newActiveKeys.get(k);
+                    if (!newV || newV.endTime !== v.endTime) return newActiveKeys;
+                }
+                return prev;
+            });
 
             // Update playhead position directly via ref (no React re-render)
             const px = currentPos * CELL_WIDTH;
@@ -770,19 +800,34 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                 setCurrentStep(currentStepFloor);
             }
 
-            // Auto-scroll
+            // Smooth scroll during playback - playhead stays near left edge (after key labels)
             if (scrollContainerRef.current) {
                 const c = scrollContainerRef.current;
-                const isPlayheadVisible = px >= c.scrollLeft && px <= c.scrollLeft + c.clientWidth - CELL_WIDTH * 2;
+                // Fixed playhead position relative to viewport: at KEY_LABEL_WIDTH (right edge of key labels)
+                const playheadTargetPosition = KEY_LABEL_WIDTH + CELL_WIDTH * 4; // A bit into the visible area
+                
+                // Calculate the scroll position to keep playhead at target position
+                const targetScrollLeft = px - playheadTargetPosition + KEY_LABEL_WIDTH;
+                
+                // Check if playhead is visible in current view
+                const playheadViewportX = px - c.scrollLeft + KEY_LABEL_WIDTH;
+                const isPlayheadVisible = playheadViewportX >= KEY_LABEL_WIDTH && playheadViewportX <= c.clientWidth - CELL_WIDTH * 2;
 
                 if (isPlayheadVisible && isUserScrollingRef.current) {
+                    // User scrolled away but playhead is now visible again - resume auto-scroll
                     setIsUserScrolling(false);
                     isUserScrollingRef.current = false;
                 }
 
                 if (!isUserScrollingRef.current) {
-                    if (px > c.scrollLeft + c.clientWidth - CELL_WIDTH * 4 || px < c.scrollLeft) {
-                        c.scrollLeft = Math.max(0, px - c.clientWidth / 2);
+                    // Smooth scroll to target position
+                    const currentScroll = c.scrollLeft;
+                    const scrollDiff = targetScrollLeft - currentScroll;
+                    // Smooth interpolation for fluid motion
+                    const smoothFactor = 0.15;
+                    const newScroll = currentScroll + scrollDiff * smoothFactor;
+                    if (Math.abs(scrollDiff) > 1) {
+                        c.scrollLeft = Math.max(0, newScroll);
                     }
                 }
             }
@@ -792,6 +837,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                 playbackIdRef.current++;
                 cleanupSampler();
                 setIsPlaying(false);
+                setActiveKeys(new Map()); // Clear active keys on stop
                 return;
             }
 
@@ -1225,26 +1271,46 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                                         height: `${TOTAL_KEYS * ROW_HEIGHT}px`
                                     }}
                                 >
-                                    {PIANO_KEYS.map((key, idx) => (
-                                        <div
-                                            key={`${key.octave}-${key.pitch}`}
-                                            className={`flex items-center text-xs border-b piano-border-subtle ${key.isBlack ? 'piano-key-black' : 'piano-key-white'}`}
-                                            style={{
-                                                width: `${KEY_LABEL_WIDTH}px`,
-                                                height: `${ROW_HEIGHT}px`
-                                            }}
-                                        >
-                                            <span className="flex-1 text-right pr-2">{key.name}{key.octave}</span>
-                                            {/* 右侧颜色指示条 */}
+                                    {PIANO_KEYS.map((key, idx) => {
+                                        const keyId = `${key.octave}-${key.pitch}`;
+                                        const activeData = activeKeys.get(keyId);
+                                        const isActive = !!activeData;
+                                        const glowColor = activeData?.color || getNoteColor(key.octave, key.pitch);
+                                        
+                                        return (
                                             <div
+                                                key={keyId}
+                                                className={`flex items-center text-xs border-b piano-border-subtle ${key.isBlack ? 'piano-key-black' : 'piano-key-white'}`}
                                                 style={{
-                                                    width: '4px',
-                                                    height: '100%',
-                                                    backgroundColor: getNoteColor(key.octave, key.pitch)
+                                                    width: `${KEY_LABEL_WIDTH}px`,
+                                                    height: `${ROW_HEIGHT}px`,
+                                                    transition: 'box-shadow 0.15s ease-out, background-color 0.15s ease-out',
+                                                    boxShadow: isActive ? `inset 0 0 20px ${glowColor}, 0 0 15px ${glowColor}` : 'none',
+                                                    backgroundColor: isActive ? `${glowColor}30` : undefined
                                                 }}
-                                            />
-                                        </div>
-                                    ))}
+                                            >
+                                                <span 
+                                                    className="flex-1 text-right pr-2"
+                                                    style={{
+                                                        transition: 'text-shadow 0.15s ease-out',
+                                                        textShadow: isActive ? `0 0 10px ${glowColor}` : 'none'
+                                                    }}
+                                                >
+                                                    {key.name}{key.octave}
+                                                </span>
+                                                {/* 右侧颜色指示条 */}
+                                                <div
+                                                    style={{
+                                                        width: '4px',
+                                                        height: '100%',
+                                                        backgroundColor: glowColor,
+                                                        transition: 'box-shadow 0.15s ease-out',
+                                                        boxShadow: isActive ? `0 0 10px ${glowColor}` : 'none'
+                                                    }}
+                                                />
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 {/* Grid area - uses CSS background for grid lines */}
