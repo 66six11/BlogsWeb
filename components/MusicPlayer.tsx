@@ -227,7 +227,7 @@ const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ onAnalyserRe
         }).catch(console.error);
       }
     }
-  }, [externalPause]);
+  }, [externalPause, isPlaying, wasPlayingBeforeExternalPause, isMuted, volume, fadeVolume]);
 
   const toggleMute = () => {
     if (!gainNodeRef.current) return;

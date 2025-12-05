@@ -726,12 +726,10 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
             return currentMidi > highestMidi ? note : highest;
           }, parsed.notes[0]);
           
-          // 计算最高音在 PIANO_KEYS 中的索引
-          const highestKeyIndex = PIANO_KEYS.findIndex(
-            k => k.octave === highestNote.octave && k.pitch === highestNote.pitch
-          );
+          // 计算最高音在 PIANO_KEYS 中的索引 - 使用 O(1) Map 查找
+          const highestKeyIndex = keyRowIndex.get(`${highestNote.octave}-${highestNote.pitch}`);
           
-          if (highestKeyIndex >= 0) {
+          if (highestKeyIndex !== undefined) {
             const scrollTop = Math.max(0, highestKeyIndex * ROW_HEIGHT - 10);
             scrollContainerRef.current.scrollTop = scrollTop;
           }
@@ -741,7 +739,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true, 
       console.error('Error loading score:', e);
       setIsLoading(false);
     }
-  }, [pausePlayback, updatePlayheadPosition]);
+  }, [pausePlayback, updatePlayheadPosition, keyRowIndex]);
 
   // Toggle note in grid - uses selected duration
   // rowIndex is the index into PIANO_KEYS, step is the horizontal position
