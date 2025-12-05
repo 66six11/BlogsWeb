@@ -4,15 +4,6 @@ import {ChatMessage} from '../types';
 import {CustomSparkleIcon} from './CustomIcons';
 import {LayeredCharacterIcon} from './LayeredCharacterIcon';
 import {X, Send} from 'lucide-react';
-import { 
-    cardStyles, 
-    buttonStyles, 
-    inputStyles, 
-    textStyles, 
-    gradientStyles, 
-    panelStyles, 
-    mergeStyles 
-} from '../utils/styles';
 
 const MagicChat: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -54,34 +45,6 @@ const MagicChat: React.FC = () => {
         }
     };
 
-    // Style definitions using the styles utility
-    const windowStyle = mergeStyles(
-        cardStyles.primary,
-        { borderColor: 'var(--accent-3)' }
-    );
-
-    const headerStyle = mergeStyles(
-        gradientStyles.accentGradient,
-        { borderBottom: '1px solid var(--accent-3)' }
-    );
-
-    const userMessageStyle = mergeStyles(
-        buttonStyles.primary,
-        { color: 'white' }
-    );
-
-    const botMessageStyle = mergeStyles(
-        cardStyles.secondary,
-        textStyles.primary
-    );
-
-    const loadingDotStyle = { backgroundColor: 'var(--accent-2)' };
-
-    const inputAreaStyle = mergeStyles(
-        panelStyles.header,
-        { borderTop: '1px solid var(--bg-tertiary)' }
-    );
-
     return (
 
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
@@ -104,24 +67,21 @@ const MagicChat: React.FC = () => {
 
                     {/* 聊天窗口主体 */}
                     <div
-                        className="magic-chat-window w-80 md:w-96 h-96 backdrop-blur-xl rounded-2xl shadow-2xl flex flex-col overflow-hidden transform transition-all animate-fade-in-up"
-                        style={windowStyle}>
+                        className="magic-chat-window w-80 md:w-96 h-96 backdrop-blur-xl rounded-2xl shadow-2xl flex flex-col overflow-hidden transform transition-all animate-fade-in-up border">
 
                         {/* Header */}
                         <div
-                            className="p-4 flex justify-between items-center"
-                            style={headerStyle}>
+                            className="magic-chat-header p-4 flex justify-between items-center">
                             <div className="flex items-center gap-10">
                                 <div className="w-10 h-10"/>
                                 <div>
-                                    <h3 className="font-serif font-bold" style={textStyles.primary}>伊蕾娜</h3>
-                                    <p className="text-[10px]" style={textStyles.accent1}>灰烬魔女</p>
+                                    <h3 className="font-serif font-bold theme-text-primary">伊蕾娜</h3>
+                                    <p className="text-[10px] theme-text-accent1">灰烬魔女</p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setIsOpen(false)}
-                                className="hover:opacity-80 transition-colors"
-                                style={textStyles.secondary}
+                                className="hover:opacity-80 transition-colors theme-text-secondary"
                             >
                                 <X size={20}/>
                             </button>
@@ -135,9 +95,10 @@ const MagicChat: React.FC = () => {
                                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div 
                                         className={`max-w-[80%] p-3 rounded-lg text-sm ${
-                                            msg.role === 'user' ? 'rounded-tr-none' : 'rounded-tl-none'
-                                        }`}
-                                        style={msg.role === 'user' ? userMessageStyle : botMessageStyle}>
+                                            msg.role === 'user' 
+                                                ? 'rounded-tr-none magic-chat-user-message' 
+                                                : 'rounded-tl-none magic-chat-bot-message border'
+                                        }`}>
                                         {msg.text}
                                     </div>
                                 </div>
@@ -145,14 +106,13 @@ const MagicChat: React.FC = () => {
                             {isLoading && (
                                 <div className="flex justify-start">
                                     <div
-                                        className="p-3 rounded-lg rounded-tl-none flex gap-1"
-                                        style={botMessageStyle}>
-                                        <span className="w-2 h-2 rounded-full animate-bounce"
-                                              style={{ ...loadingDotStyle, animationDelay: '0ms' }}/>
-                                        <span className="w-2 h-2 rounded-full animate-bounce"
-                                              style={{ ...loadingDotStyle, animationDelay: '150ms' }}/>
-                                        <span className="w-2 h-2 rounded-full animate-bounce"
-                                              style={{ ...loadingDotStyle, animationDelay: '300ms' }}/>
+                                        className="p-3 rounded-lg rounded-tl-none flex gap-1 magic-chat-bot-message border">
+                                        <span className="w-2 h-2 rounded-full animate-bounce magic-chat-loading-dot"
+                                              style={{ animationDelay: '0ms' }}/>
+                                        <span className="w-2 h-2 rounded-full animate-bounce magic-chat-loading-dot"
+                                              style={{ animationDelay: '150ms' }}/>
+                                        <span className="w-2 h-2 rounded-full animate-bounce magic-chat-loading-dot"
+                                              style={{ animationDelay: '300ms' }}/>
                                     </div>
                                 </div>
                             )}
@@ -161,22 +121,19 @@ const MagicChat: React.FC = () => {
 
                         {/* Input */}
                         <div 
-                            className="p-3 flex gap-2"
-                            style={inputAreaStyle}>
+                            className="magic-chat-input-area p-3 flex gap-2">
                             <input
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                                 placeholder="向魔女提问..."
-                                className="flex-1 text-sm rounded-lg px-3 py-2 outline-none transition-colors"
-                                style={inputStyles.default}
+                                className="flex-1 text-sm rounded-lg px-3 py-2 outline-none transition-colors theme-input"
                             />
                             <button
                                 onClick={handleSend}
                                 disabled={isLoading || !input.trim()}
-                                className="p-2 text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
-                                style={buttonStyles.primary}
+                                className="p-2 text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors theme-btn-primary"
                             >
                                 <Send size={16}/>
                             </button>
@@ -188,8 +145,7 @@ const MagicChat: React.FC = () => {
             {/* Toggle Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="group relative w-14 h-14 rounded-full shadow-[0_0_20px_rgba(147,51,234,0.5)] flex items-center justify-center text-white hover:scale-110 transition-transform duration-300 overflow-visible"
-                style={gradientStyles.buttonGradient}
+                className="group relative w-14 h-14 rounded-full shadow-[0_0_20px_rgba(147,51,234,0.5)] flex items-center justify-center text-white hover:scale-110 transition-transform duration-300 overflow-visible theme-gradient-button"
             >
                 <div className="absolute inset-0 rounded-full border border-white/20 animate-ping opacity-20"/>
                 {isOpen ? (
