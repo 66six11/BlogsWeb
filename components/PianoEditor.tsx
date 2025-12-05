@@ -262,7 +262,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     updateVisibleRange();
   }, [totalSteps, updateVisibleRange]);
 
-  // Internal function to clean up synth resources (doesn't change state)
+  // Internal function to stop playback sounds without disposing synth
+  // Only releases currently playing notes - synth stays alive for reuse
   const cleanupSynth = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -279,20 +280,32 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
       audioContextRef.current = null;
     }
     
-    // Stop Tone.js transport and synth - properly dispose
+    // Stop Tone.js transport and release all notes, but keep synth alive
     try {
       Tone.Transport.stop();
       Tone.Transport.cancel();
       Tone.Transport.position = 0;
       if (toneSynthRef.current) {
+        // Release all playing notes immediately to prevent stuck sounds
         toneSynthRef.current.releaseAll();
-        toneSynthRef.current.dispose();
-        toneSynthRef.current = null;
       }
     } catch (e) {
       console.error('Error stopping Tone.js:', e);
     }
   }, []);
+
+  // Full cleanup function for component unmount - disposes the synth
+  const disposeSynth = useCallback(() => {
+    cleanupSynth();
+    try {
+      if (toneSynthRef.current) {
+        toneSynthRef.current.dispose();
+        toneSynthRef.current = null;
+      }
+    } catch (e) {
+      console.error('Error disposing Tone.js synth:', e);
+    }
+  }, [cleanupSynth]);
 
   // Pause playback - keep position
   const pausePlayback = useCallback(() => {
@@ -340,7 +353,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
   const startPlaybackFromStep = useCallback(async (fromStep?: number) => {
     if (notes.length === 0) return;
     
-    // Clean up any existing synth resources first
+    // Clean up any currently playing notes first (but keep synth)
     cleanupSynth();
     
     // Increment playback ID to invalidate any old callbacks
@@ -355,21 +368,24 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     // Check if we're still the current playback
     if (playbackIdRef.current !== currentPlaybackId) return;
     
-    // Create piano-like synth with PolySynth for polyphony
-    const synth = new Tone.PolySynth(Tone.Synth, {
-      maxPolyphony: MAX_CONCURRENT_NOTES,
-      voice: Tone.Synth,
-      options: {
-        oscillator: { type: 'triangle' },
-        envelope: {
-          attack: 0.005,
-          decay: 0.3,
-          sustain: sustain ? 0.4 : 0.1,
-          release: sustain ? 1.0 : 0.3,
-        },
-      }
-    }).toDestination();
-    toneSynthRef.current = synth;
+    // Reuse existing synth or create a new one
+    let synth = toneSynthRef.current;
+    if (!synth) {
+      synth = new Tone.PolySynth(Tone.Synth, {
+        maxPolyphony: MAX_CONCURRENT_NOTES,
+        voice: Tone.Synth,
+        options: {
+          oscillator: { type: 'triangle' },
+          envelope: {
+            attack: 0.005,
+            decay: 0.3,
+            sustain: sustain ? 0.4 : 0.1,
+            release: sustain ? 1.0 : 0.3,
+          },
+        }
+      }).toDestination();
+      toneSynthRef.current = synth;
+    }
     
     const stepDurationMs = stepInterval;
     const startStep = fromStep !== undefined ? fromStep : (currentStep >= 0 ? currentStep : 0);
@@ -547,8 +563,8 @@ const PianoEditor: React.FC<PianoEditorProps> = ({ className, isVisible = true }
     setSelectedScore('');
   }, [pausePlayback]);
 
-  // Cleanup on unmount
-  useEffect(() => () => pausePlayback(), [pausePlayback]);
+  // Cleanup on unmount - properly dispose all audio resources
+  useEffect(() => () => disposeSynth(), [disposeSynth]);
 
   // Stop playback when page/view changes (isVisible becomes false)
   useEffect(() => {
