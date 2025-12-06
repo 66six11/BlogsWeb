@@ -244,17 +244,7 @@ body {
     background: var(--accent-2);
 }
 
-#loading-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: var(--accent-1);
-    font-family: 'Playfair Display', serif;
-    font-size: 1.5rem;
-    opacity: 1;
-    transition: opacity 0.5s;
-}
+
 
 /* ====================================
    Semantic Theme Classes

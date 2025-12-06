@@ -109,25 +109,29 @@
       const style = document.createElement('style');
       style.textContent = `
         .loader {
-          --w: 10ch;
+          --w: 2ch;
           font-weight: bold;
-          font-family: monospace;
-          font-size: 30px;
+          font-family: 'Playfair Display', serif;
+          font-size: 28px;
           letter-spacing: var(--w);
-          width: var(--w);
+          width: auto;
+          max-width: 90vw;
           overflow: hidden;
           white-space: nowrap;
           color: #0000;
           animation: loader 2s infinite;
+          transition: all 0.5s ease;
         }
 
         .loader::before {
-          content: "Loading...";
+          content: attr(data-text);
+          color: var(--accent-1, #deb99a);
         }
 
         @media (max-width: 640px) {
           .loader {
             font-size: 20px;
+            --w: 1.5ch;
           }
         }
       `;

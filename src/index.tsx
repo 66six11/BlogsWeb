@@ -1231,32 +1231,23 @@ const App: React.FC = () => {
                         className={`mb-8 animate-pulse transition-all duration-500
                                     ${welcomeFading ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`}
                     />
-                    <h1 className={`text-4xl font-serif font-bold mb-4 transition-all duration-500 theme-text-primary
-                                   ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                        {APP_TITLE}
-                    </h1>
-                    <p className={`mb-8 transition-all duration-500 delay-75 theme-text-secondary
-                                  ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                        点击进入魔法世界
-                    </p>
-                    {!resourcesLoaded && (
-                        <div className="w-64 max-w-[80%] transition-opacity duration-300">
-                            <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden mb-4">
-                                <div className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 rounded-full transition-all duration-1000 ease-out animate-loading-bar" style={{ width: '0%' }}>
-                                    <div className="h-full w-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 animate-pulse"></div>
-                                </div>
-                            </div>
-                            <div className="text-center text-sm theme-text-secondary relative h-6 transition-opacity duration-500">
-                                {loadingTips.map((tip, index) => (
-                                    <p
-                                        key={index}
-                                        className={`tip-text absolute inset-0 transition-opacity duration-500 ease-in-out ${currentTipIndex === index ? 'opacity-100' : 'opacity-0'}`}
-                                    >
-                                        {tip}
-                                    </p>
-                                ))}
-                            </div>
+                    {/* Title - shows animated loading text during loading, static title when loaded */}
+                    {!resourcesLoaded ? (
+                        <div className={`loader text-center mb-8 transition-all duration-500
+                                        ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}
+                             data-text={loadingTips[currentTipIndex]}>
                         </div>
+                    ) : (
+                        <h1 className={`text-4xl font-serif font-bold mb-4 transition-all duration-500 theme-text-primary
+                                       ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
+                            {APP_TITLE}
+                        </h1>
+                    )}
+                    {resourcesLoaded && (
+                        <p className={`mb-8 transition-all duration-500 delay-75 theme-text-secondary
+                                      ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
+                            点击进入魔法世界
+                        </p>
                     )}
                     {resourcesLoaded && !welcomeFading && (
                         <div className="opacity-100 transition-all duration-700 delay-300" style={{ transitionProperty: 'opacity, transform' }}>
