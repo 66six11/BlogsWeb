@@ -1,54 +1,55 @@
-
-import { BlogPost, Project } from './types';
-import { SITE_CONFIG, GITHUB_CONFIG, MEDIA_CONFIG, PORTFOLIO_PROJECTS } from './config';
+import { BlogPost, Project } from './types'
+import { SITE_CONFIG, GITHUB_CONFIG, MEDIA_CONFIG, PORTFOLIO_PROJECTS } from './config'
 
 // --- Environment Variable Helper ---
 // Safely retrieves env vars from process.env (Webpack/Node) or import.meta.env (Vite)
 // Checks for VITE_ and REACT_APP_ prefixes automatically.
 export const getEnv = (key: string): string => {
-  const prefixes = ['', 'VITE_', 'REACT_APP_'];
-  
+  const prefixes = ['', 'VITE_', 'REACT_APP_']
+
   for (const prefix of prefixes) {
-    const fullKey = prefix + key;
-    
+    const fullKey = prefix + key
+
     // 1. Try Vite (import.meta.env)
     try {
       // @ts-ignore
       if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[fullKey]) {
         // @ts-ignore
-        return import.meta.env[fullKey];
+        return import.meta.env[fullKey]
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { /* ignore */
+    }
 
     // 2. Try Node/Webpack (process.env)
     try {
       if (typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env[fullKey]) {
-        return process.env[fullKey];
+        return process.env[fullKey]
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { /* ignore */
+    }
   }
-  
-  return "";
-};
+
+  return ''
+}
 
 // Re-export from config for backwards compatibility
-export const APP_TITLE = SITE_CONFIG.title;
-export const AUTHOR_NAME = SITE_CONFIG.authorName;
+export const APP_TITLE = SITE_CONFIG.title
+export const AUTHOR_NAME = SITE_CONFIG.authorName
 
 // GitHub Configuration
-export const GITHUB_USERNAME = GITHUB_CONFIG.username; 
-export const GITHUB_REPO = GITHUB_CONFIG.repo;
-export const GITHUB_BLOG_PATH = GITHUB_CONFIG.blogPath;
+export const GITHUB_USERNAME = GITHUB_CONFIG.username
+export const GITHUB_REPO = GITHUB_CONFIG.repo
+export const GITHUB_BLOG_PATH = GITHUB_CONFIG.blogPath
 
 // Assets
-export const BG_MEDIA_URL = MEDIA_CONFIG.backgroundMedia; 
+export const BG_MEDIA_URL = MEDIA_CONFIG.backgroundMedia
 // BGM_URL is deprecated - use MEDIA_CONFIG.music.tracks instead
-export const BGM_URL = MEDIA_CONFIG.music.tracks.length > 0 
-  ? `${MEDIA_CONFIG.music.folder}/${MEDIA_CONFIG.music.tracks[0].file}` 
-  : ''; 
+export const BGM_URL = MEDIA_CONFIG.music.tracks.length > 0
+  ? `${MEDIA_CONFIG.music.folder}/${MEDIA_CONFIG.music.tracks[0].file}`
+  : ''
 
 // Re-export projects from config
-export const PROJECTS = PORTFOLIO_PROJECTS;
+export const PROJECTS = PORTFOLIO_PROJECTS
 
 // Fallback Mock Posts
 export const MOCK_POSTS: BlogPost[] = [
@@ -125,7 +126,7 @@ public class Fireball : MonoBehaviour {
 ## 7. 图片
 标准 Markdown 图片和 Obsidian 嵌入在这里都可以使用。
 ![魔法火花](https://picsum.photos/id/1/600/300)
-    `
+    `,
   },
   {
     id: '1',
@@ -152,7 +153,7 @@ public class Fireball : MonoBehaviour {
 $$D_{\\text{GGX}} = \\frac{\\alpha^2}{\\pi[(\\mathbf{n} \\cdot \\mathbf{h})^2(\\alpha^2 - 1) + 1]^2}$$
 
 处理 **彼得潘宁** 伪影时，应用偏移是必不可少的。
-    `
+    `,
   },
   {
     id: '2',
@@ -176,6 +177,6 @@ $$D_{\\text{GGX}} = \\frac{\\alpha^2}{\\pi[(\\mathbf{n} \\cdot \\mathbf{h})^2(\\
 | Velocity | float3 | 物理运动 |
 
 > "默认性能。" - Unity Technologies
-    `
-  }
-];
+    `,
+  },
+]

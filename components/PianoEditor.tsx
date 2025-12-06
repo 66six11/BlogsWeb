@@ -159,7 +159,7 @@ const getNoteColor = (octave: number, pitch: number): string => {
 };
 
 // Duration options with visual icons
-const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number; icon: Element }[] = [
+const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number; icon: React.ReactNode}[] = [
     {value: 'sixteenth', label: '16分', steps: 1, icon: <SixteenthNoteIcon size={20}/>},
     {value: 'eighth', label: '8分', steps: 2, icon: <EighthNoteIcon size={20}/>},
     {value: 'quarter', label: '4分', steps: 4, icon: <QuarterNoteIcon size={20}/>},
