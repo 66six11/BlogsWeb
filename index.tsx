@@ -16,6 +16,7 @@ import MagicChat from './components/MagicChat';
 import Scene3D from './components/Scene3D';
 import MusicPlayer from './components/MusicPlayer';
 import ThemeToggle from './components/ThemeToggle';
+import Loader from './components/Loader';
 import {CustomSparkleIcon, CustomWitchIcon, HexagramIcon} from './components/CustomIcons';
 
 import {
@@ -588,7 +589,6 @@ const App: React.FC = () => {
     const [hasToken, setHasToken] = useState<boolean | null>(null); // null = checking, true/false = result
     const [resourcesLoaded, setResourcesLoaded] = useState(false); // Track if resources are loaded
     const [loadingIndicatorVisible, setLoadingIndicatorVisible] = useState(true); // Control loading indicator visibility
-    const [currentTipIndex, setCurrentTipIndex] = useState(0); // Track current tip index
 
     // Data State
     const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -604,27 +604,6 @@ const App: React.FC = () => {
 
     // Video Ref
     const videoRef = useRef<HTMLVideoElement>(null);
-
-    // Loading tips array
-    const loadingTips = [
-        "正在加载资源...",
-        "预加载头像和背景...",
-        "准备音频资源...",
-        "魔法世界即将呈现...",
-        "初始化渲染引擎...",
-        "准备进入魔法世界..."
-    ];
-
-    //轮播提示文本
-    useEffect(() => {
-        if (!resourcesLoaded) {
-            const tipInterval = setInterval(() => {
-                setCurrentTipIndex(prevIndex => (prevIndex + 1) % loadingTips.length);
-            }, 3000); // 每3秒切换一次提示语
-
-            return () => clearInterval(tipInterval);
-        }
-    }, [resourcesLoaded, loadingTips.length]);
 
     // Callback when music player analyser is ready
     const handleAnalyserReady = useCallback((analyser: AnalyserNode) => {
@@ -1240,23 +1219,7 @@ const App: React.FC = () => {
                         点击进入魔法世界
                     </p>
                     {!resourcesLoaded && (
-                        <div className="w-64 max-w-[80%] transition-opacity duration-300">
-                            <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden mb-4">
-                                <div className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 rounded-full transition-all duration-1000 ease-out animate-loading-bar" style={{ width: '0%' }}>
-                                    <div className="h-full w-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 animate-pulse"></div>
-                                </div>
-                            </div>
-                            <div className="text-center text-sm theme-text-secondary relative h-6 transition-opacity duration-500">
-                                {loadingTips.map((tip, index) => (
-                                    <p
-                                        key={index}
-                                        className={`tip-text absolute inset-0 transition-opacity duration-500 ease-in-out ${currentTipIndex === index ? 'opacity-100' : 'opacity-0'}`}
-                                    >
-                                        {tip}
-                                    </p>
-                                ))}
-                            </div>
-                        </div>
+                        <Loader />
                     )}
                     {resourcesLoaded && !welcomeFading && (
                         <div className="opacity-100 transition-all duration-700 delay-300" style={{ transitionProperty: 'opacity, transform' }}>
