@@ -602,6 +602,9 @@ const App: React.FC = () => {
     const [musicAnalyser, setMusicAnalyser] = useState<AnalyserNode | null>(null);
     const [isScorePlaying, setIsScorePlaying] = useState(false);  // 乐谱播放状态，用于暂停 BGM
 
+    // Particle State
+    const [particleMode, setParticleMode] = useState<'scattered' | 'forming' | 'formed' | 'dispersing'>('scattered');
+
     // Video Ref
     const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -678,10 +681,20 @@ const App: React.FC = () => {
 
             // Mark resources as loaded so we can show the enter button
             setResourcesLoaded(true);
+            
+            // Trigger particle formation after a short delay
+            setTimeout(() => {
+                setParticleMode('forming');
+            }, 500);
         } catch (e) {
             console.error("Error checking token or preloading resources", e);
             setHasToken(false);
             setResourcesLoaded(true); // Still allow showing the enter button
+            
+            // Still trigger particle formation even on error
+            setTimeout(() => {
+                setParticleMode('forming');
+            }, 500);
         }
     };
 
@@ -744,6 +757,9 @@ const App: React.FC = () => {
     }, []);
 
     const handleEnterSite = () => {
+        // Trigger particle dispersing animation
+        setParticleMode('dispersing');
+        
         // 开始淡出动画
         setWelcomeFading(true);
 
@@ -753,6 +769,17 @@ const App: React.FC = () => {
         }, WELCOME_TRANSITION_DURATION);
         // Music auto-play is now handled by MusicPlayer component
     };
+    
+    // Callback when particle forming completes
+    const handleParticleFormingComplete = useCallback(() => {
+        setParticleMode('formed');
+    }, []);
+    
+    // Callback when particle dispersing completes
+    const handleParticleDispersingComplete = useCallback(() => {
+        setParticleMode('scattered');
+        setShowWelcome(false);
+    }, []);
 
     // Load user profile on initial load (needed for all views)
     useEffect(() => {
@@ -1305,7 +1332,13 @@ const App: React.FC = () => {
 
             {/* 2. 3D Particles Layer (Middle) */}
             <div className="fixed inset-0 z-10 pointer-events-none">
-                <Scene3D analyser={musicAnalyser || undefined}/>
+                <Scene3D 
+                    analyser={musicAnalyser || undefined}
+                    mode={particleMode}
+                    text={APP_TITLE}
+                    onFormingComplete={handleParticleFormingComplete}
+                    onDispersingComplete={handleParticleDispersingComplete}
+                />
             </div>
 
             {/* 3. Dark Overlay (Top of Backgrounds) - Hidden on Home */}
