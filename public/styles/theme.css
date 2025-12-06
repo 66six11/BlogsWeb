@@ -524,23 +524,31 @@ body {
    Loading Animation Styles
    ==================================== */
 
-.loading-text-container {
-    font-weight: bold;
-    font-family: monospace;
-    font-size: 30px;
-    white-space: nowrap;
-    animation: loading-text 2s infinite;
-    display: inline-block;
+.loading-text-animated {
+  font-weight: bold;
+  font-family: monospace;
+  font-size: 30px;
+  white-space: nowrap;
+  display: inline-block;
+  color: var(--accent-1);
 }
 
 .loading-text {
-    position: relative;
-    display: inline-block;
+  position: relative;
+  display: inline-block;
+  color: var(--accent-1);
+  animation: loading-pulse 2s infinite;
 }
 
-@keyframes loading-text {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+@keyframes loading-pulse {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 5px rgba(var(--accent-1-rgb), 0.5);
+  }
+  50% {
+    opacity: 0.7;
+    text-shadow: 0 0 15px rgba(var(--accent-1-rgb), 0.8);
+  }
 }
 
 /* ====================================

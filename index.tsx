@@ -1,5 +1,5 @@
-import React, {useState, useEffect, useRef, useCallback} from 'react';
-import {createRoot} from 'react-dom/client';
+import './src/styles/index.css'; // 导入Tailwind CSS和自定义样式
+import React, {useState, useEffect, useRef, useCallback, StrictMode} from 'react';
 import {View, BlogPost, DirectoryNode, GitHubUser} from './types';
 import {
     APP_TITLE,
@@ -41,6 +41,7 @@ import {
     Bug, Quote, CheckSquare, Square,
     List, Clipboard
 } from 'lucide-react';
+import {createRoot} from 'react-dom/client';
 
 declare global {
     interface Window {
@@ -50,6 +51,8 @@ declare global {
 
 // --- Error Boundary ---
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
+    state: { hasError: boolean; error: any; };
+  props: any;
     constructor(props: any) {
         super(props);
         this.state = {hasError: false, error: null};
@@ -615,12 +618,12 @@ const App: React.FC = () => {
 
     // Loading tips array - 轮换语句
     const loadingTips = [
-        "Loading...",
+        "魔女祈祷中...",
         "正在施展渲染魔法...",
-        "初始化粒子系统...",
-        "准备音频可视化...",
-        "加载3D场景...",
-        "构建魔法世界...",
+        "初始化魔法引擎...",
+        "翻找魔法书籍...",
+        "正在绘制法阵...",
+        "构建魔法世界传送门...",
         "准备进入次元..."
     ];
 
@@ -1240,27 +1243,6 @@ const App: React.FC = () => {
     return (
         <div className="min-h-screen selection:text-black font-sans relative theme-text-secondary selection-accent">
 
-            {/* 欢迎遮罩层 */}
-                                    <LoadingScreen
-                isVisible={showWelcome && loadingIndicatorVisible}
-                currentTipIndex={currentTipIndex}
-                loadingTips={loadingTips}
-                resourcesLoaded={resourcesLoaded}
-                welcomeFading={welcomeFading}
-                onEnter={handleEnterSite}
-            />
-            {/* Loading indicator exit animation */}
-            {welcomeFading && (
-                <div
-                    className={`fixed inset-0 z-50 welcome-bg flex flex-col items-center justify-center
-                                transition-opacity ease-out theme-bg-primary opacity-0`}
-                    style={{transitionDuration: `${WELCOME_TRANSITION_DURATION}ms`}}
-                    onTransitionEnd={() => setLoadingIndicatorVisible(false)}
-                >
-                    {/* 这个 div 仅用于触发过渡动画，实际内容已经淡出 */}
-                </div>
-            )}
-
             {/* --- Background Stack --- */}
 
             {/* 1. Dynamic Background Video (Bottom) */}
@@ -1289,6 +1271,27 @@ const App: React.FC = () => {
             <div className="fixed inset-0 z-10 pointer-events-none">
                 <Scene3D analyser={musicAnalyser || undefined}/>
             </div>
+
+            {/* 欢迎遮罩层 */}
+            <LoadingScreen
+                isVisible={showWelcome && loadingIndicatorVisible}
+                currentTipIndex={currentTipIndex}
+                loadingTips={loadingTips}
+                resourcesLoaded={resourcesLoaded}
+                welcomeFading={welcomeFading}
+                onEnter={handleEnterSite}
+            />
+            {/* Loading indicator exit animation */}
+            {welcomeFading && (
+                <div
+                    className={`fixed inset-0 z-50 welcome-bg flex flex-col items-center justify-center
+                                transition-opacity ease-out theme-bg-primary opacity-0`}
+                    style={{transitionDuration: `${WELCOME_TRANSITION_DURATION}ms`}}
+                    onTransitionEnd={() => setLoadingIndicatorVisible(false)}
+                >
+                    {/* 这个 div 仅用于触发过渡动画，实际内容已经淡出 */}
+                </div>
+            )}
 
             {/* 2.5. Text Particle System */}
             <TextParticleSystem
@@ -1340,6 +1343,8 @@ const App: React.FC = () => {
 const root = createRoot(document.getElementById('root')!);
 root.render(
     <ErrorBoundary>
+      <StrictMode>
         <App/>
+      </StrictMode>
     </ErrorBoundary>
 );
