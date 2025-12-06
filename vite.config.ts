@@ -8,11 +8,18 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: {
+          '/api': {
+            target: 'http://localhost:3000', // Vercel dev server if running separately
+            changeOrigin: true,
+          }
+        }
       },
       plugins: [react()],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        'process.env.GITHUB_TOKEN': JSON.stringify(env.GITHUB_TOKEN)
       },
       resolve: {
         alias: {

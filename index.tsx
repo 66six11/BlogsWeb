@@ -10,7 +10,7 @@ import {
     GITHUB_USERNAME,
     GITHUB_REPO
 } from './constants';
-import {SITE_CONFIG} from './config';
+import {SITE_CONFIG, MEDIA_CONFIG} from './config';
 import PianoEditor from './components/PianoEditor';
 import MagicChat from './components/MagicChat';
 import Scene3D from './components/Scene3D';
@@ -585,6 +585,10 @@ const App: React.FC = () => {
     const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
     const [showWelcome, setShowWelcome] = useState(true);
     const [welcomeFading, setWelcomeFading] = useState(false);
+    const [hasToken, setHasToken] = useState<boolean | null>(null); // null = checking, true/false = result
+    const [resourcesLoaded, setResourcesLoaded] = useState(false); // Track if resources are loaded
+    const [loadingIndicatorVisible, setLoadingIndicatorVisible] = useState(true); // Control loading indicator visibility
+    const [currentTipIndex, setCurrentTipIndex] = useState(0); // Track current tip index
 
     // Data State
     const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -601,6 +605,27 @@ const App: React.FC = () => {
     // Video Ref
     const videoRef = useRef<HTMLVideoElement>(null);
 
+    // Loading tips array
+    const loadingTips = [
+        "正在加载资源...",
+        "预加载头像和背景...",
+        "准备音频资源...",
+        "魔法世界即将呈现...",
+        "初始化渲染引擎...",
+        "准备进入魔法世界..."
+    ];
+
+    //轮播提示文本
+    useEffect(() => {
+        if (!resourcesLoaded) {
+            const tipInterval = setInterval(() => {
+                setCurrentTipIndex(prevIndex => (prevIndex + 1) % loadingTips.length);
+            }, 3000); // 每3秒切换一次提示语
+
+            return () => clearInterval(tipInterval);
+        }
+    }, [resourcesLoaded, loadingTips.length]);
+
     // Callback when music player analyser is ready
     const handleAnalyserReady = useCallback((analyser: AnalyserNode) => {
         setMusicAnalyser(analyser);
@@ -611,16 +636,61 @@ const App: React.FC = () => {
         setIsScorePlaying(isPlaying);
     }, []);
 
+    // Check if we have a token by trying to fetch user profile
+    const checkTokenAndLoadResources = async () => {
+        try {
+            // Try to fetch user profile to check if token is valid
+            const profile = await fetchUserProfile();
+            const hasValidToken = profile !== null;
+            setHasToken(hasValidToken);
+
+            if (hasValidToken && profile) {
+                setUserProfile(profile);
+                // Preload avatar image
+                if (profile.avatar_url) {
+                    const img = new Image();
+                    img.src = profile.avatar_url;
+                }
+            }
+
+            // Load background media
+            if (BG_MEDIA_URL) {
+                if (BG_MEDIA_URL.endsWith('.mp4')) {
+                    // Preload video
+                    const video = document.createElement('video');
+                    video.preload = 'auto';
+                    video.src = BG_MEDIA_URL;
+                } else {
+                    // Preload image
+                    const img = new Image();
+                    img.src = BG_MEDIA_URL;
+                }
+            }
+
+            // Preload music tracks if they exist
+            if (MEDIA_CONFIG.music.tracks.length > 0) {
+                MEDIA_CONFIG.music.tracks.forEach(track => {
+                    const audio = new Audio();
+                    audio.src = `${MEDIA_CONFIG.music.folder}/${track.file}`;
+                    audio.preload = 'auto';
+                });
+            }
+
+            // Mark resources as loaded so we can show the enter button
+            setResourcesLoaded(true);
+        } catch (e) {
+            console.error("Error checking token or preloading resources", e);
+            setHasToken(false);
+            setResourcesLoaded(true); // Still allow showing the enter button
+        }
+    };
+
     // --- Initialization Effects ---
     const loadData = async () => {
         setIsLoadingPosts(true);
         setIsRateLimited(false);
 
         try {
-            // Fetch User
-            const profile = await fetchUserProfile();
-            if (profile) setUserProfile(profile);
-
             // Fetch Blog Directory & Index
             const {tree, allFiles, error} = await fetchBlogIndex();
 
@@ -647,7 +717,8 @@ const App: React.FC = () => {
     };
 
     useEffect(() => {
-        loadData();
+        // Check token and preload resources
+        checkTokenAndLoadResources();
     }, []);
 
     const handleRefresh = async () => {
@@ -676,17 +747,35 @@ const App: React.FC = () => {
         // 开始淡出动画
         setWelcomeFading(true);
 
-        // 等待过渡动画完成后再隐藏
+        // 等待过渡动画完成后再隐藏加载指示器
         setTimeout(() => {
-            setShowWelcome(false);
-            setWelcomeFading(false);
+            setLoadingIndicatorVisible(false);
         }, WELCOME_TRANSITION_DURATION);
         // Music auto-play is now handled by MusicPlayer component
     };
 
+    // Load user profile on initial load (needed for all views)
     useEffect(() => {
-        window.scrollTo({top: 0, behavior: 'smooth'});
-    }, [currentView, selectedPost]);
+        const loadUserProfile = async () => {
+            if (hasToken !== null) { // Only proceed if token check is complete
+                try {
+                    const profile = await fetchUserProfile();
+                    if (profile) setUserProfile(profile);
+                } catch (e) {
+                    console.error("Error loading user profile", e);
+                }
+            }
+        };
+        loadUserProfile();
+    }, [hasToken]);
+
+    // Load blog data only when on the blog page (lazy loading)
+    useEffect(() => {
+        if (currentView === View.BLOG && blogDirectory.length === 0 && posts.length === 0) {
+            setIsLoadingPosts(true);
+            loadData();
+        }
+    }, [currentView]);
 
     const handleDirectorySelect = async (node: DirectoryNode) => {
         if (node.type !== 'file') return;
@@ -1132,12 +1221,11 @@ const App: React.FC = () => {
         <div className="min-h-screen selection:text-black font-sans relative theme-text-secondary selection-accent">
 
             {/* 欢迎遮罩层 */}
-            {showWelcome && (
+                                    {showWelcome && loadingIndicatorVisible && (
                 <div
                     className={`fixed inset-0 z-50 welcome-bg flex flex-col items-center justify-center
                                 transition-opacity ease-out theme-bg-primary ${welcomeFading ? 'opacity-0' : 'opacity-100'}`}
-                    style={{transitionDuration: `${WELCOME_TRANSITION_DURATION}ms`}}
-                >
+                    style={{transitionDuration: `${WELCOME_TRANSITION_DURATION}ms`}}>
                     <HexagramIcon
                         size={80}
                         className={`mb-8 animate-pulse transition-all duration-500
@@ -1151,18 +1239,52 @@ const App: React.FC = () => {
                                   ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
                         点击进入魔法世界
                     </p>
-                    <button
-                        onClick={handleEnterSite}
-                        className={`px-8 py-3 text-white rounded-full 
-           font-bold shadow-[0_0_30px_rgba(222,185,154,0.4)]
-           transition-all duration-300 flex items-center gap-2
-           relative before:absolute before:inset-0 before:rounded-full
-           before:border-2 before:border-white/10 before:pointer-events-none
-           hover:scale-105 hover:before:border-white/20 welcome-enter-btn
-           ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}
-                    >
-                        <Music size={20}/> 进入
-                    </button>
+                    {!resourcesLoaded && (
+                        <div className="w-64 max-w-[80%] transition-opacity duration-300">
+                            <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden mb-4">
+                                <div className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 rounded-full transition-all duration-1000 ease-out animate-loading-bar" style={{ width: '0%' }}>
+                                    <div className="h-full w-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 animate-pulse"></div>
+                                </div>
+                            </div>
+                            <div className="text-center text-sm theme-text-secondary relative h-6 transition-opacity duration-500">
+                                {loadingTips.map((tip, index) => (
+                                    <p
+                                        key={index}
+                                        className={`tip-text absolute inset-0 transition-opacity duration-500 ease-in-out ${currentTipIndex === index ? 'opacity-100' : 'opacity-0'}`}
+                                    >
+                                        {tip}
+                                    </p>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {resourcesLoaded && !welcomeFading && (
+                        <div className="opacity-100 transition-all duration-700 delay-300" style={{ transitionProperty: 'opacity, transform' }}>
+                            <button
+                                onClick={handleEnterSite}
+                                className={`px-8 py-3 text-white rounded-full 
+                   font-bold shadow-[0_0_30px_rgba(222,185,154,0.4)]
+                   transition-all duration-500 ease-out flex items-center gap-2
+                   relative before:absolute before:inset-0 before:rounded-full
+                   before:border-2 before:border-white/10 before:pointer-events-none
+                   hover:scale-105 hover:before:border-white/20 welcome-enter-btn
+                   translate-y-0 opacity-100 animate-fade-in-up`}
+                            >
+                                <Music size={20}/> 进入
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+            {/* Loading indicator exit animation */}
+            {welcomeFading && (
+                <div
+                    className={`fixed inset-0 z-50 welcome-bg flex flex-col items-center justify-center
+                                transition-opacity ease-out theme-bg-primary opacity-0`}
+                    style={{transitionDuration: `${WELCOME_TRANSITION_DURATION}ms`}}
+                    onTransitionEnd={() => setLoadingIndicatorVisible(false)}
+                >
+                    {/* 这个 div 仅用于触发过渡动画，实际内容已经淡出 */}
                 </div>
             )}
 
