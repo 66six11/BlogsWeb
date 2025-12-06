@@ -61,7 +61,7 @@ export default {
   corePlugins: {
     // Disable Tailwind's Preflight CSS reset to preserve existing custom styles
     // This prevents Tailwind from overriding custom border-radius, margins, padding, sizes, etc.
-    // defined in /public/styles/theme.css and other custom stylesheets
+    // defined in custom stylesheets (e.g., public/styles/theme.css)
     preflight: false,
   },
   plugins: [],
