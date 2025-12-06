@@ -1,4 +1,6 @@
-/* @tailwind base includes essential Tailwind CSS foundations but Preflight is disabled via config */
+/* @tailwind base provides CSS custom properties (--tw-translate-x, --tw-scale-x, etc.) 
+   and variable definitions needed for utility classes to work. Preflight CSS reset 
+   is disabled via corePlugins.preflight = false in tailwind.config.js */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
