@@ -58,6 +58,9 @@ export default {
       }
     }
   },
+  corePlugins: {
+    preflight: false, // Disable Tailwind's CSS reset to preserve custom styles
+  },
   plugins: [],
 }
 
