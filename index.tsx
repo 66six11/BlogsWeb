@@ -17,6 +17,13 @@ import Scene3D from './components/Scene3D';
 import MusicPlayer from './components/MusicPlayer';
 import ThemeToggle from './components/ThemeToggle';
 import {CustomSparkleIcon, CustomWitchIcon, HexagramIcon} from './components/CustomIcons';
+import LoadingScreen from './components/LoadingScreen';
+import Navigation from './components/Navigation';
+import Footer from './components/Footer';
+import TextParticleSystem from './components/TextParticleSystem';
+import AboutPage from './pages/AboutPage';
+import BlogPage from './pages/BlogPage';
+import ProjectsPage from './pages/ProjectsPage';
 
 import {
     fetchBlogPosts,
@@ -589,6 +596,8 @@ const App: React.FC = () => {
     const [resourcesLoaded, setResourcesLoaded] = useState(false); // Track if resources are loaded
     const [loadingIndicatorVisible, setLoadingIndicatorVisible] = useState(true); // Control loading indicator visibility
     const [currentTipIndex, setCurrentTipIndex] = useState(0); // Track current tip index
+    const [showTextParticles, setShowTextParticles] = useState(false); // Control text particle system visibility
+    const [textParticlesComplete, setTextParticlesComplete] = useState(false); // Track if text formation is complete
 
     // Data State
     const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -605,14 +614,15 @@ const App: React.FC = () => {
     // Video Ref
     const videoRef = useRef<HTMLVideoElement>(null);
 
-    // Loading tips array
+    // Loading tips array - 轮换语句
     const loadingTips = [
-        "正在加载资源...",
-        "预加载头像和背景...",
-        "准备音频资源...",
-        "魔法世界即将呈现...",
-        "初始化渲染引擎...",
-        "准备进入魔法世界..."
+        "Loading...",
+        "正在施展渲染魔法...",
+        "初始化粒子系统...",
+        "准备音频可视化...",
+        "加载3D场景...",
+        "构建魔法世界...",
+        "准备进入次元..."
     ];
 
     //轮播提示文本
@@ -747,11 +757,22 @@ const App: React.FC = () => {
         // 开始淡出动画
         setWelcomeFading(true);
 
+        // 显示文字粒子系统
+        setTimeout(() => {
+            setShowTextParticles(true);
+        }, WELCOME_TRANSITION_DURATION / 2);
+
         // 等待过渡动画完成后再隐藏加载指示器
         setTimeout(() => {
             setLoadingIndicatorVisible(false);
         }, WELCOME_TRANSITION_DURATION);
         // Music auto-play is now handled by MusicPlayer component
+    };
+
+    // 处理文字粒子聚拢完成
+    const handleTextParticlesComplete = () => {
+        setTextParticlesComplete(true);
+        // 可以在这里添加其他完成后的逻辑
     };
 
     // Load user profile on initial load (needed for all views)
@@ -1221,61 +1242,14 @@ const App: React.FC = () => {
         <div className="min-h-screen selection:text-black font-sans relative theme-text-secondary selection-accent">
 
             {/* 欢迎遮罩层 */}
-                                    {showWelcome && loadingIndicatorVisible && (
-                <div
-                    className={`fixed inset-0 z-50 welcome-bg flex flex-col items-center justify-center
-                                transition-opacity ease-out theme-bg-primary ${welcomeFading ? 'opacity-0' : 'opacity-100'}`}
-                    style={{transitionDuration: `${WELCOME_TRANSITION_DURATION}ms`}}>
-                    <HexagramIcon
-                        size={80}
-                        className={`mb-8 animate-pulse transition-all duration-500
-                                    ${welcomeFading ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`}
-                    />
-                    <h1 className={`text-4xl font-serif font-bold mb-4 transition-all duration-500 theme-text-primary
-                                   ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                        {APP_TITLE}
-                    </h1>
-                    <p className={`mb-8 transition-all duration-500 delay-75 theme-text-secondary
-                                  ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                        点击进入魔法世界
-                    </p>
-                    {!resourcesLoaded && (
-                        <div className="w-64 max-w-[80%] transition-opacity duration-300">
-                            <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden mb-4">
-                                <div className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 rounded-full transition-all duration-1000 ease-out animate-loading-bar" style={{ width: '0%' }}>
-                                    <div className="h-full w-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 animate-pulse"></div>
-                                </div>
-                            </div>
-                            <div className="text-center text-sm theme-text-secondary relative h-6 transition-opacity duration-500">
-                                {loadingTips.map((tip, index) => (
-                                    <p
-                                        key={index}
-                                        className={`tip-text absolute inset-0 transition-opacity duration-500 ease-in-out ${currentTipIndex === index ? 'opacity-100' : 'opacity-0'}`}
-                                    >
-                                        {tip}
-                                    </p>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    {resourcesLoaded && !welcomeFading && (
-                        <div className="opacity-100 transition-all duration-700 delay-300" style={{ transitionProperty: 'opacity, transform' }}>
-                            <button
-                                onClick={handleEnterSite}
-                                className={`px-8 py-3 text-white rounded-full 
-                   font-bold shadow-[0_0_30px_rgba(222,185,154,0.4)]
-                   transition-all duration-500 ease-out flex items-center gap-2
-                   relative before:absolute before:inset-0 before:rounded-full
-                   before:border-2 before:border-white/10 before:pointer-events-none
-                   hover:scale-105 hover:before:border-white/20 welcome-enter-btn
-                   translate-y-0 opacity-100 animate-fade-in-up`}
-                            >
-                                <Music size={20}/> 进入
-                            </button>
-                        </div>
-                    )}
-                </div>
-            )}
+                                    <LoadingScreen
+                isVisible={showWelcome && loadingIndicatorVisible}
+                currentTipIndex={currentTipIndex}
+                loadingTips={loadingTips}
+                resourcesLoaded={resourcesLoaded}
+                welcomeFading={welcomeFading}
+                onEnter={handleEnterSite}
+            />
             {/* Loading indicator exit animation */}
             {welcomeFading && (
                 <div
@@ -1316,6 +1290,14 @@ const App: React.FC = () => {
             <div className="fixed inset-0 z-10 pointer-events-none">
                 <Scene3D analyser={musicAnalyser || undefined}/>
             </div>
+
+            {/* 2.5. Text Particle System */}
+            <TextParticleSystem
+                text="MagicDev"
+                isVisible={showTextParticles}
+                analyser={musicAnalyser || undefined}
+                onComplete={handleTextParticlesComplete}
+            />
 
             {/* 3. Dark Overlay (Top of Backgrounds) - Hidden on Home */}
             <div className={`fixed inset-0 z-20 pointer-events-none transition-colors duration-1000 ${
