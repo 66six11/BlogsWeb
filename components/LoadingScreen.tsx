@@ -36,8 +36,8 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
             {/* 轮换语句加载动画 - 魔法DEV标题 */}
             <div className={`mb-8 transition-all duration-500
                 ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                <div className="loader">
-                    <span className="theme-text-accent1">
+                <div className="loading-text-container">
+                    <span className="theme-text-accent1 loading-text">
                         {loadingTips[currentTipIndex]}
                     </span>
                 </div>
