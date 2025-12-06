@@ -147,19 +147,8 @@
 </script>
 </head>
   <body>
-    <div id="loading-text">正在施展渲染魔法...</div>
     <div id="root"></div>
     <!-- CRITICAL: Entry point script is required for the app to run -->
-    <script type="module" src="./index.tsx"></script>
-    <script>
-        // Remove loading text when app mounts
-        const observer = new MutationObserver((mutations) => {
-            if (document.getElementById('root').children.length > 0) {
-                const loader = document.getElementById('loading-text');
-                if(loader) loader.style.opacity = '0';
-            }
-        });
-        observer.observe(document.getElementById('root'), { childList: true });
-    </script>
+    <script type="module" src="./src/index.tsx"></script>
   </body>
 </html>
