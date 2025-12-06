@@ -1,3 +1,27 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Loader styles */
+.loader {
+  --w: 10ch;
+  font-weight: bold;
+  font-family: monospace;
+  font-size: 30px;
+  letter-spacing: var(--w);
+  width: var(--w);
+  overflow: hidden;
+  white-space: nowrap;
+  color: #0000;
+  animation: loader 2s infinite;
+}
+
+.loader::before {
+  content: "Loading...";
+}
+
+@media (max-width: 640px) {
+  .loader {
+    font-size: 20px;
+  }
+}
