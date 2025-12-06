@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {createRoot} from 'react-dom/client';
-import {View, BlogPost, DirectoryNode} from './types';
+import {View, BlogPost, DirectoryNode, GitHubUser} from './types';
 import {
     APP_TITLE,
     AUTHOR_NAME,
@@ -30,8 +30,7 @@ import {
     fetchUserProfile,
     fetchBlogIndex,
     fetchPostContent,
-    clearBlogCache,
-    GitHubUser
+    clearBlogCache
 } from './services/githubService';
 import {
     Book, Code, Music, User, Home, Feather,

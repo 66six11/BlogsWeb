@@ -1,5 +1,5 @@
 
-import { BlogPost, DirectoryNode } from '../types';
+import { BlogPost, DirectoryNode, GitHubUser } from '../types';
 import { GITHUB_USERNAME, GITHUB_REPO } from '../constants';
 import { BLOG_INCLUDED_FOLDERS, EXCLUDED_PATHS, EXCLUDED_FILES } from '../config';
 
@@ -44,14 +44,6 @@ const setCache = (key: string, data: any) => {
         data
     }));
 };
-
-export interface GitHubUser {
-  login: string;
-  avatar_url: string;
-  bio: string;
-  name: string;
-  html_url: string;
-}
 
 export const fetchUserProfile = async (): Promise<GitHubUser | null> => {
   if (!GITHUB_USERNAME) return null;
@@ -276,7 +268,12 @@ export const fetchPostContent = async (path: string): Promise<BlogPost | null> =
              tags: metadata.tags || [],
              excerpt: metadata.excerpt || body.substring(0, 100) + '...',
              content: body,
-             path: path
+             path: path,
+             slug: metadata.slug || path.replace('.md', '').replace(/\//g, '-'),
+             cover_image: metadata.cover_image,
+             published_at: metadata.published_at || gitDate,
+             updated_at: metadata.updated_at,
+             author: metadata.author
          };
 
          setCache(cacheKey, post);

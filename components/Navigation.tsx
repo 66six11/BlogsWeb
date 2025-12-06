@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Book, Code, User } from 'lucide-react';
+import { Home, Book, Code, User, Music } from 'lucide-react';
 import { HexagramIcon } from '../components/CustomIcons';
 import { View } from '../types';
 
@@ -11,8 +11,9 @@ interface NavigationProps {
 const Navigation: React.FC<NavigationProps> = ({ currentView, onViewChange }) => {
     const navItems = [
         { id: View.HOME, label: '首页', icon: Home },
-        { id: View.BLOG, label: '博客', icon: Book },
-        { id: View.PROJECTS, label: '项目', icon: Code },
+        { id: View.BLOG, label: '魔法书', icon: Book },
+        { id: View.PORTFOLIO, label: '作品', icon: Code },
+        { id: View.MUSIC, label: '旋律', icon: Music },
         { id: View.ABOUT, label: '关于', icon: User },
     ];
 
