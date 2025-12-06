@@ -108,7 +108,7 @@ export function generateScatterPositions(
   for (let i = 0; i < count; i++) {
     const x = (Math.random() - 0.5) * spread;
     const y = (Math.random() - 0.5) * spread;
-    const z = (Math.random() - 0.5) * spread;
+    // Note: z is handled separately in the 3D scene, not stored in ParticlePosition
     
     positions.push({
       x,

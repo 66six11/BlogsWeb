@@ -307,8 +307,12 @@ const Scene3D: React.FC<Scene3DProps> = ({
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (mountRef.current && renderer.domElement.parentNode === mountRef.current) {
-        mountRef.current.removeChild(renderer.domElement);
+      try {
+        if (mountRef.current && mountRef.current.contains(renderer.domElement)) {
+          mountRef.current.removeChild(renderer.domElement);
+        }
+      } catch (e) {
+        console.warn('Failed to remove renderer element:', e);
       }
       renderer.dispose();
       particlesGeometry.dispose();
