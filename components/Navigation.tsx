@@ -1,5 +1,6 @@
 import React from 'react';
-import { Home, Book, Code, User, HexagramIcon } from '../components/CustomIcons';
+import { Home, Book, Code, User } from 'lucide-react';
+import { HexagramIcon } from '../components/CustomIcons';
 import { View } from '../types';
 
 interface NavigationProps {
