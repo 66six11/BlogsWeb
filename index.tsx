@@ -13,7 +13,7 @@ import {
 import {SITE_CONFIG, MEDIA_CONFIG} from './config';
 import PianoEditor from './components/PianoEditor';
 import MagicChat from './components/MagicChat';
-import Scene3D from './components/Scene3D';
+import Scene3D, { type ParticleState } from './components/Scene3D';
 import MusicPlayer from './components/MusicPlayer';
 import ThemeToggle from './components/ThemeToggle';
 import Loader from './components/Loader';
@@ -589,6 +589,7 @@ const App: React.FC = () => {
     const [hasToken, setHasToken] = useState<boolean | null>(null); // null = checking, true/false = result
     const [resourcesLoaded, setResourcesLoaded] = useState(false); // Track if resources are loaded
     const [loadingIndicatorVisible, setLoadingIndicatorVisible] = useState(true); // Control loading indicator visibility
+    const [particleState, setParticleState] = useState<ParticleState>('ambient'); // Particle animation state
 
     // Data State
     const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -700,6 +701,19 @@ const App: React.FC = () => {
         checkTokenAndLoadResources();
     }, []);
 
+    // Trigger particle forming when resources are loaded
+    useEffect(() => {
+        if (resourcesLoaded && showWelcome) {
+            // Start forming particles into title text
+            setParticleState('forming');
+        }
+    }, [resourcesLoaded, showWelcome]);
+
+    // Callback when particle forming animation completes
+    const handleFormingComplete = useCallback(() => {
+        setParticleState('formed');
+    }, []);
+
     const handleRefresh = async () => {
         clearBlogCache();
         setBlogDirectory([]);
@@ -723,13 +737,20 @@ const App: React.FC = () => {
     }, []);
 
     const handleEnterSite = () => {
-        // 开始淡出动画
-        setWelcomeFading(true);
+        // Scatter particles first
+        setParticleState('scattering');
 
-        // 等待过渡动画完成后再隐藏加载指示器
+        // Start fade out animation after brief delay
+        setTimeout(() => {
+            setWelcomeFading(true);
+        }, 300);
+
+        // Hide loading indicator after transition
         setTimeout(() => {
             setLoadingIndicatorVisible(false);
-        }, WELCOME_TRANSITION_DURATION);
+            // Return particles to ambient state
+            setParticleState('ambient');
+        }, WELCOME_TRANSITION_DURATION + 300);
         // Music auto-play is now handled by MusicPlayer component
     };
 
@@ -1277,7 +1298,12 @@ const App: React.FC = () => {
 
             {/* 2. 3D Particles Layer (Middle) */}
             <div className="fixed inset-0 z-10 pointer-events-none">
-                <Scene3D analyser={musicAnalyser || undefined}/>
+                <Scene3D 
+                    analyser={musicAnalyser || undefined}
+                    particleState={particleState}
+                    titleText={APP_TITLE}
+                    onFormingComplete={handleFormingComplete}
+                />
             </div>
 
             {/* 3. Dark Overlay (Top of Backgrounds) - Hidden on Home */}
