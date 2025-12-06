@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.iflow
+/.iflow/
+.bmad-core
+web-bundles
