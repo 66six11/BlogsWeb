@@ -102,6 +102,12 @@ export function generateScatterParticles(
   count: number = 50,
   radius: number = 2
 ): ParticlePosition[] {
+  // Safety check for empty base positions
+  if (basePositions.length === 0) {
+    console.warn('generateScatterParticles: basePositions is empty, returning empty array');
+    return [];
+  }
+
   const scatterParticles: ParticlePosition[] = [];
 
   for (let i = 0; i < count; i++) {
