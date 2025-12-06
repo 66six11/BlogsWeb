@@ -41,7 +41,6 @@ export default {
         'fade-in-up': 'fadeInUp 0.5s ease-out',
         'spin-slow': 'spin 12s linear infinite',
         'loading-bar': 'loadingBar 1.5s ease-in-out infinite alternate',
-        'loader': 'loader 2s infinite',
       },
       keyframes: {
         float: {
@@ -56,41 +55,6 @@ export default {
           '0%': { width: '30%' },
           '100%': { width: '100%' },
         },
-        loader: {
-          '0%, 100%': {
-            textShadow: '0 0 #000, -10ch 0 #000, -20ch 0 #000, -30ch 0 #000, -40ch 0 #000, -50ch 0 #000, -60ch 0 #000, -70ch 0 #000, -80ch 0 #000, -90ch 0 #000'
-          },
-          '9%': {
-            textShadow: '0 0 #000, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch 0 #000, -50ch 0 #000, -60ch 0 #000, -70ch 0 #000, -80ch 0 #000, -90ch 0 #000'
-          },
-          '18%': {
-            textShadow: '0 0 #000, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch 0 #000, -50ch 0 #000, -60ch -20px transparent, -70ch 0 #000, -80ch 0 #000, -90ch 0 #000'
-          },
-          '27%': {
-            textShadow: '0 -20px transparent, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch 0 #000, -50ch 0 #000, -60ch -20px transparent, -70ch 0 #000, -80ch 0 #000, -90ch 0 #000'
-          },
-          '36%': {
-            textShadow: '0 -20px transparent, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch 0 #000, -50ch -20px transparent, -60ch -20px transparent, -70ch 0 #000, -80ch 0 #000, -90ch 0 #000'
-          },
-          '45%': {
-            textShadow: '0 -20px transparent, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch 0 #000, -50ch -20px transparent, -60ch -20px transparent, -70ch 0 #000, -80ch -20px transparent, -90ch 0 #000'
-          },
-          '54%': {
-            textShadow: '0 -20px transparent, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch -20px transparent, -50ch -20px transparent, -60ch -20px transparent, -70ch 0 #000, -80ch -20px transparent, -90ch 0 #000'
-          },
-          '63%': {
-            textShadow: '0 -20px transparent, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch -20px transparent, -50ch -20px transparent, -60ch -20px transparent, -70ch 0 #000, -80ch -20px transparent, -90ch -20px transparent'
-          },
-          '72%': {
-            textShadow: '0 -20px transparent, -10ch -20px transparent, -20ch -20px transparent, -30ch 0 #000, -40ch -20px transparent, -50ch -20px transparent, -60ch -20px transparent, -70ch 0 #000, -80ch -20px transparent, -90ch -20px transparent'
-          },
-          '81%': {
-            textShadow: '0 -20px transparent, -10ch -20px transparent, -20ch -20px transparent, -30ch 0 #000, -40ch -20px transparent, -50ch -20px transparent, -60ch -20px transparent, -70ch -20px transparent, -80ch -20px transparent, -90ch -20px transparent'
-          },
-          '90%': {
-            textShadow: '0 -20px transparent, -10ch -20px transparent, -20ch -20px transparent, -30ch -20px transparent, -40ch -20px transparent, -50ch -20px transparent, -60ch -20px transparent, -70ch -20px transparent, -80ch -20px transparent, -90ch -20px transparent'
-          }
-        }
       }
     }
   },

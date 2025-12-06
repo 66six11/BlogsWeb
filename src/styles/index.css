@@ -25,3 +25,39 @@
     font-size: 20px;
   }
 }
+
+@keyframes loader {
+  0%, 100% {
+    text-shadow: 0 0 #000, -10ch 0 #000, -20ch 0 #000, -30ch 0 #000, -40ch 0 #000, -50ch 0 #000, -60ch 0 #000, -70ch 0 #000, -80ch 0 #000, -90ch 0 #000;
+  }
+  9% {
+    text-shadow: 0 0 #000, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch 0 #000, -50ch 0 #000, -60ch 0 #000, -70ch 0 #000, -80ch 0 #000, -90ch 0 #000;
+  }
+  18% {
+    text-shadow: 0 0 #000, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch 0 #000, -50ch 0 #000, -60ch -20px transparent, -70ch 0 #000, -80ch 0 #000, -90ch 0 #000;
+  }
+  27% {
+    text-shadow: 0 -20px transparent, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch 0 #000, -50ch 0 #000, -60ch -20px transparent, -70ch 0 #000, -80ch 0 #000, -90ch 0 #000;
+  }
+  36% {
+    text-shadow: 0 -20px transparent, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch 0 #000, -50ch -20px transparent, -60ch -20px transparent, -70ch 0 #000, -80ch 0 #000, -90ch 0 #000;
+  }
+  45% {
+    text-shadow: 0 -20px transparent, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch 0 #000, -50ch -20px transparent, -60ch -20px transparent, -70ch 0 #000, -80ch -20px transparent, -90ch 0 #000;
+  }
+  54% {
+    text-shadow: 0 -20px transparent, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch -20px transparent, -50ch -20px transparent, -60ch -20px transparent, -70ch 0 #000, -80ch -20px transparent, -90ch 0 #000;
+  }
+  63% {
+    text-shadow: 0 -20px transparent, -10ch 0 #000, -20ch -20px transparent, -30ch 0 #000, -40ch -20px transparent, -50ch -20px transparent, -60ch -20px transparent, -70ch 0 #000, -80ch -20px transparent, -90ch -20px transparent;
+  }
+  72% {
+    text-shadow: 0 -20px transparent, -10ch -20px transparent, -20ch -20px transparent, -30ch 0 #000, -40ch -20px transparent, -50ch -20px transparent, -60ch -20px transparent, -70ch 0 #000, -80ch -20px transparent, -90ch -20px transparent;
+  }
+  81% {
+    text-shadow: 0 -20px transparent, -10ch -20px transparent, -20ch -20px transparent, -30ch 0 #000, -40ch -20px transparent, -50ch -20px transparent, -60ch -20px transparent, -70ch -20px transparent, -80ch -20px transparent, -90ch -20px transparent;
+  }
+  90% {
+    text-shadow: 0 -20px transparent, -10ch -20px transparent, -20ch -20px transparent, -30ch -20px transparent, -40ch -20px transparent, -50ch -20px transparent, -60ch -20px transparent, -70ch -20px transparent, -80ch -20px transparent, -90ch -20px transparent;
+  }
+}
