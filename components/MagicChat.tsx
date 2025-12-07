@@ -12,7 +12,20 @@ const MagicChat: React.FC = () => {
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [sessionId, setSessionId] = useState<string>('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // 生成或获取会话ID
+    useEffect(() => {
+        const storedSessionId = localStorage.getItem('magicChatSessionId');
+        if (storedSessionId) {
+            setSessionId(storedSessionId);
+        } else {
+            const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            localStorage.setItem('magicChatSessionId', newSessionId);
+            setSessionId(newSessionId);
+        }
+    }, []);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({behavior: "smooth"});
@@ -31,7 +44,7 @@ const MagicChat: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const responseText = await sendMessageToGemini(input);
+            const responseText = await sendMessageToGemini(input, sessionId);
             const botMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'model',

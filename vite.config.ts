@@ -89,6 +89,21 @@ export default defineConfig(({mode}) => {
                         });
                     },
                 },
+                // Gemini API 代理配置
+                '/api/gemini': {
+                    target: 'http://localhost:3000',
+                    changeOrigin: true,
+                    // 对于本地开发，我们需要一个后端服务器来处理Gemini请求
+                    // 这里我们配置Vite将请求转发到同一个端口的API路由
+                    // 实际部署时，Vercel会处理这些路由
+                    configure: (proxy, options) => {
+                        // 在本地开发时，我们需要启动一个后端服务器
+                        // 或者使用Vercel dev模式
+                        proxy.on('error', (err, req, res) => {
+                            console.error('Gemini API proxy error:', err);
+                        });
+                    },
+                },
             }
         },
         plugins: [react(), tailwindcss()],
