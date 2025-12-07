@@ -34,40 +34,8 @@
     background-color: var(--bg-primary) !important;
 }
 
-/* Default nav and footer styles (when no theme class) */
-:root nav,
-:root .nav-bar {
-    background-color: rgba(var(--bg-secondary-rgb), 0.6) !important;
-    border-color: var(--bg-tertiary) !important;
-}
-
-:root footer {
-    background-color: var(--bg-primary) !important;
-}
-
-/* Theme-aware component overrides */
-:root.light .nav-bar,
-:root.light nav {
-    background-color: rgba(247, 248, 243, 0.6) !important;
-    border-color: var(--bg-tertiary) !important;
-}
-
-:root.light .nav-bar *,
-:root.light nav span,
-:root.light nav button {
-    color: var(--text-primary) !important;
-}
-
-:root.light .card,
-:root.light .bg-slate-900\/60,
-:root.light .bg-slate-900\/80 {
-    background-color: rgba(235, 236, 242, 0.3) !important;
-}
-
-:root.light .welcome-bg {
-    background-color: rgba(235, 236, 242, 1) !important;
-}
-
+/* Theme-aware Tailwind class overrides to use CSS variables */
+/* These ensure Tailwind's default classes adapt to the current theme */
 :root.light .text-slate-100,
 :root.light .text-slate-200,
 :root.light .text-white {
@@ -86,29 +54,14 @@
     border-color: var(--bg-tertiary) !important;
 }
 
-:root.light footer {
-    background-color: rgba(227, 216, 216, 0.95) !important;
+:root.light .bg-slate-900\/60,
+:root.light .bg-slate-900\/80 {
+    background-color: rgba(var(--bg-secondary-rgb), 0.3) !important;
 }
 
-:root.dark .nav-bar,
-:root.dark nav {
-    background-color: rgba(59, 52, 66, 0.6) !important;
-}
-
-:root.dark .nav-bar *,
-:root.dark nav span,
-:root.dark nav button {
-    color: var(--text-primary) !important;
-}
-
-:root.dark .card,
 :root.dark .bg-slate-900\/60,
 :root.dark .bg-slate-900\/80 {
-    background-color: rgba(77, 70, 88, 0.6) !important;
-}
-
-:root.dark footer {
-    background-color: rgba(59, 52, 66, 0.95) !important;
+    background-color: rgba(var(--bg-secondary-rgb), 0.6) !important;
 }
 
 /* Accent color styling */
