@@ -75,7 +75,7 @@
     /* RGB versions for rgba() usage */
     --bg-primary-rgb: 59, 52, 66;
     --bg-secondary-rgb: 77, 70, 88;
-    --bg-tertiary-rgb: 59, 52, 66;
+    --bg-tertiary-rgb: 137, 123, 140;
     --accent-1-rgb: 222, 185, 154;
     --accent-3-rgb: 124, 133, 235;
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.5);
