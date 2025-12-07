@@ -1,6 +1,7 @@
 import './src/styles/index.css'; // 导入Tailwind CSS和自定义样式
 import React, {useState, useEffect, useRef, useCallback, StrictMode} from 'react';
 import {View, BlogPost, DirectoryNode, GitHubUser} from './types';
+// 导入 safelist 以确保关键 Tailwind 类被包含
 import {
     APP_TITLE,
     AUTHOR_NAME,
@@ -21,6 +22,7 @@ import LoadingScreen from './components/LoadingScreen';
 import Navigation from './components/Navigation';
 import Footer from './components/Footer';
 import TextParticleSystem from './components/TextParticleSystem';
+import MarkdownRenderer from './components/MarkdownRenderer';
 import AboutPage from './pages/AboutPage';
 import BlogPage from './pages/BlogPage';
 import ProjectsPage from './pages/ProjectsPage';
@@ -95,453 +97,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     }
 }
 
-// --- Robust Markdown Renderer ---
-const SimpleMarkdown: React.FC<{ content: string }> = ({content}) => {
-
-    const renderMath = (latex: string, isDisplay: boolean) => {
-        if (!window.katex) return <span className="font-mono text-xs text-amber-300">{latex}</span>;
-        try {
-            const html = window.katex.renderToString(latex, {
-                displayMode: isDisplay,
-                throwOnError: false
-            });
-            return <span dangerouslySetInnerHTML={{__html: html}}/>;
-        } catch (e) {
-            return <span className="text-red-400 font-mono text-xs">{latex}</span>;
-        }
-    };
-
-    const getCalloutStyles = (type: string) => {
-        const t = type.toLowerCase();
-        switch (t) {
-            case 'note':
-            case 'info':
-            case 'todo':
-                return {
-                    color: 'border-blue-500 bg-blue-500/10 text-blue-200',
-                    icon: <Info size={18} className="text-blue-400"/>
-                };
-            case 'tip':
-            case 'done':
-            case 'success':
-                return {
-                    color: 'border-emerald-500 bg-emerald-500/10 text-emerald-200',
-                    icon: <CheckCircle size={18} className="text-emerald-400"/>
-                };
-            case 'warning':
-            case 'attention':
-            case 'caution':
-                return {
-                    color: 'border-orange-500 bg-orange-500/10 text-orange-200',
-                    icon: <AlertTriangle size={18} className="text-orange-400"/>
-                };
-            case 'fail':
-            case 'failure':
-            case 'error':
-            case 'danger':
-            case 'missing':
-                return {
-                    color: 'border-red-500 bg-red-500/10 text-red-200',
-                    icon: <XCircle size={18} className="text-red-400"/>
-                };
-            case 'bug':
-                return {
-                    color: 'border-red-500 bg-red-500/10 text-red-200',
-                    icon: <Bug size={18} className="text-red-400"/>
-                };
-            case 'question':
-            case 'help':
-            case 'faq':
-                return {
-                    color: 'border-amber-500 bg-amber-500/10 text-amber-200',
-                    icon: <HelpCircle size={18} className="text-amber-400"/>
-                };
-            case 'example':
-                return {
-                    color: 'border-purple-500 bg-purple-500/10 text-purple-200',
-                    icon: <List size={18} className="text-purple-400"/>
-                };
-            case 'quote':
-            case 'cite':
-                return {
-                    color: 'border-slate-500 bg-slate-500/10 text-slate-300',
-                    icon: <Quote size={18} className="text-slate-400"/>
-                };
-            case 'summary':
-            case 'abstract':
-                return {
-                    color: 'border-cyan-500 bg-cyan-500/10 text-cyan-200',
-                    icon: <Clipboard size={18} className="text-cyan-400"/>
-                };
-            default:
-                return {
-                    color: 'border-slate-600 bg-slate-800/50 text-slate-300',
-                    icon: <FileText size={18} className="text-slate-400"/>
-                };
-        }
-    };
-
-    const parseInline = (text: string) => {
-        // 1. Inline Math $...$
-        const parts = text.split(/(\$[^$\n]+?\$)/g);
-
-        return parts.map((part, index) => {
-            if (part.startsWith('$') && part.endsWith('$')) {
-                return <span key={index} className="mx-1">{renderMath(part.slice(1, -1), false)}</span>;
-            }
-
-            // 2. Bold **...**
-            const boldParts = part.split(/(\*\*.*?\*\*)/g);
-            return (
-                <React.Fragment key={index}>
-                    {boldParts.map((bp, bIdx) => {
-                        if (bp.startsWith('**') && bp.endsWith('**')) {
-                            return <strong key={bIdx}
-                                           className="text-amber-200 font-semibold">{bp.slice(2, -2)}</strong>;
-                        }
-                        // 3. Italic *...*
-                        const italicParts = bp.split(/(\*.*?\*)/g);
-                        return (
-                            <React.Fragment key={bIdx}>
-                                {italicParts.map((ip, iIdx) => {
-                                    if (ip.startsWith('*') && ip.endsWith('*') && ip.length > 2) {
-                                        return <em key={iIdx} className="text-purple-200">{ip.slice(1, -1)}</em>;
-                                    }
-                                    return <span key={iIdx}>{ip}</span>;
-                                })}
-                            </React.Fragment>
-                        );
-                    })}
-                </React.Fragment>
-            );
-        });
-    };
-
-    const renderTable = (lines: string[], key: string) => {
-        if (lines.length < 2) return null;
-
-        const parseRow = (row: string) => {
-            let content = row.trim();
-            if (content.startsWith('|')) content = content.substring(1);
-            if (content.endsWith('|')) content = content.substring(0, content.length - 1);
-            return content.split('|').map(c => c.trim());
-        };
-
-        const headers = parseRow(lines[0]);
-        const bodyRows = lines.slice(2).map(parseRow);
-
-        return (
-            <div key={key} className="my-6 overflow-x-auto rounded-lg border border-slate-700 shadow-lg">
-                <table className="min-w-full divide-y divide-slate-700 bg-slate-900/50">
-                    <thead className="bg-slate-900">
-                    <tr>
-                        {headers.map((h, i) => (
-                            <th key={i}
-                                className="px-6 py-3 text-left text-xs font-bold text-amber-400 uppercase tracking-wider border-b border-slate-700">
-                                {parseInline(h)}
-                            </th>
-                        ))}
-                    </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800">
-                    {bodyRows.map((row, idx) => (
-                        <tr key={idx} className={idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-800/20'}>
-                            {row.map((cell, cIdx) => (
-                                <td key={cIdx}
-                                    className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 border-r border-slate-800/50 last:border-0">
-                                    {parseInline(cell)}
-                                </td>
-                            ))}
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            </div>
-        );
-    };
-
-    // Main Block Parser
-    const parseBlocks = () => {
-        // 1. Split by Code Blocks first (triple backticks)
-        const codeSplit = content.split(/(```[\s\S]*?```)/g);
-        const result: React.ReactNode[] = [];
-
-        codeSplit.forEach((section, secIdx) => {
-            if (section.startsWith('```')) {
-                // Render Code Block
-                const langMatch = section.match(/^```([a-z]*)\n/);
-                const lang = langMatch ? langMatch[1] : '';
-                const codeContent = section.replace(/^```[a-z]*\n/, '').replace(/```$/, '');
-                result.push(
-                    <div key={`code-${secIdx}`} className="relative group my-6">
-                        {lang && <span
-                            className="absolute right-2 top-2 text-xs text-slate-500 font-mono select-none">{lang}</span>}
-                        <pre
-                            className="bg-slate-950/80 border border-slate-700/50 p-4 rounded-lg overflow-x-auto text-sm font-mono text-purple-200 shadow-inner">
-                <code>{codeContent.trim()}</code>
-                </pre>
-                    </div>
-                );
-            } else {
-                // Render Standard Markdown Blocks
-                const lines = section.split('\n');
-                let i = 0;
-                while (i < lines.length) {
-                    const line = lines[i];
-                    const trimmed = line.trim();
-                    const key = `block-${secIdx}-${i}`;
-
-                    if (!trimmed) {
-                        result.push(<div key={key} className="h-4"/>);
-                        i++;
-                        continue;
-                    }
-
-                    // A. Block Math $$...$$
-                    if (trimmed.startsWith('$$')) {
-                        let mathContent = trimmed.replace('$$', '');
-                        let j = i;
-                        let foundEnd = false;
-
-                        if (trimmed.endsWith('$$') && trimmed.length > 2) {
-                            mathContent = trimmed.slice(2, -2);
-                            foundEnd = true;
-                        } else {
-                            // Search for end
-                            j++;
-                            while (j < lines.length) {
-                                const nextLine = lines[j];
-                                if (nextLine.trim().endsWith('$$')) {
-                                    mathContent += '\n' + nextLine.trim().replace('$$', '');
-                                    foundEnd = true;
-                                    break;
-                                }
-                                mathContent += '\n' + nextLine;
-                                j++;
-                            }
-                        }
-
-                        if (foundEnd) {
-                            result.push(
-                                <div key={key}
-                                     className="my-6 overflow-x-auto text-center py-2 bg-slate-950/30 rounded border border-white/5">
-                                    {renderMath(mathContent, true)}
-                                </div>
-                            );
-                            i = j + 1;
-                            continue;
-                        }
-                    }
-
-                    // B. Tables
-                    if (trimmed.startsWith('|')) {
-                        const nextLine = lines[i + 1]?.trim();
-                        if (nextLine && nextLine.startsWith('|') && /^[|\s-:]+$/.test(nextLine)) {
-                            // It is a table
-                            const tableLines = [line];
-                            tableLines.push(lines[i + 1]);
-                            let j = i + 2;
-                            while (j < lines.length && lines[j].trim().startsWith('|')) {
-                                tableLines.push(lines[j]);
-                                j++;
-                            }
-                            result.push(renderTable(tableLines, key));
-                            i = j;
-                            continue;
-                        }
-                    }
-
-                    // C. Headers
-                    const headerMatch = line.match(/^((#{1,6})\s+(.*))/);
-                    if (headerMatch) {
-                        const level = headerMatch[2].length;
-                        const text = headerMatch[3];
-                        const content = parseInline(text);
-
-                        switch (level) {
-                            case 1:
-                                result.push(<h1 key={key}
-                                                className="text-3xl font-serif font-bold text-slate-100 mt-8 mb-4 border-b border-amber-500/30 pb-2 flex items-center gap-2">
-                                    <CustomSparkleIcon size={28}/> {content}</h1>);
-                                break;
-                            case 2:
-                                result.push(<h2 key={key}
-                                                className="text-2xl font-serif font-bold text-slate-200 mt-6 mb-3 pl-3 border-l-4 border-purple-500">{content}</h2>);
-                                break;
-                            case 3:
-                                result.push(<h3 key={key}
-                                                className="text-xl font-bold text-purple-200 mt-5 mb-2">{content}</h3>);
-                                break;
-                            case 4:
-                                result.push(<h4 key={key}
-                                                className="text-lg font-bold text-amber-200/80 mt-4 mb-2 flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400"/>
-                                    {content}</h4>);
-                                break;
-                            default:
-                                result.push(<h5 key={key} className="font-bold text-slate-300 mt-3">{content}</h5>);
-                        }
-                        i++;
-                        continue;
-                    }
-
-                    // D. Obsidian Images ![[...]] - handle optional |size parameter
-                    if (trimmed.match(/!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/)) {
-                        const match = trimmed.match(/!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/);
-                        if (match) {
-                            const imageName = match[1];
-                            const encodedName = encodeURIComponent(imageName);
-                            // Use GitHub raw content
-                            const imageUrl = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/attachments/${encodedName}`;
-                            result.push(
-                                <div key={key} className="my-6 flex flex-col items-center">
-                                    <img
-                                        src={imageUrl}
-                                        alt={imageName}
-                                        className="max-w-full md:max-w-lg rounded-lg border border-white/10 shadow-lg opacity-100"
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).style.display = 'none';
-                                        }}
-                                    />
-                                    <span className="text-xs text-slate-500 mt-2 italic">{imageName}</span>
-                                </div>
-                            );
-                            i++;
-                            continue;
-                        }
-                    }
-
-                    // E. Standard Images ![...](...)  - handle optional |size in alt text
-                    // Obsidian size formats can be: |100, |100x200, |small, etc.
-                    const imgMatch = line.match(/^!\[(\|[^\]]*)?([^\]]*?)?\]\((.*?)\)/);
-                    if (imgMatch) {
-                        // imgMatch[1] is the optional size prefix (e.g., "|300", "|100x200", etc.)
-                        // imgMatch[2] is the actual alt text, imgMatch[3] is the URL
-                        const altText = imgMatch[2] || '';
-                        const imageUrl = imgMatch[3];
-                        result.push(
-                            <div key={key} className="my-6 flex flex-col items-center">
-                                <img src={imageUrl} alt={altText}
-                                     className="max-w-full rounded-lg border border-white/10 shadow-lg opacity-100"/>
-                                {altText &&
-                                    <span className="text-xs text-slate-500 mt-2 italic">{altText}</span>}
-                            </div>
-                        );
-                        i++;
-                        continue;
-                    }
-
-                    // F. Obsidian Callouts & Blockquotes
-                    if (line.startsWith('>')) {
-                        const quoteLines = [];
-                        let j = i;
-                        while (j < lines.length && (lines[j].trim().startsWith('>') || lines[j].trim() === '')) {
-                            if (lines[j].trim().startsWith('>')) {
-                                quoteLines.push(lines[j]);
-                            } else if (lines[j].trim() === '' && quoteLines.length > 0) {
-                                break;
-                            } else {
-                                break;
-                            }
-                            j++;
-                        }
-
-                        if (quoteLines.length > 0) {
-                            const firstLineContent = quoteLines[0].replace(/^>\s*/, '');
-                            const calloutMatch = firstLineContent.match(/^\[!(.*?)\]\s*(.*)/);
-
-                            if (calloutMatch) {
-                                const type = calloutMatch[1];
-                                const title = calloutMatch[2] || type.toUpperCase();
-                                const styles = getCalloutStyles(type);
-
-                                const bodyContent = quoteLines.slice(1).map(l => l.replace(/^>\s?/, '')).join('\n');
-
-                                result.push(
-                                    <div key={key}
-                                         className={`my-6 rounded-lg border-l-4 ${styles.color} p-4 shadow-sm`}>
-                                        <div className="flex items-center gap-2 font-bold mb-2">
-                                            {styles.icon}
-                                            <span>{title}</span>
-                                        </div>
-                                        <div className="text-sm opacity-90">
-                                            <SimpleMarkdown content={bodyContent}/>
-                                        </div>
-                                    </div>
-                                );
-                            } else {
-                                // Standard Blockquote
-                                const bodyContent = quoteLines.map(l => l.replace(/^>\s?/, '')).join('\n');
-                                result.push(
-                                    <div key={key}
-                                         className="border-l-4 border-amber-500/80 pl-4 py-2 my-4 italic text-slate-300 bg-amber-500/5 rounded-r">
-                                        <SimpleMarkdown content={bodyContent}/>
-                                    </div>
-                                );
-                            }
-                            i = j;
-                            continue;
-                        }
-                    }
-
-                    // G. Lists & Task Lists
-                    if (trimmed.match(/^(\*|-)\s/)) {
-                        const taskMatch = trimmed.match(/^(\*|-)\s+\[([ xX])\]\s+(.*)/);
-                        if (taskMatch) {
-                            const isChecked = taskMatch[2].toLowerCase() === 'x';
-                            const taskText = taskMatch[3];
-                            result.push(
-                                <div key={key} className="flex gap-3 ml-2 mb-1 items-start group">
-                                    <div
-                                        className="mt-1 flex-shrink-0 text-slate-400 group-hover:text-amber-400 transition-colors">
-                                        {isChecked ? <CheckSquare size={16} className="text-emerald-400"/> :
-                                            <Square size={16}/>}
-                                    </div>
-                                    <span
-                                        className={`leading-relaxed ${isChecked ? 'line-through text-slate-500' : 'text-slate-300'}`}>
-                                 {parseInline(taskText)}
-                             </span>
-                                </div>
-                            );
-                        } else {
-                            result.push(
-                                <div key={key} className="flex gap-2 ml-4 mb-1">
-                                    <span className="text-amber-400 mt-1.5 text-[10px] flex-shrink-0">●</span>
-                                    <span className="flex-1 leading-relaxed">{parseInline(trimmed.substring(2))}</span>
-                                </div>
-                            );
-                        }
-                        i++;
-                        continue;
-                    }
-
-                    // H. Horizontal Rule
-                    if (trimmed.match(/^---$/)) {
-                        result.push(<hr key={key} className="border-white/10 my-8"/>);
-                        i++;
-                        continue;
-                    }
-
-                    // I. Paragraph
-                    result.push(
-                        <p key={key} className="mb-3 text-slate-300 leading-relaxed">
-                            {parseInline(line)}
-                        </p>
-                    );
-                    i++;
-                }
-            }
-        });
-
-        return result;
-    };
-
-    return (
-        <div className="space-y-1 text-slate-200 leading-relaxed font-sans markdown-content">
-            {parseBlocks()}
-        </div>
-    );
-};
+// Markdown rendering is now handled by the MarkdownRenderer component
 
 // --- Tree Node Component ---
 const FileTreeNode: React.FC<{
@@ -823,7 +379,7 @@ const App: React.FC = () => {
 
     const renderNav = () => (
         <nav
-            className="nav-bar sticky top-0 z-40 w-full backdrop-blur-md border-b shadow-lg opacity-90 theme-bg-secondary theme-border-subtle">
+            className="nav-bar fixed top-0 left-0 right-0 z-40 w-full backdrop-blur-md border-b shadow-lg opacity-90 theme-bg-secondary theme-border-subtle">
             <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
                 <div
                     className="flex items-center gap-2 cursor-pointer group"
@@ -843,7 +399,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className="hidden md:flex gap-2 p-1 rounded-full border opacity-60 nav-button-pills-container">
+                    <div className="hidden md:flex gap-2 p-1 rounded-full  border-2 opacity-60 nav-button-pills-container">
                         {[
                             {id: View.HOME, icon: Home, label: '首页'},
                             {id: View.BLOG, icon: Book, label: '魔法书'},
@@ -857,9 +413,9 @@ const App: React.FC = () => {
                                     setCurrentView(item.id);
                                     setSelectedPost(null);
                                 }}
-                                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full transition-all duration-300 text-sm font-semibold
+                                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full  transition-all duration-300 text-sm font-semibold
                     ${currentView === item.id
-                                    ? 'bg-white/10 text-white shadow-[0_0_10px_rgba(255,255,255,0.1)] border nav-button-active'
+                                    ? 'bg-white/10  shadow-[0_0_10px_rgba(255,255,255,0.1)] border '
                                     : 'hover:bg-white/5 theme-text-secondary'
                                 }`}
                             >
@@ -1061,7 +617,7 @@ const App: React.FC = () => {
                                         ))}
                                     </div>
                                 </header>
-                                <SimpleMarkdown content={selectedPost.content}/>
+                                <MarkdownRenderer content={selectedPost.content}/>
                             </article>
                         ) : (
                             <div className="grid gap-6">
@@ -1281,17 +837,17 @@ const App: React.FC = () => {
                 welcomeFading={welcomeFading}
                 onEnter={handleEnterSite}
             />
-            {/* Loading indicator exit animation */}
-            {welcomeFading && (
-                <div
-                    className={`fixed inset-0 z-50 welcome-bg flex flex-col items-center justify-center
-                                transition-opacity ease-out theme-bg-primary opacity-0`}
-                    style={{transitionDuration: `${WELCOME_TRANSITION_DURATION}ms`}}
-                    onTransitionEnd={() => setLoadingIndicatorVisible(false)}
-                >
-                    {/* 这个 div 仅用于触发过渡动画，实际内容已经淡出 */}
-                </div>
-            )}
+            {/*/!* Loading indicator exit animation *!/*/}
+            {/*{welcomeFading && (*/}
+            {/*    <div*/}
+            {/*        className={`fixed inset-0 z-50 welcome-bg flex flex-col items-center justify-center*/}
+            {/*                    transition-opacity ease-out theme-bg-primary opacity-0`}*/}
+            {/*        style={{transitionDuration: `${WELCOME_TRANSITION_DURATION}ms`}}*/}
+            {/*        onTransitionEnd={() => setLoadingIndicatorVisible(false)}*/}
+            {/*    >*/}
+            {/*        /!* 这个 div 仅用于触发过渡动画，实际内容已经淡出 *!/*/}
+            {/*    </div>*/}
+            {/*)}*/}
 
             {/* 2.5. Text Particle System */}
             <TextParticleSystem
@@ -1312,7 +868,7 @@ const App: React.FC = () => {
 
                 {/* Updated Main Container with Flex logic */}
                 <main
-                    className={`flex-1 w-full flex flex-col ${currentView === View.HOME ? 'justify-center' : 'pb-24 md:pb-8'}`}>
+                    className={`flex-1 w-full flex flex-col ${currentView === View.HOME ? 'pt-16 justify-center' : 'pt-16 pb-16 md:pb-8'}`}>
                     {currentView === View.HOME && renderHome()}
                     {currentView === View.BLOG && renderBlog()}
                     {currentView === View.PORTFOLIO && renderPortfolio()}
@@ -1320,21 +876,28 @@ const App: React.FC = () => {
                     {currentView === View.MUSIC && renderMusic()}
                 </main>
 
-                <MagicChat/>
+                                <MagicChat/>
+
+                {/* Mobile bottom navigation - render before footer to ensure proper stacking */}
+                {renderMobileNav()}
 
                 <footer
-                    className="hidden md:block backdrop-blur-md border-t py-2 text-center text-sm mt-auto opacity-90 theme-footer theme-bg-primary theme-border-subtle theme-text-secondary">
+                    className="backdrop-blur-md border-t py-2 text-center text-sm mt-auto opacity-90 theme-footer theme-bg-primary theme-border-subtle theme-text-secondary md:fixed md:bottom-0 md:left-0 md:right-0 md:z-40">
                     <p>© {new Date().getFullYear()} {userProfile?.name || AUTHOR_NAME}. 灵感来自《魔女之旅》。</p>
-                    <div className="flex justify-center gap-4 mt-2">
+                    <div className="flex justify-center gap-4 mt-2 md:hidden"> {/* Social links only visible on mobile */}
                         <a href={userProfile?.html_url || "#"}
                            className="hover:opacity-80 transition-colors theme-footer-link">GitHub</a>
                         <a href="#" className="hover:opacity-80 transition-colors theme-footer-link">推特</a>
                         <a href="#" className="hover:opacity-80 transition-colors theme-footer-link">ArtStation</a>
                     </div>
+                    <div className="hidden md:block"> {/* Copyright visible on all devices, social links only on desktop */}
+                        <a href={userProfile?.html_url || "#"}
+                           className="mx-4 hover:opacity-80 transition-colors theme-footer-link">GitHub</a>
+                        <a href="#" className="mx-4 hover:opacity-80 transition-colors theme-footer-link">推特</a>
+                        <a href="#" className="mx-4 hover:opacity-80 transition-colors theme-footer-link">ArtStation</a>
+                    </div>
                 </footer>
 
-                {/* Mobile bottom navigation */}
-                {renderMobileNav()}
             </div>
         </div>
     );

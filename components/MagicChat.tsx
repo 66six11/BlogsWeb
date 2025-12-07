@@ -12,7 +12,20 @@ const MagicChat: React.FC = () => {
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [sessionId, setSessionId] = useState<string>('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // 生成或获取会话ID
+    useEffect(() => {
+        const storedSessionId = localStorage.getItem('magicChatSessionId');
+        if (storedSessionId) {
+            setSessionId(storedSessionId);
+        } else {
+            const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            localStorage.setItem('magicChatSessionId', newSessionId);
+            setSessionId(newSessionId);
+        }
+    }, []);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({behavior: "smooth"});
@@ -31,7 +44,7 @@ const MagicChat: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const responseText = await sendMessageToGemini(input);
+            const responseText = await sendMessageToGemini(input, sessionId);
             const botMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'model',
@@ -76,7 +89,7 @@ const MagicChat: React.FC = () => {
                                 <div className="w-10 h-10"/>
                                 <div>
                                     <h3 className="font-serif font-bold theme-text-primary">伊蕾娜</h3>
-                                    <p className="text-[10px] theme-text-accent1">灰烬魔女</p>
+                                    <p className="text-[10px] theme-text-accent1">灰之魔女</p>
                                 </div>
                             </div>
                             <button
@@ -147,7 +160,7 @@ const MagicChat: React.FC = () => {
                 onClick={() => setIsOpen(!isOpen)}
                 className="group relative w-14 h-14 rounded-full shadow-[0_0_20px_rgba(147,51,234,0.5)] flex items-center justify-center text-white hover:scale-110 transition-transform duration-300 overflow-visible theme-gradient-button"
             >
-                <div className="absolute inset-0 rounded-full border border-white/20 animate-ping opacity-20"/>
+                <div className="absolute inset-0 rounded-full border border-white/20 animate-ping "/>
                 {isOpen ? (
                     <X size={24}/>
                 ) : (
