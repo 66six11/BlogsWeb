@@ -1,6 +1,4 @@
-/* @tailwind base provides CSS custom properties (--tw-translate-x, --tw-scale-x, etc.) 
-   and variable definitions needed for utility classes to work. Preflight CSS reset 
-   is disabled via corePlugins.preflight = false in tailwind.config.js */
+/* Tailwind CSS v4 - Import */
 @import "tailwindcss";
 
 /* Loader styles */

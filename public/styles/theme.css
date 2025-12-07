@@ -18,6 +18,16 @@
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.3);
     --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.3);
     --bg-tertiary-translucent: rgb(from var(--bg-tertiary) r g b / 0.3);
+    
+    /* Tailwind v4 custom colors - map to theme variables for dynamic theming */
+    --color-bg-primary: var(--bg-primary);
+    --color-bg-secondary: var(--bg-secondary);
+    --color-bg-tertiary: var(--bg-tertiary);
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --color-accent-1: var(--accent-1);
+    --color-accent-2: var(--accent-2);
+    --color-accent-3: var(--accent-3);
 }
 
 :root.light {
