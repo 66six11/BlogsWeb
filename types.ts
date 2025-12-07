@@ -16,6 +16,11 @@ export interface BlogPost {
   excerpt: string;
   content: string; // Markdown content
   path?: string; // Virtual path for directory structure
+  slug?: string;
+  cover_image?: string;
+  published_at?: string;
+  updated_at?: string;
+  author?: string;
 }
 
 export interface DirectoryNode {
@@ -48,4 +53,15 @@ export interface Project {
   image: string;
   tech: string[];
   link?: string;
+}
+
+export interface GitHubUser {
+  login: string;
+  name: string | null;
+  bio: string | null;
+  avatar_url: string;
+  html_url: string;
+  public_repos: number;
+  followers: number;
+  following: number;
 }

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Music } from 'lucide-react';
 import { HexagramIcon } from './CustomIcons';
+import { WaveText } from './WaveText';
 
 interface LoadingScreenProps {
     isVisible: boolean;
@@ -21,6 +22,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
 }) => {
     if (!isVisible) return null;
 
+
     return (
         <div 
             className={`fixed inset-0 z-50 welcome-bg flex flex-col items-center justify-center
@@ -33,20 +35,20 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
                     ${welcomeFading ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`}
             />
             
-            {/* 轮换语句加载动画 - 魔法DEV标题 */}
+            {/* 轮换语句加载动画 - 使用 WaveText 组件 */}
             <div className={`mb-8 transition-all duration-500
                 ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                <div className="loader">
-                    <span className="theme-text-accent1">
-                        {loadingTips[currentTipIndex]}
-                    </span>
-                </div>
+                <WaveText 
+                    texts={loadingTips}
+                    appearDelay={100}
+                    displayDuration={2000}
+                    fadeDelay={80}
+                    loopDelay={500}
+                    distance={30}
+                    className="theme-text-accent1 text-2xl md:text-xl"
+                />
             </div>
-            
-            <p className={`mb-8 transition-all duration-500 delay-75 theme-text-secondary
-                ${welcomeFading ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                点击进入魔法世界
-            </p>
+          
             
             {/* 加载指示器 */}
             {!resourcesLoaded && (
@@ -68,8 +70,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
                             relative before:absolute before:inset-0 before:rounded-full
                             before:border-2 before:border-white/10 before:pointer-events-none
                             hover:scale-105 hover:before:border-white/20 welcome-enter-btn
-                            translate-y-0 opacity-100 animate-fade-in-up`}
-                    >
+                            translate-y-0 opacity-100 animate-fade-in-up`}>
                         <Music size={20}/> 进入
                     </button>
                 </div>

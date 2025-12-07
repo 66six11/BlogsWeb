@@ -159,7 +159,7 @@ const getNoteColor = (octave: number, pitch: number): string => {
 };
 
 // Duration options with visual icons
-const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number; icon: Element }[] = [
+const DURATION_OPTIONS: { value: NoteDurationType; label: string; steps: number; icon: React.ReactNode}[] = [
     {value: 'sixteenth', label: '16分', steps: 1, icon: <SixteenthNoteIcon size={20}/>},
     {value: 'eighth', label: '8分', steps: 2, icon: <EighthNoteIcon size={20}/>},
     {value: 'quarter', label: '4分', steps: 4, icon: <QuarterNoteIcon size={20}/>},
@@ -1060,8 +1060,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     }, [isVisible, isPlaying, pausePlayback]);
 
     return (
-        <div className={`piano-editor-container  border rounded-xl p-6 shadow-2xl ${className}`}>
-
+        <div className={`bg-tertiary border rounded-xl p-6 shadow-2xl ${className}`}>
             {/* Header - fixed layout */}
             <div className="flex flex-col gap-3 mb-4">
                 {/* Title row */}
