@@ -76,7 +76,7 @@ const MagicChat: React.FC = () => {
                                 <div className="w-10 h-10"/>
                                 <div>
                                     <h3 className="font-serif font-bold theme-text-primary">伊蕾娜</h3>
-                                    <p className="text-[10px] theme-text-accent1">灰烬魔女</p>
+                                    <p className="text-[10px] theme-text-accent1">灰之魔女</p>
                                 </div>
                             </div>
                             <button
