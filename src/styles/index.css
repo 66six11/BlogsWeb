@@ -4,6 +4,7 @@
 /* Theme Color Variables - Using Tailwind v4 approach */
 /* Default theme (dark mode) */
 :root {
+    /* Primary theme colors */
     --bg-primary: #0f172a;
     --bg-secondary: #1e293b;
     --bg-tertiary: #334155;
@@ -12,14 +13,23 @@
     --accent-1: #deb99a;
     --accent-2: #7C85EB;
     --accent-3: #c493b1;
+    
     /* RGB versions for rgba() usage */
     --bg-primary-rgb: 15, 23, 42;
     --bg-secondary-rgb: 30, 41, 59;
     --accent-1-rgb: 222, 185, 154;
     --accent-3-rgb: 196, 147, 177;
+    
+    /* Translucent variations */
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.3);
     --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.3);
     --bg-tertiary-translucent: rgb(from var(--bg-tertiary) r g b / 0.3);
+    
+    /* Semantic colors for specific UI elements */
+    --title-primary: var(--text-primary);
+    --title-secondary: var(--text-primary);
+    --accent-strong: var(--accent-1);
+    --accent-emphasis: var(--accent-2);
     
     /* Tailwind v4 custom colors - map to theme variables for dynamic theming */
     --color-bg-primary: var(--bg-primary);
@@ -34,6 +44,7 @@
 
 /* Light theme */
 :root.light {
+    /* Primary theme colors */
     --bg-primary: #F7F8F3;
     --bg-secondary: #EBECF2;
     --bg-tertiary: rgba(227, 216, 216, 0.74);
@@ -42,14 +53,23 @@
     --accent-1: #deb99a;
     --accent-2: #7C85EB;
     --accent-3: #c493b1;
+    
     /* RGB versions for rgba() usage */
     --bg-primary-rgb: 247, 248, 243;
     --bg-secondary-rgb: 235, 236, 242;
     --accent-1-rgb: 222, 185, 154;
     --accent-3-rgb: 196, 147, 177;
+    
+    /* Translucent variations */
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.3);
     --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.3);
     --bg-tertiary-translucent: rgb(from var(--bg-tertiary) r g b / 0.3);
+    
+    /* Semantic colors for specific UI elements in light mode */
+    --title-primary: #1e293b;
+    --title-secondary: #334155;
+    --accent-strong: #b45309;
+    --accent-emphasis: #6d28d9;
     
     /* Tailwind v4 custom colors - automatically updated via var() references */
     --color-bg-primary: var(--bg-primary);
@@ -64,6 +84,7 @@
 
 /* Dark (purple) theme */
 :root.dark {
+    /* Primary theme colors */
     --bg-primary: #3b3442;
     --bg-secondary: #4d4658;
     --bg-tertiary: #897b8c;
@@ -72,15 +93,24 @@
     --accent-1: #deb99a;
     --accent-2: #c493b1;
     --accent-3: #7C85EB;
+    
     /* RGB versions for rgba() usage */
     --bg-primary-rgb: 59, 52, 66;
     --bg-secondary-rgb: 77, 70, 88;
     --bg-tertiary-rgb: 137, 123, 140;
     --accent-1-rgb: 222, 185, 154;
     --accent-3-rgb: 124, 133, 235;
+    
+    /* Translucent variations */
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.5);
     --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.5);
     --bg-tertiary-translucent: rgb(from var(--bg-tertiary) r g b / 0.5);
+    
+    /* Semantic colors for specific UI elements in dark mode */
+    --title-primary: var(--text-primary);
+    --title-secondary: var(--text-primary);
+    --accent-strong: var(--accent-1);
+    --accent-emphasis: var(--accent-2);
     
     /* Tailwind v4 custom colors - automatically updated via var() references */
     --color-bg-primary: var(--bg-primary);

@@ -96,37 +96,37 @@
     background-color: var(--accent-3) !important;
 }
 
-/* 修复 Light 模式下标题和文章可读性 */
+/* Typography and readability improvements for Light mode */
 :root.light h1,
 :root.light h2,
 :root.light h3,
 :root.light .section-title {
-    color: #1e293b !important;
+    color: var(--title-primary) !important;
 }
 
 :root.light .card-title,
 :root.light .post-title {
-    color: #334155 !important;
+    color: var(--title-secondary) !important;
 }
 
 :root.light .card-description,
 :root.light .post-excerpt,
 :root.light article p {
-    color: #475569 !important;
+    color: var(--text-secondary) !important;
 }
 
-/* 强调色在 Light 模式下使用更深的变体 */
+/* Accent colors use stronger variants in Light mode */
 :root.light .text-amber-200,
 :root.light .text-amber-400 {
-    color: #b45309 !important;
+    color: var(--accent-strong) !important;
 }
 
 :root.light .text-purple-200,
 :root.light .text-purple-300 {
-    color: #6d28d9 !important;
+    color: var(--accent-emphasis) !important;
 }
 
-/* 卡片背景在 Light 模式下增加不透明度 */
+/* Card backgrounds with enhanced opacity in Light mode */
 :root.light .bg-black\/30,
 :root.light .bg-slate-900\/50 {
     background-color: rgba(255, 255, 255, 0.8) !important;
