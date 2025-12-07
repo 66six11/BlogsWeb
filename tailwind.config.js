@@ -8,49 +8,6 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
     "./public/**/*.{html,js,ts,jsx,tsx}",
   ],
-  safelist: [
-    // Essential positioning classes
-    'top-0', 'top-2', 'top-20', 'top-24', 'left-0', 'right-0',
-    // Essential spacing classes
-    'pt-16', 'pb-16', 'pb-24', 'pb-8', 'mt-auto',
-    // Essential layout classes
-    'fixed', 'absolute', 'relative', 'flex', 'flex-col', 'flex-1', 'w-full', 'h-full',
-    // Essential border classes
-    'border', 'border-t', 'border-b', 'border-l', 'border-r', 'border-2', 'border-4', 'border-transparent',
-    // Essential appearance classes
-    'opacity-90', 'opacity-80', 'backdrop-blur-md', 'backdrop-blur-sm', 'backdrop-blur-xl',
-    // Essential z-index classes
-    'z-40', 'z-50',
-    // Essential utility classes
-    'rounded', 'rounded-lg', 'rounded-xl', 'rounded-2xl', 'rounded-3xl', 'rounded-full',
-    'rounded-tl-none', 'rounded-tr-none',
-    // Common text and color classes
-    'text-center', 'text-left', 'text-right', 'text-white', 'text-slate-100', 'text-slate-200', 'text-slate-300',
-    'text-amber-400', 'bg-transparent', 'bg-white', 'bg-slate-900', 'bg-slate-950',
-    // Common font classes
-    'font-bold', 'font-medium', 'font-semibold', 'font-light',
-    // Common shadow classes
-    'shadow', 'shadow-lg', 'shadow-xl', 'shadow-2xl', 'shadow-inner', 'shadow-sm',
-    // Common animation classes
-    'animate-pulse', 'animate-spin', 'animate-float', 'animate-fade-in-up',
-    // Common transition classes
-    'transition', 'transition-all', 'transition-colors', 'transition-opacity', 'transition-transform',
-    'duration-200', 'duration-300', 'duration-500', 'duration-700', 'ease-out',
-    // Hover states
-    'hover:opacity-80', 'hover:opacity-90', 'hover:bg-white/5', 'hover:bg-white/10', 'hover:scale-105', 'hover:scale-110',
-    // Interactive states
-    'disabled:opacity-30', 'disabled:cursor-not-allowed', 'select-none', 'cursor-pointer', 'cursor-not-allowed',
-    // Layout helpers
-    'overflow-hidden', 'overflow-auto', 'overflow-x-auto', 'overflow-y-auto', 'truncate', 'whitespace-nowrap',
-    'grid', 'grid-cols-1', 'grid-cols-2', 'flex-wrap', 'items-start', 'items-end', 'items-center',
-    'justify-start', 'justify-end', 'justify-center', 'justify-between', 'justify-around',
-    'divide-y', 'divide-slate-700', 'divide-slate-800',
-    // Spacing helpers
-    'mx-auto', 'mt-2', 'mt-4', 'mb-2', 'mb-4', 'mb-6', 'mb-8', 'mb-10', 'mb-12',
-    'ml-2', 'ml-3', 'ml-4', 'mr-1', 'mr-2', 'p-1', 'p-2', 'p-3', 'p-4', 'p-6', 'p-8',
-    'px-2', 'px-3', 'px-4', 'px-6', 'px-8', 'py-1', 'py-2', 'py-3', 'py-4', 'py-8', 'py-12', 'py-16',
-    'pb-2', 'pl-3', 'pr-2', 'pt-2', 'pt-6', 'gap-1', 'gap-2', 'gap-3', 'gap-4', 'gap-6', 'gap-8', 'gap-10',
-  ],
   darkMode: 'class',
   theme: {
     extend: {
@@ -64,20 +21,39 @@ export default {
           purple: '#7c3aed',
           gold: '#fbbf24',
         },
-        // Semantic theme colors using CSS variables
-        // These automatically adapt to light/dark mode
+        // Direct colors from theme.css - Dark mode defaults
         theme: {
-          // Background colors
-          'primary': 'var(--bg-primary)',
-          'secondary': 'var(--bg-secondary)',
-          'tertiary': 'var(--bg-tertiary)',
-          // Text colors
-          'text-primary': 'var(--text-primary)',
-          'text-secondary': 'var(--text-secondary)',
-          // Accent colors
-          'accent-1': 'var(--accent-1)',
-          'accent-2': 'var(--accent-2)',
-          'accent-3': 'var(--accent-3)',
+          // Background colors - Dark mode
+          'primary': '#0f172a',      // --bg-primary (dark)
+          'secondary': '#1e293b',    // --bg-secondary (dark)
+          'tertiary': '#334155',     // --bg-tertiary (dark)
+          // Text colors - Dark mode
+          'text-primary': '#f1f5f9', // --text-primary (dark)
+          'text-secondary': '#94a3b8', // --text-secondary (dark)
+          // Accent colors - Dark mode
+          'accent-1': '#deb99a',     // --accent-1 (dark/light)
+          'accent-2': '#7C85EB',     // --accent-2 (dark/light)
+          'accent-3': '#c493b1',     // --accent-3 (dark/light)
+        },
+        // Additional dark mode specific colors
+        dark: {
+          'primary': '#3b3442',      // --bg-primary (dark theme)
+          'secondary': '#4d4658',    // --bg-secondary (dark theme)
+          'tertiary': '#897b8c',     // --bg-tertiary (dark theme)
+          'text-primary': '#f1f5f9', // --text-primary (dark theme)
+          'text-secondary': '#e2e8f0', // --text-secondary (dark theme)
+          'accent-2': '#c493b1',     // --accent-2 (dark theme)
+          'accent-3': '#7C85EB',     // --accent-3 (dark theme)
+        },
+        // Light mode specific colors
+        light: {
+          'primary': '#F7F8F3',      // --bg-primary (light)
+          'secondary': '#EBECF2',    // --bg-secondary (light)
+          'tertiary': 'rgba(227, 216, 216, 0.74)', // --bg-tertiary (light)
+          'text-primary': '#1e293b', // --text-primary (light)
+          'text-secondary': '#475569', // --text-secondary (light)
+          'accent-2': '#7C85EB',     // --accent-2 (light)
+          'accent-3': '#c493b1',     // --accent-3 (light)
         }
       },
       animation: {
