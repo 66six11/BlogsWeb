@@ -87,6 +87,21 @@ export default defineConfig(({ mode }) => {
                             proxyReq.setHeader('User-Agent', 'BlogsWeb-API');
                         });
                     },
+                },
+                '/api/gemini': {
+                    target: 'https://generativelanguage.googleapis.com',
+                    changeOrigin: true,
+                    rewrite: (path) => path.replace(/^\/api\/gemini/, '/v1beta/models/gemini-2.5-flash:generateContent'),
+                    configure: (proxy, options) => {
+                        proxy.on('proxyReq', (proxyReq, req, res) => {
+                            if (env.GEMINI_API_KEY) {
+                                // 通过查询参数添加API密钥，这是Gemini API的标准方式
+                                const keyParam = `?key=${env.GEMINI_API_KEY}`;
+                                proxyReq.path = proxyReq.path + keyParam;
+                            }
+                            proxyReq.setHeader('Content-Type', 'application/json');
+                        });
+                    },
                 }
             }
         },
