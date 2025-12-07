@@ -3,7 +3,7 @@ import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import { getEnv } from "../constants";
 
 // Initialize the client safely
-const apiKey = getEnv('API_KEY');
+const apiKey = getEnv('GEMINI_API_KEY');
 
 // Only initialize AI if key is present to avoid errors on init
 let ai: GoogleGenAI | null = null;
