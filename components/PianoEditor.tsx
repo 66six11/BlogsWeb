@@ -1060,8 +1060,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     }, [isVisible, isPlaying, pausePlayback]);
 
     return (
-        <div className={`piano-editor-container  border rounded-xl p-6 shadow-2xl ${className}`}>
-
+        <div className={`bg-tertiary border rounded-xl p-6 shadow-2xl ${className}`}>
             {/* Header - fixed layout */}
             <div className="flex flex-col gap-3 mb-4">
                 {/* Title row */}
