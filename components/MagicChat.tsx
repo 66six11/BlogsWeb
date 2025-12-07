@@ -147,7 +147,7 @@ const MagicChat: React.FC = () => {
                 onClick={() => setIsOpen(!isOpen)}
                 className="group relative w-14 h-14 rounded-full shadow-[0_0_20px_rgba(147,51,234,0.5)] flex items-center justify-center text-white hover:scale-110 transition-transform duration-300 overflow-visible theme-gradient-button"
             >
-                <div className="absolute inset-0 rounded-full border border-white/20 animate-ping opacity-1"/>
+                <div className="absolute inset-0 rounded-full border border-white/20 animate-ping "/>
                 {isOpen ? (
                     <X size={24}/>
                 ) : (
