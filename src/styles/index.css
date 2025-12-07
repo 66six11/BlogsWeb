@@ -40,7 +40,7 @@
     --bg-primary-rgb: 59, 52, 66;
     --bg-secondary-rgb: 77, 70, 88;
     --bg-tertiary-rgb: 59, 52, 66;
-    --accent-3: var(--color-accent-2);
+    --accent-3: #c493b1;
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.5);
     --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.5);
     --bg-tertiary-translucent: rgb(from var(--bg-tertiary) r g b / 0.5);
@@ -70,17 +70,39 @@
 
 /* CSS Variables for dynamic theming */
 @layer components {
-    article{
+    article {
         background-color: var(--bg-tertiary) !important;
     }
+
     .markdown-content {
         h1, h2, h3 {
             color: var(--text-primary) !important;
         }
-        p{
+
+        p {
             color: var(--text-secondary) !important;
         }
     }
+
+
+}
+
+@layer components {
+    button.piano-btn-primary {
+        background-color: var(--accent-2) !important;
+        color: white;
+    }
+    
+
+}
+
+/* Piano grid styling */
+.piano-grid {
+    background-color: var(--bg-tertiary);     /* 每小节拍数 */
+}
+.piano-playhead{
+    background-color: var(--accent-1);
+    
 }
 
 /* Base styles */
@@ -215,7 +237,7 @@ body {
 
 /* --- Button Styles --- */
 .theme-btn-primary {
-    background-color: var(--accent-3);
+    background-color: var(--accent-1);
     color: white;
 }
 
