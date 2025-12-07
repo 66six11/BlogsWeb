@@ -31,6 +31,7 @@ export const sendMessageToGemini = async (message: string, sessionId?: string): 
       return `[开发模式] 伊蕾娜说："${message}"？嗯...让我想想。作为灰之魔女，我认为这个问题很有趣。不过现在我的魔法正在调试中，请稍后再试。\n\n（提示：在本地开发时，需要设置GEMINI_API_KEY环境变量并启动后端服务器）`;
     }
 
+
     // 生产环境：调用真实API
     const response = await fetch('/api/gemini/chat', {
       method: 'POST',
@@ -51,10 +52,10 @@ export const sendMessageToGemini = async (message: string, sessionId?: string): 
     if (data.success && data.response) {
       return data.response;
     } else {
-      return "嗯，我的魔法似乎在波动...（没有响应）";
+      return "(伊蕾娜旅游中~)[无响应]";
     }
   } catch (error) {
     console.error('Network error:', error);
-    return "抱歉，魔法干扰阻止了我回答。（网络连接错误）";
+    return "(魔法次元连接中断)[网络连接错误]";
   }
 };
