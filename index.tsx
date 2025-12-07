@@ -1,6 +1,7 @@
 import './src/styles/index.css'; // 导入Tailwind CSS和自定义样式
 import React, {useState, useEffect, useRef, useCallback, StrictMode} from 'react';
 import {View, BlogPost, DirectoryNode, GitHubUser} from './types';
+// 导入 safelist 以确保关键 Tailwind 类被包含
 import {
     APP_TITLE,
     AUTHOR_NAME,
@@ -375,7 +376,7 @@ const SimpleMarkdown: React.FC<{ content: string }> = ({content}) => {
                             case 4:
                                 result.push(<h4 key={key}
                                                 className="text-lg font-bold text-amber-200/80 mt-4 mb-2 flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400"/>
+                                    <div className="w-1.5 h-1.5 rounded-full  bg-amber-400"/>
                                     {content}</h4>);
                                 break;
                             default:
@@ -823,7 +824,7 @@ const App: React.FC = () => {
 
     const renderNav = () => (
         <nav
-            className="nav-bar sticky top-0 z-40 w-full backdrop-blur-md border-b shadow-lg opacity-90 theme-bg-secondary theme-border-subtle">
+            className="nav-bar fixed top-0 left-0 right-0 z-40 w-full backdrop-blur-md border-b shadow-lg opacity-90 theme-bg-secondary theme-border-subtle">
             <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
                 <div
                     className="flex items-center gap-2 cursor-pointer group"
@@ -843,7 +844,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className="hidden md:flex gap-2 p-1 rounded-full border opacity-60 nav-button-pills-container">
+                    <div className="hidden md:flex gap-2 p-1 rounded-full  border-2 opacity-60 nav-button-pills-container">
                         {[
                             {id: View.HOME, icon: Home, label: '首页'},
                             {id: View.BLOG, icon: Book, label: '魔法书'},
@@ -857,9 +858,9 @@ const App: React.FC = () => {
                                     setCurrentView(item.id);
                                     setSelectedPost(null);
                                 }}
-                                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full transition-all duration-300 text-sm font-semibold
+                                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full  transition-all duration-300 text-sm font-semibold
                     ${currentView === item.id
-                                    ? 'bg-white/10 text-white shadow-[0_0_10px_rgba(255,255,255,0.1)] border nav-button-active'
+                                    ? 'bg-white/10 text-white shadow-[0_0_10px_rgba(255,255,255,0.1)] border '
                                     : 'hover:bg-white/5 theme-text-secondary'
                                 }`}
                             >
@@ -1312,7 +1313,7 @@ const App: React.FC = () => {
 
                 {/* Updated Main Container with Flex logic */}
                 <main
-                    className={`flex-1 w-full flex flex-col ${currentView === View.HOME ? 'justify-center' : 'pb-24 md:pb-8'}`}>
+                    className={`flex-1 w-full flex flex-col ${currentView === View.HOME ? 'pt-16 justify-center' : 'pt-16 pb-16 md:pb-8'}`}>
                     {currentView === View.HOME && renderHome()}
                     {currentView === View.BLOG && renderBlog()}
                     {currentView === View.PORTFOLIO && renderPortfolio()}
@@ -1320,21 +1321,28 @@ const App: React.FC = () => {
                     {currentView === View.MUSIC && renderMusic()}
                 </main>
 
-                <MagicChat/>
+                                <MagicChat/>
+
+                {/* Mobile bottom navigation - render before footer to ensure proper stacking */}
+                {renderMobileNav()}
 
                 <footer
-                    className="hidden md:block backdrop-blur-md border-t py-2 text-center text-sm mt-auto opacity-90 theme-footer theme-bg-primary theme-border-subtle theme-text-secondary">
+                    className="backdrop-blur-md border-t py-2 text-center text-sm mt-auto opacity-90 theme-footer theme-bg-primary theme-border-subtle theme-text-secondary md:fixed md:bottom-0 md:left-0 md:right-0 md:z-40">
                     <p>© {new Date().getFullYear()} {userProfile?.name || AUTHOR_NAME}. 灵感来自《魔女之旅》。</p>
-                    <div className="flex justify-center gap-4 mt-2">
+                    <div className="flex justify-center gap-4 mt-2 md:hidden"> {/* Social links only visible on mobile */}
                         <a href={userProfile?.html_url || "#"}
                            className="hover:opacity-80 transition-colors theme-footer-link">GitHub</a>
                         <a href="#" className="hover:opacity-80 transition-colors theme-footer-link">推特</a>
                         <a href="#" className="hover:opacity-80 transition-colors theme-footer-link">ArtStation</a>
                     </div>
+                    <div className="hidden md:block"> {/* Copyright visible on all devices, social links only on desktop */}
+                        <a href={userProfile?.html_url || "#"}
+                           className="mx-4 hover:opacity-80 transition-colors theme-footer-link">GitHub</a>
+                        <a href="#" className="mx-4 hover:opacity-80 transition-colors theme-footer-link">推特</a>
+                        <a href="#" className="mx-4 hover:opacity-80 transition-colors theme-footer-link">ArtStation</a>
+                    </div>
                 </footer>
 
-                {/* Mobile bottom navigation */}
-                {renderMobileNav()}
             </div>
         </div>
     );
