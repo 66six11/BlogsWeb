@@ -281,20 +281,20 @@ const App: React.FC = () => {
     }
 
     // Search in blogDirectory for the file
-    const findNodeByName = (nodes: DirectoryNode[], name: string): DirectoryNode | null => {
+    const findNodeByName = (nodes: DirectoryNode[]): DirectoryNode | null => {
       for (const node of nodes) {
         if (node.type === 'file' && (node.name === normalizedFilename || node.name.replace('.md', '') === filename)) {
           return node;
         }
         if (node.type === 'folder' && node.children.length > 0) {
-          const found = findNodeByName(node.children, name);
+          const found = findNodeByName(node.children);
           if (found) return found;
         }
       }
       return null;
     };
 
-    const node = findNodeByName(blogDirectory, filename);
+    const node = findNodeByName(blogDirectory);
     if (node) {
       await handleDirectorySelect(node);
     } else {

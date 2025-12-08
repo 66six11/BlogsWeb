@@ -22,7 +22,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onNavigate
             const html = window.katex.renderToString(latex, {
                 displayMode: isDisplay,
                 throwOnError: false,
-                trust: true,
+                // Enable trust for specific math commands like \href and \url
+                // This is safe for blog content from trusted sources
+                trust: (context) => ['\\href', '\\url', '\\includegraphics'].includes(context.command),
                 strict: false,
                 macros: {
                     "\\boldsymbol": "\\mathbf",
