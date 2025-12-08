@@ -562,8 +562,13 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
     };
 
     const parseBlocks = (contentToParse: string) => {
-        // Remove HTML comments first
-        const cleanedContent = contentToParse.replace(/<!--[\s\S]*?-->/g, '');
+        // Remove HTML comments - use multiple passes to ensure complete removal
+        let cleanedContent = contentToParse;
+        let previousContent;
+        do {
+            previousContent = cleanedContent;
+            cleanedContent = cleanedContent.replace(/<!--[\s\S]*?-->/g, '');
+        } while (previousContent !== cleanedContent);
         
         // Split by code blocks
         const codeSplit = cleanedContent.split(/(```[\s\S]*?```)/g);
