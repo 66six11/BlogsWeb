@@ -29,6 +29,14 @@ const ABC_NOTE_TO_SEMITONE: Record<string, number> = {
   'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11
 };
 
+// Internal type for notes during parsing (includes temporary tie marker)
+type ParsedNote = Note & { _hasTie?: boolean };
+
+// Helper function to clamp octave to valid 88-key piano range (0-8)
+const clampOctave = (octave: number): number => {
+  return Math.max(0, Math.min(8, octave));
+};
+
 // Key signature accidentals (sharps/flats applied automatically per ABC v2.1)
 const KEY_SIGNATURES: Record<string, Record<string, number>> = {
   // Major keys
@@ -168,13 +176,13 @@ const parseABCDurationV2 = (durationStr: string, baseNoteDuration: number): numb
     }
   }
   
-  // Apply dots: each dot adds half of the previous value
+  // Apply dots: each dot adds half of the previous dot's value
   // Single dot: 1.5x (adds 0.5x), Double dot: 1.75x (adds 0.5x + 0.25x)
   let finalDuration = baseDuration;
-  let addedValue = baseDuration;
+  let currentDotValue = baseDuration;
   for (let i = 0; i < dotCount; i++) {
-    addedValue = addedValue / 2;
-    finalDuration += addedValue;
+    currentDotValue = currentDotValue / 2;
+    finalDuration += currentDotValue;
   }
   
   return Math.max(1, Math.round(finalDuration));
@@ -228,8 +236,8 @@ const parseABCSingleNote = (
     }
   }
   
-  // Support full 88-key piano range: A0 (MIDI 21) to C8 (MIDI 108)
-  octave = Math.max(0, Math.min(8, octave));
+  // Clamp to valid 88-key piano range
+  octave = clampOctave(octave);
   
   let durationStr = '';
   while (i < line.length && (/\d|\/|>|<|\./.test(line[i]))) {
@@ -259,14 +267,14 @@ const parseABCSingleNote = (
 };
 
 // Parse ABC chord content
-// Returns notes with optional tie markers (stored temporarily in a custom property)
+// Returns notes with optional tie markers (stored temporarily in ParsedNote type)
 const parseABCChordV2 = (
   content: string, 
   baseNoteDuration: number, 
   startTime: number,
   keySignature: Record<string, number>,
   barAccidentals: Map<string, number>
-): { chordNotes: (Note & { _hasTie?: boolean })[], maxDuration: number } => {
+): { chordNotes: ParsedNote[], maxDuration: number } => {
   const chordNotes: Note[] = [];
   let maxDuration = baseNoteDuration;
   let i = 0;
@@ -325,8 +333,8 @@ const parseABCChordV2 = (
         }
       }
       
-      // Support full 88-key piano range: A0 (MIDI 21) to C8 (MIDI 108)
-      octave = Math.max(0, Math.min(8, octave));
+      // Clamp to valid 88-key piano range
+      octave = clampOctave(octave);
       
       let noteDurationStr = '';
       while (i < content.length && /\d|\/|\./.test(content[i])) {
@@ -344,15 +352,13 @@ const parseABCChordV2 = (
       const noteDuration = noteDurationStr ? parseABCDurationV2(noteDurationStr, baseNoteDuration) : baseNoteDuration;
       maxDuration = Math.max(maxDuration, noteDuration);
       
-      const note: Note & { _hasTie?: boolean } = {
+      const note: ParsedNote = {
         pitch,
         octave,
         startTime,
-        duration: noteDuration
+        duration: noteDuration,
+        _hasTie: hasTie || undefined
       };
-      if (hasTie) {
-        note._hasTie = true;
-      }
       chordNotes.push(note);
     } else {
       i++;
@@ -663,7 +669,7 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
                   gracePitch = (gracePitch + keyAcc + 12) % 12;
                 }
                 
-                graceOctave = Math.max(0, Math.min(8, graceOctave));
+                graceOctave = clampOctave(graceOctave);
                 
                 parsedNotes.push({
                   pitch: gracePitch,
@@ -748,12 +754,12 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
           noteResult.note.voice = currentVoice;
           
           // Handle tie: if this note has a tie marker, we'll mark it for merging
-          // We store it temporarily with a special property
-          if (noteResult.hasTie) {
-            (noteResult.note as any)._hasTie = true;
-          }
+          const parsedNote: ParsedNote = {
+            ...noteResult.note,
+            _hasTie: noteResult.hasTie || undefined
+          };
           
-          parsedNotes.push(noteResult.note);
+          parsedNotes.push(parsedNote);
           currentTime += noteResult.note.duration;
         }
         i = noteResult.nextIndex;
@@ -793,7 +799,7 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
   const mergedNotes: Note[] = [];
   let i = 0;
   while (i < parsedNotes.length) {
-    const note = parsedNotes[i] as Note & { _hasTie?: boolean };
+    const note = parsedNotes[i] as ParsedNote;
     
     // If this note has a tie marker, look for the next note with matching pitch/octave
     if (note._hasTie) {
@@ -802,7 +808,7 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
       
       // Find all consecutive tied notes with same pitch/octave/voice
       while (j < parsedNotes.length) {
-        const nextNote = parsedNotes[j] as Note & { _hasTie?: boolean };
+        const nextNote = parsedNotes[j] as ParsedNote;
         
         // Check if next note is the tied continuation (same pitch, octave, voice, and starts where previous ends)
         if (nextNote.pitch === note.pitch && 
