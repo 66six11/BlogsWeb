@@ -134,72 +134,79 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         // 1. Inline Math $...$
         const parts = text.split(/(\$[^$\n]+?\$)/g);
 
-        return parts.map((part, index) => {
-            if (part.startsWith('$') && part.endsWith('$')) {
-                return <React.Fragment key={`math-${index}`}>{renderMath(part.slice(1, -1), false)}</React.Fragment>;
-            }
+        return (
+            <>
+                {parts.map((part, index) => {
+                    if (part.startsWith('$') && part.endsWith('$')) {
+                        return <React.Fragment key={`math-${index}`}>{renderMath(part.slice(1, -1), false)}</React.Fragment>;
+                    }
 
-            // 2. Standard Markdown Links [text](url) - process before wiki links
-            const linkRegex = /(\[([^\]]+)\]\(([^)]+)\))/g;
-            const linkParts: React.ReactNode[] = [];
-            let lastIndex = 0;
-            let match;
-            let linkCount = 0;
+                    // 2. Standard Markdown Links [text](url) - process before wiki links
+                    const linkRegex = /(\[([^\]]+)\]\(([^)]+)\))/g;
+                    const linkParts: React.ReactNode[] = [];
+                    let lastIndex = 0;
+                    let match;
+                    let linkCount = 0;
 
-            while ((match = linkRegex.exec(part)) !== null) {
-                // Add text before the link
-                if (match.index > lastIndex) {
-                    const textBefore = part.substring(lastIndex, match.index);
-                    linkParts.push(
-                        <React.Fragment key={`text-${index}-${linkCount}`}>
-                            {parseInlineWithoutLinks(textBefore)}
-                        </React.Fragment>
-                    );
-                }
+                    while ((match = linkRegex.exec(part)) !== null) {
+                        // Add text before the link
+                        if (match.index > lastIndex) {
+                            const textBefore = part.substring(lastIndex, match.index);
+                            linkParts.push(
+                                <React.Fragment key={`text-${index}-${linkCount}`}>
+                                    {parseInlineWithoutLinks(textBefore)}
+                                </React.Fragment>
+                            );
+                        }
 
-                // Add the link
-                const linkText = match[2];
-                const linkUrl = match[3];
-                linkParts.push(
-                    <a
-                        key={`link-${index}-${linkCount}`}
-                        href={linkUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`${markdownTheme.text.link} underline inline-flex items-center gap-1`}
-                    >
-                        {linkText}
-                        <ExternalLink size={12} className="inline" />
-                    </a>
-                );
+                        // Add the link
+                        const linkText = match[2];
+                        const linkUrl = match[3];
+                        linkParts.push(
+                            <a
+                                key={`link-${index}-${linkCount}`}
+                                href={linkUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`${markdownTheme.text.link} underline inline-flex items-center gap-1`}
+                            >
+                                {linkText}
+                                <ExternalLink size={12} className="inline" />
+                            </a>
+                        );
 
-                lastIndex = match.index + match[0].length;
-                linkCount++;
-            }
+                        lastIndex = match.index + match[0].length;
+                        linkCount++;
+                    }
 
-            // If we found links, process the remaining text
-            if (linkParts.length > 0) {
-                if (lastIndex < part.length) {
-                    linkParts.push(
-                        <React.Fragment key={`text-${index}-end`}>
-                            {parseInlineWithoutLinks(part.substring(lastIndex))}
-                        </React.Fragment>
-                    );
-                }
-                return <React.Fragment key={`inline-${index}`}>{linkParts}</React.Fragment>;
-            }
+                    // If we found links, process the remaining text
+                    if (linkParts.length > 0) {
+                        if (lastIndex < part.length) {
+                            linkParts.push(
+                                <React.Fragment key={`text-${index}-end`}>
+                                    {parseInlineWithoutLinks(part.substring(lastIndex))}
+                                </React.Fragment>
+                            );
+                        }
+                        return <React.Fragment key={`inline-${index}`}>{linkParts}</React.Fragment>;
+                    }
 
-            // 3. No standard links found, process wiki links and formatting
-            return <React.Fragment key={`inline-${index}`}>{parseInlineWithoutLinks(part)}</React.Fragment>;
-        });
+                    // 3. No standard links found, process wiki links and formatting
+                    return <React.Fragment key={`inline-${index}`}>{parseInlineWithoutLinks(part)}</React.Fragment>;
+                })}
+            </>
+        );
     };
 
     // Helper function to parse inline elements except standard markdown links
-    const parseInlineWithoutLinks = (text: string) => {
+    const parseInlineWithoutLinks = (text: string): React.ReactNode => {
+        if (!text) return null;
+
         // Obsidian Wiki Links [[...]] - must come before bold/italic parsing
         // Match [[link]] or [[link|display text]] but NOT ![[image]]
         const wikiLinkRegex = /(\[\[[^\]]+\]\])/g;
         const wikiLinkParts = text.split(wikiLinkRegex);
+        
         return (
             <>
                 {wikiLinkParts.map((wlp, wlIdx) => {
@@ -229,33 +236,142 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                         );
                     }
 
-                    // Bold **...**
-                    const boldParts = wlp.split(/(\*\*.*?\*\*)/g);
-                    return (
-                        <React.Fragment key={wlIdx}>
-                            {boldParts.map((bp, bIdx) => {
-                                if (bp.startsWith('**') && bp.endsWith('**')) {
-                                    return <strong key={bIdx}
-                                        className={`${markdownTheme.text.bold} font-semibold`}>{bp.slice(2, -2)}</strong>;
-                                }
-                                // Italic *...*
-                                const italicParts = bp.split(/(\*.*?\*)/g);
-                                return (
-                                    <React.Fragment key={bIdx}>
-                                        {italicParts.map((ip, iIdx) => {
-                                            if (ip.startsWith('*') && ip.endsWith('*') && ip.length > 2) {
-                                                return <em key={iIdx} className={markdownTheme.text.italic}>{ip.slice(1, -1)}</em>;
-                                            }
-                                            return <span key={iIdx}>{ip}</span>;
-                                        })}
-                                    </React.Fragment>
-                                );
-                            })}
-                        </React.Fragment>
-                    );
+                    // Process the text for other inline formats with recursive parsing
+                    return <React.Fragment key={wlIdx}>{parseInlineFormats(wlp)}</React.Fragment>;
                 })}
             </>
         );
+    };
+
+    // Recursive function to parse inline formats (bold, italic, code, strikethrough, highlight)
+    const parseInlineFormats = (text: string): React.ReactNode => {
+        if (!text) return null;
+
+        // Priority order: code (highest), highlight, strikethrough, bold, italic (lowest)
+        // This prevents formatting markers inside code from being interpreted
+
+        // 1. Inline code `...` (highest priority - no formatting inside)
+        const codeRegex = /(`[^`\n]+?`)/g;
+        const codeParts = text.split(codeRegex);
+        if (codeParts.length > 1) {
+            return (
+                <>
+                    {codeParts.map((part, idx) => {
+                        if (part.startsWith('`') && part.endsWith('`')) {
+                            return (
+                                <code 
+                                    key={idx}
+                                    className={`${markdownTheme.background.inlineCode} ${markdownTheme.text.code} px-1.5 py-0.5 rounded text-sm font-mono`}
+                                >
+                                    {part.slice(1, -1)}
+                                </code>
+                            );
+                        }
+                        return <React.Fragment key={idx}>{parseInlineFormats(part)}</React.Fragment>;
+                    })}
+                </>
+            );
+        }
+
+        // 2. Highlight ==...== (Obsidian syntax)
+        const highlightRegex = /(==.+?==)/g;
+        const highlightParts = text.split(highlightRegex);
+        if (highlightParts.length > 1) {
+            return (
+                <>
+                    {highlightParts.map((part, idx) => {
+                        if (part.startsWith('==') && part.endsWith('==')) {
+                            return (
+                                <mark 
+                                    key={idx}
+                                    className="bg-yellow-400/30 px-1 rounded"
+                                >
+                                    {parseInlineFormats(part.slice(2, -2))}
+                                </mark>
+                            );
+                        }
+                        return <React.Fragment key={idx}>{parseInlineFormats(part)}</React.Fragment>;
+                    })}
+                </>
+            );
+        }
+
+        // 3. Strikethrough ~~...~~
+        const strikethroughRegex = /(~~.+?~~)/g;
+        const strikethroughParts = text.split(strikethroughRegex);
+        if (strikethroughParts.length > 1) {
+            return (
+                <>
+                    {strikethroughParts.map((part, idx) => {
+                        if (part.startsWith('~~') && part.endsWith('~~')) {
+                            return (
+                                <del 
+                                    key={idx}
+                                    className={`${markdownTheme.text.secondary} opacity-70`}
+                                >
+                                    {parseInlineFormats(part.slice(2, -2))}
+                                </del>
+                            );
+                        }
+                        return <React.Fragment key={idx}>{parseInlineFormats(part)}</React.Fragment>;
+                    })}
+                </>
+            );
+        }
+
+        // 4. Bold **...** (need to handle bold+italic ***...*** properly)
+        const boldRegex = /(\*\*\*.+?\*\*\*|\*\*.+?\*\*)/g;
+        const boldParts = text.split(boldRegex);
+        if (boldParts.length > 1) {
+            return (
+                <>
+                    {boldParts.map((part, idx) => {
+                        // Bold+Italic ***...***
+                        if (part.startsWith('***') && part.endsWith('***') && part.length > 6) {
+                            return (
+                                <strong key={idx} className={`${markdownTheme.text.bold} font-semibold`}>
+                                    <em className={markdownTheme.text.italic}>
+                                        {parseInlineFormats(part.slice(3, -3))}
+                                    </em>
+                                </strong>
+                            );
+                        }
+                        // Bold **...**
+                        if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+                            return (
+                                <strong key={idx} className={`${markdownTheme.text.bold} font-semibold`}>
+                                    {parseInlineFormats(part.slice(2, -2))}
+                                </strong>
+                            );
+                        }
+                        return <React.Fragment key={idx}>{parseInlineFormats(part)}</React.Fragment>;
+                    })}
+                </>
+            );
+        }
+
+        // 5. Italic *...* (lowest priority)
+        const italicRegex = /(\*.+?\*)/g;
+        const italicParts = text.split(italicRegex);
+        if (italicParts.length > 1) {
+            return (
+                <>
+                    {italicParts.map((part, idx) => {
+                        if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+                            return (
+                                <em key={idx} className={markdownTheme.text.italic}>
+                                    {parseInlineFormats(part.slice(1, -1))}
+                                </em>
+                            );
+                        }
+                        return <React.Fragment key={idx}>{parseInlineFormats(part)}</React.Fragment>;
+                    })}
+                </>
+            );
+        }
+
+        // No special formatting found, return plain text
+        return <span>{text}</span>;
     };
 
     const renderTable = (lines: string[], key: string) => {
