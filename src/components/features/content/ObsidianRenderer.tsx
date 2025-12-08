@@ -892,7 +892,11 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                         </div>
                                         {!isCollapsed && (
                                             <div className="pl-9">
-                                                {renderSimpleText(bodyContent)}
+                                                {/* Support nested callouts by recursively parsing blocks */}
+                                                {bodyContent.trim().startsWith('>') 
+                                                    ? parseBlocks(bodyContent)
+                                                    : renderSimpleText(bodyContent)
+                                                }
                                             </div>
                                         )}
                                     </div>
@@ -1007,59 +1011,53 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                 idx = k;
                             }
 
-                            const groups: Array<{ type: 'ul' | 'ol', items: typeof items }> = [];
-                            let currentGroup: typeof items = [];
-                            let currentType: 'ul' | 'ol' | null = null;
-
-                            for (const item of items) {
-                                if (currentType === null || currentType === item.type) {
-                                    currentType = item.type;
-                                    currentGroup.push(item);
-                                } else {
-                                    if (currentGroup.length > 0) {
-                                        groups.push({ type: currentType, items: currentGroup });
-                                    }
-                                    currentType = item.type;
-                                    currentGroup = [item];
+                            // Group consecutive items of the same type, but preserve structure
+                            const renderGroups: React.ReactNode[] = [];
+                            let i = 0;
+                            
+                            while (i < items.length) {
+                                const currentItem = items[i];
+                                const currentType = currentItem.type;
+                                const group: typeof items = [currentItem];
+                                
+                                // Look ahead to group consecutive items of same type
+                                let j = i + 1;
+                                while (j < items.length && items[j].type === currentType) {
+                                    group.push(items[j]);
+                                    j++;
                                 }
+                                
+                                const ListTag = currentType === 'ul' ? 'ul' : 'ol';
+                                const className = currentType === 'ul'
+                                    ? 'list-disc pl-6 space-y-1'
+                                    : 'list-decimal pl-6 space-y-1';
+                                
+                                renderGroups.push(
+                                    <ListTag key={i} className={className}>
+                                        {group.map((item: ListItem, iIdx) => (
+                                            <li key={iIdx} className={item.isTask ? "flex items-start gap-2" : markdownTheme.text.primary}>
+                                                {item.isTask && (
+                                                    item.taskChecked ? (
+                                                        <CheckSquare size={15} className={`${markdownTheme.callout.tip.icon} mt-0.5`} />
+                                                    ) : (
+                                                        <Square size={15} className={`${markdownTheme.text.secondary} mt-0.5`} />
+                                                    )
+                                                )}
+                                                <span className={markdownTheme.text.primary}>{parseInlineFormats(item.content)}</span>
+                                                {item.children.length > 0 && (
+                                                    <div className="mt-1">
+                                                        {parseListItems(item.children, item.indent + 2)}
+                                                    </div>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ListTag>
+                                );
+                                
+                                i = j;
                             }
 
-                            if (currentGroup.length > 0 && currentType !== null) {
-                                groups.push({ type: currentType, items: currentGroup });
-                            }
-
-                            return (
-                                <>
-                                    {groups.map((group, gIdx) => {
-                                        const ListTag = group.type === 'ul' ? 'ul' : 'ol';
-                                        const className = group.type === 'ul'
-                                            ? 'list-disc pl-6 space-y-1'
-                                            : 'list-decimal pl-6 space-y-1';
-
-                                        return (
-                                            <ListTag key={gIdx} className={className}>
-                                                {group.items.map((item: ListItem, iIdx) => (
-                                                    <li key={iIdx} className={item.isTask ? "flex items-start gap-2" : markdownTheme.text.primary}>
-                                                        {item.isTask && (
-                                                            item.taskChecked ? (
-                                                                <CheckSquare size={15} className={`${markdownTheme.callout.tip.icon} mt-0.5`} />
-                                                            ) : (
-                                                                <Square size={15} className={`${markdownTheme.text.secondary} mt-0.5`} />
-                                                            )
-                                                        )}
-                                                        <span className={markdownTheme.text.primary}>{parseInlineFormats(item.content)}</span>
-                                                        {item.children.length > 0 && (
-                                                            <div className="mt-1">
-                                                                {parseListItems(item.children, item.indent + 2)}
-                                                            </div>
-                                                        )}
-                                                    </li>
-                                                ))}
-                                            </ListTag>
-                                        );
-                                    })}
-                                </>
-                            );
+                            return <>{renderGroups}</>;
                         };
 
                         result.push(
