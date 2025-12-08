@@ -245,7 +245,7 @@ export const isPreviewMode = (): boolean => {
   // Check if URL contains vercel preview domain patterns
   const hostname = window.location.hostname;
   const isVercelPreview = hostname.includes('-git-') || 
-                         hostname.includes('.vercel.app') && !hostname.includes('blogsweb.vercel.app');
+                         (hostname.includes('.vercel.app') && !hostname.includes('blogsweb.vercel.app'));
   
   // Also allow ?preview=true query parameter for testing
   const urlParams = new URLSearchParams(window.location.search);

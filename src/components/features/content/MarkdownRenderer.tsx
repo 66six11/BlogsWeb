@@ -5,12 +5,14 @@ import {
 } from 'lucide-react';
 import { markdownTheme } from '../../../styles/markdownTheme';
 
+import { BlogPost } from '../../../types';
+
 interface MarkdownRendererProps {
     content: string;
     onNavigate?: (path: string) => void; // 处理内部链接点击
     basePath?: string; // 当前文件的基础路径，用于解析相对链接
     embedDepth?: number; // 嵌套深度，防止循环嵌入
-    loadedPosts?: any[]; // 已加载的文章列表，用于文章嵌入
+    loadedPosts?: BlogPost[]; // 已加载的文章列表，用于文章嵌入
 }
 
 interface CalloutStyles {
@@ -52,7 +54,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     const renderMath = (latex: string, isDisplay: boolean) => {
         // Return LaTeX with delimiters, MathJax will process it
         if (isDisplay) {
-            return <span>$$${latex}$$</span>;
+            return <span>$${latex}$$</span>;
         } else {
             return <span>${latex}$</span>;
         }
