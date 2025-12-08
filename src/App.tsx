@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { View, BlogPost, DirectoryNode, GitHubUser } from './types';
 import {
   APP_TITLE,
@@ -18,6 +18,9 @@ import LoadingScreen from './components/common/LoadingScreen';
 import TextParticleSystem from './components/features/3d/TextParticleSystem';
 import FileTreeNode from './components/features/content/FileTreeNode';
 import MarkdownRenderer from './components/features/content/MarkdownRenderer';
+
+// Lazy load PreviewConsole only in preview mode to exclude from production builds
+const PreviewConsole = lazy(() => import('./components/dev/PreviewConsole'));
 
 import {
   fetchBlogPosts,
@@ -41,8 +44,6 @@ import {
   Folder,
   RefreshCcw,
   Loader2,
-  Database,
-  Cloud,
 } from 'lucide-react';
 
 // Welcome overlay transition duration (ms)
@@ -189,6 +190,14 @@ const App: React.FC = () => {
     setBlogDirectory([]);
     setPosts([]);
     await loadData();
+  };
+
+  const handleToggleMockData = () => {
+    setUseMockData(!useMockData);
+    setPosts([]);
+    setBlogDirectory([]);
+    setSelectedPost(null);
+    setTimeout(() => loadData(), 100);
   };
 
   // Ensure video plays
@@ -485,30 +494,13 @@ const App: React.FC = () => {
               <h3 className="font-bold flex items-center gap-2 theme-text-primary">
                 <Folder size={16} className="theme-text-accent1" /> 档案库
               </h3>
-              <div className="flex items-center gap-1">
-                {isPreviewMode() && (
-                  <button
-                    onClick={() => {
-                      setUseMockData(!useMockData);
-                      setPosts([]);
-                      setBlogDirectory([]);
-                      setSelectedPost(null);
-                      setTimeout(() => loadData(), 100);
-                    }}
-                    title={useMockData ? "切换到真实数据" : "切换到示例数据"}
-                    className="p-1.5 hover:bg-white/10 rounded-full transition-colors theme-text-secondary"
-                  >
-                    {useMockData ? <Database size={14} /> : <Cloud size={14} />}
-                  </button>
-                )}
-                <button
-                  onClick={handleRefresh}
-                  title="刷新内容"
-                  className="p-1.5 hover:bg-white/10 rounded-full transition-colors theme-text-secondary"
-                >
-                  <RefreshCcw size={14} className={isLoadingPosts ? 'animate-spin' : ''} />
-                </button>
-              </div>
+              <button
+                onClick={handleRefresh}
+                title="刷新内容"
+                className="p-1.5 hover:bg-white/10 rounded-full transition-colors theme-text-secondary"
+              >
+                <RefreshCcw size={14} className={isLoadingPosts ? 'animate-spin' : ''} />
+              </button>
             </div>
 
             {blogDirectory.length === 0 && !isLoadingPosts ? (
@@ -859,6 +851,17 @@ const App: React.FC = () => {
           </div>
         </footer>
       </div>
+
+      {/* Preview Console - Only visible in preview mode */}
+      {isPreviewMode() && (
+        <Suspense fallback={null}>
+          <PreviewConsole
+            useMockData={useMockData}
+            onToggleMockData={handleToggleMockData}
+            onRefresh={handleRefresh}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };
