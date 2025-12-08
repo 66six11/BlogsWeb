@@ -12,6 +12,7 @@
     --bg-primary-rgb: 15, 23, 42;
     --bg-secondary-rgb: 30, 41, 59;
     --accent-1-rgb: 222, 185, 154;
+    --accent-2-rgb: 124, 133, 235;
     --accent-3-rgb: 196, 147, 177;
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.3);
     --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.3);
@@ -26,6 +27,7 @@
     --text-secondary: #475569;
     --bg-primary-rgb: 247, 248, 243;
     --bg-secondary-rgb: 235, 236, 242;
+    --accent-2-rgb: 124, 133, 235;
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.3);
     --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.3);
     --bg-tertiary-translucent: rgb(from var(--bg-tertiary) r g b / 0.3);
@@ -40,6 +42,7 @@
     --bg-primary-rgb: 59, 52, 66;
     --bg-secondary-rgb: 77, 70, 88;
     --bg-tertiary-rgb: 59, 52, 66;
+    --accent-2-rgb: 124, 133, 235;
     --accent-3: #c493b1;
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.5);
     --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.5);
@@ -87,22 +90,163 @@
 
 }
 
-@layer components {
-    button.piano-btn-primary {
-        background-color: var(--accent-2) !important;
-        color: white;
-    }
-    
+/* ====================================
+   Piano Editor Styles
+   ==================================== */
 
-}
-
-/* Piano grid styling */
-.piano-grid {
-    background-color: var(--bg-tertiary);     /* 每小节拍数 */
-}
-.piano-playhead{
+/* Playhead line */
+.piano-playhead {
     background-color: var(--accent-1);
-    
+    opacity: 0.9;
+    box-shadow: 0 0 12px var(--accent-1);
+}
+
+/* Piano editor text colors */
+.piano-text-primary {
+    color: var(--text-primary);
+}
+
+.piano-text-secondary {
+    color: var(--text-secondary);
+}
+
+.piano-text-accent1 {
+    color: var(--accent-1);
+}
+
+.piano-text-accent3 {
+    color: var(--text-secondary);
+}
+
+/* Piano editor backgrounds */
+.piano-bg-primary {
+    background-color: var(--bg-primary);
+}
+
+.piano-bg-secondary {
+    background-color: var(--bg-secondary);
+}
+
+.piano-bg-tertiary {
+    background-color: var(--bg-tertiary);
+}
+
+/* Piano editor borders */
+.piano-border-subtle {
+    border-color: var(--bg-tertiary);
+}
+
+.piano-border-accent3 {
+    border-color: var(--accent-3);
+}
+
+/* Piano editor buttons */
+.piano-btn-primary {
+    background-color: var(--accent-3);
+    color: white;
+}
+
+.piano-btn-active {
+    background-color: var(--accent-1);
+    color: white;
+}
+
+.piano-btn-secondary {
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+}
+
+/* Piano editor input */
+.piano-input {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--bg-tertiary);
+}
+
+/* Piano key styling */
+.piano-key-white {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--bg-tertiary);
+}
+
+.piano-key-black {
+    background-color: var(--bg-primary);
+    color: var(--text-secondary);
+    border-color: var(--bg-tertiary);
+}
+
+/* Piano ruler cell */
+.piano-ruler-cell {
+    color: var(--text-secondary);
+    border-color: var(--bg-tertiary);
+}
+
+.piano-ruler-cell.beat-start {
+    color: var(--accent-1);
+}
+
+.piano-ruler-cell.current {
+    color: var(--accent-3);
+    background-color: rgba(var(--accent-2-rgb), 0.2);
+}
+
+/* Piano ruler border */
+.piano-ruler-border-beat {
+    border-right: 2px solid var(--accent-1);
+}
+
+.piano-ruler-border-step {
+    border-right: 1px solid var(--bg-tertiary);
+}
+
+/* Piano grid background pattern with grid lines */
+.piano-grid {
+    background-color: var(--bg-primary);
+    background-image: 
+        /* Beat separator lines (every 4 cells, CELL_WIDTH=25px, so every 100px) */
+        repeating-linear-gradient(
+            to right,
+            transparent 0px,
+            transparent 98px,
+            var(--accent-1) 98px,
+            var(--accent-1) 100px
+        ),
+        /* Step separator lines (every CELL_WIDTH=25px) */
+        repeating-linear-gradient(
+            to right,
+            transparent 0px,
+            transparent 24px,
+            var(--bg-tertiary) 24px,
+            var(--bg-tertiary) 25px
+        ),
+        /* Row separator lines (every ROW_HEIGHT=32px) */
+        repeating-linear-gradient(
+            to bottom,
+            transparent 0px,
+            transparent 31px,
+            var(--bg-tertiary) 31px,
+            var(--bg-tertiary) 32px
+        );
+}
+
+/* Piano scroll custom scrollbar */
+.piano-scroll::-webkit-scrollbar {
+    height: 8px;
+}
+
+.piano-scroll::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.piano-scroll::-webkit-scrollbar-thumb {
+    background: var(--accent-3);
+    border-radius: 4px;
+}
+
+.piano-scroll::-webkit-scrollbar-corner {
+    background-color: transparent;
+    display: none;
 }
 
 /* Base styles */
