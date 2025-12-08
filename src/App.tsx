@@ -42,12 +42,6 @@ import {
   Loader2,
 } from 'lucide-react';
 
-declare global {
-  interface Window {
-    katex: any;
-  }
-}
-
 // Welcome overlay transition duration (ms)
 const WELCOME_TRANSITION_DURATION = 700;
 
@@ -558,6 +552,7 @@ const App: React.FC = () => {
                   content={selectedPost.content}
                   onNavigate={handleWikiLinkNavigate}
                   basePath={selectedPost.path}
+                  loadedPosts={posts}
                 />
               </article>
             ) : (

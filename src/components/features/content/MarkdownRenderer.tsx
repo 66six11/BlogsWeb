@@ -9,6 +9,8 @@ interface MarkdownRendererProps {
     content: string;
     onNavigate?: (path: string) => void; // 处理内部链接点击
     basePath?: string; // 当前文件的基础路径，用于解析相对链接
+    embedDepth?: number; // 嵌套深度，防止循环嵌入
+    loadedPosts?: any[]; // 已加载的文章列表，用于文章嵌入
 }
 
 interface CalloutStyles {
@@ -16,17 +18,43 @@ interface CalloutStyles {
     icon: React.ReactNode;
 }
 
-const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onNavigate, basePath }) => {
-    const renderMath = (latex: string, isDisplay: boolean) => {
-        if (!window.katex) return <span className="font-mono text-xs text-amber-300">{latex}</span>;
-        try {
-            const html = window.katex.renderToString(latex, {
-                displayMode: isDisplay,
-                throwOnError: false
+// Declare MathJax type for TypeScript
+declare global {
+    interface Window {
+        MathJax?: {
+            typesetPromise?: (elements?: HTMLElement[]) => Promise<void>;
+            tex2svgPromise?: (latex: string, options?: any) => Promise<HTMLElement>;
+            startup?: {
+                promise?: Promise<void>;
+            };
+        };
+    }
+}
+
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ 
+    content, 
+    onNavigate, 
+    basePath, 
+    embedDepth = 0, 
+    loadedPosts = [] 
+}) => {
+    const mathRef = React.useRef<HTMLDivElement>(null);
+
+    // Typeset math after component mounts or updates
+    React.useEffect(() => {
+        if (window.MathJax && window.MathJax.typesetPromise && mathRef.current) {
+            window.MathJax.typesetPromise([mathRef.current]).catch((err) => {
+                console.error('MathJax typesetting failed:', err);
             });
-            return <span dangerouslySetInnerHTML={{ __html: html }} />;
-        } catch (e) {
-            return <span className="text-red-400 font-mono text-xs">{latex}</span>;
+        }
+    }, [content]);
+
+    const renderMath = (latex: string, isDisplay: boolean) => {
+        // Return LaTeX with delimiters, MathJax will process it
+        if (isDisplay) {
+            return <span>$$${latex}$$</span>;
+        } else {
+            return <span>${latex}$</span>;
         }
     };
 
@@ -109,68 +137,121 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onNavigate
                 return <span key={index} className="mx-1">{renderMath(part.slice(1, -1), false)}</span>;
             }
 
-            // 2. Obsidian Wiki Links [[...]] - must come before bold/italic parsing
-            // Match [[link]] or [[link|display text]] but NOT ![[image]]
-            // First, split by wiki links but preserve the delimiters
-            const wikiLinkRegex = /(\[\[[^\]]+\]\])/g;
-            const wikiLinkParts = part.split(wikiLinkRegex);
-            return (
-                <React.Fragment key={index}>
-                    {wikiLinkParts.map((wlp, wlIdx) => {
-                        // Check if this is a wiki link (starts with [[ and ends with ]]) 
-                        // AND not preceded by ! (check the original text context)
-                        const isWikiLink = wlp.startsWith('[[') && wlp.endsWith(']]');
-                        // Check if previous part ends with ! to exclude ![[image]]
-                        const prevPart = wlIdx > 0 ? wikiLinkParts[wlIdx - 1] : '';
-                        const isImageEmbed = prevPart.endsWith('!');
-                        
-                        if (isWikiLink && !isImageEmbed) {
-                            const innerContent = wlp.slice(2, -2); // Remove [[ and ]]
-                            const pipeSplit = innerContent.split('|');
-                            const linkTarget = pipeSplit[0].trim();
-                            const displayText = pipeSplit.length > 1 ? pipeSplit[1].trim() : linkTarget;
-                            
-                            return (
-                                <button
-                                    key={wlIdx}
-                                    onClick={() => onNavigate?.(linkTarget)}
-                                    className={`${markdownTheme.text.linkInternal} underline decoration-dotted cursor-pointer inline-flex items-center gap-1 font-medium`}
-                                    title={`导航到: ${linkTarget}`}
-                                >
-                                    <ExternalLink size={12} className="inline" />
-                                    {displayText}
-                                </button>
-                            );
-                        }
+            // 2. Standard Markdown Links [text](url) - process before wiki links
+            const linkRegex = /(\[([^\]]+)\]\(([^)]+)\))/g;
+            const linkParts: React.ReactNode[] = [];
+            let lastIndex = 0;
+            let match;
 
-                        // 3. Bold **...**
-                        const boldParts = wlp.split(/(\*\*.*?\*\*)/g);
-                        return (
-                            <React.Fragment key={wlIdx}>
-                                {boldParts.map((bp, bIdx) => {
-                                    if (bp.startsWith('**') && bp.endsWith('**')) {
-                                        return <strong key={bIdx}
-                                            className={`${markdownTheme.text.bold} font-semibold`}>{bp.slice(2, -2)}</strong>;
-                                    }
-                                    // 4. Italic *...*
-                                    const italicParts = bp.split(/(\*.*?\*)/g);
-                                    return (
-                                        <React.Fragment key={bIdx}>
-                                            {italicParts.map((ip, iIdx) => {
-                                                if (ip.startsWith('*') && ip.endsWith('*') && ip.length > 2) {
-                                                    return <em key={iIdx} className={markdownTheme.text.italic}>{ip.slice(1, -1)}</em>;
-                                                }
-                                                return <span key={iIdx}>{ip}</span>;
-                                            })}
-                                        </React.Fragment>
-                                    );
-                                })}
-                            </React.Fragment>
-                        );
-                    })}
-                </React.Fragment>
-            );
+            while ((match = linkRegex.exec(part)) !== null) {
+                // Add text before the link
+                if (match.index > lastIndex) {
+                    const textBefore = part.substring(lastIndex, match.index);
+                    linkParts.push(
+                        <React.Fragment key={`text-${lastIndex}`}>
+                            {parseInlineWithoutLinks(textBefore)}
+                        </React.Fragment>
+                    );
+                }
+
+                // Add the link
+                const linkText = match[2];
+                const linkUrl = match[3];
+                linkParts.push(
+                    <a
+                        key={`link-${match.index}`}
+                        href={linkUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`${markdownTheme.text.link} underline inline-flex items-center gap-1`}
+                    >
+                        {linkText}
+                        <ExternalLink size={12} className="inline" />
+                    </a>
+                );
+
+                lastIndex = match.index + match[0].length;
+            }
+
+            // If we found links, process the remaining text
+            if (linkParts.length > 0) {
+                if (lastIndex < part.length) {
+                    linkParts.push(
+                        <React.Fragment key={`text-${lastIndex}`}>
+                            {parseInlineWithoutLinks(part.substring(lastIndex))}
+                        </React.Fragment>
+                    );
+                }
+                return <React.Fragment key={index}>{linkParts}</React.Fragment>;
+            }
+
+            // 3. No standard links found, process wiki links and formatting
+            return <React.Fragment key={index}>{parseInlineWithoutLinks(part)}</React.Fragment>;
         });
+    };
+
+    // Helper function to parse inline elements except standard markdown links
+    const parseInlineWithoutLinks = (text: string) => {
+        // Obsidian Wiki Links [[...]] - must come before bold/italic parsing
+        // Match [[link]] or [[link|display text]] but NOT ![[image]]
+        const wikiLinkRegex = /(\[\[[^\]]+\]\])/g;
+        const wikiLinkParts = text.split(wikiLinkRegex);
+        return (
+            <>
+                {wikiLinkParts.map((wlp, wlIdx) => {
+                    // Check if this is a wiki link (starts with [[ and ends with ]]) 
+                    // AND not preceded by ! (check the original text context)
+                    const isWikiLink = wlp.startsWith('[[') && wlp.endsWith(']]');
+                    // Check if previous part ends with ! to exclude ![[image]]
+                    const prevPart = wlIdx > 0 ? wikiLinkParts[wlIdx - 1] : '';
+                    const isImageEmbed = prevPart.endsWith('!');
+                    
+                    if (isWikiLink && !isImageEmbed) {
+                        const innerContent = wlp.slice(2, -2); // Remove [[ and ]]
+                        const pipeSplit = innerContent.split('|');
+                        const linkTarget = pipeSplit[0].trim();
+                        const displayText = pipeSplit.length > 1 ? pipeSplit[1].trim() : linkTarget;
+                        
+                        return (
+                            <button
+                                key={wlIdx}
+                                onClick={() => onNavigate?.(linkTarget)}
+                                className={`${markdownTheme.text.linkInternal} underline decoration-dotted cursor-pointer inline-flex items-center gap-1 font-medium`}
+                                title={`导航到: ${linkTarget}`}
+                            >
+                                <ExternalLink size={12} className="inline" />
+                                {displayText}
+                            </button>
+                        );
+                    }
+
+                    // Bold **...**
+                    const boldParts = wlp.split(/(\*\*.*?\*\*)/g);
+                    return (
+                        <React.Fragment key={wlIdx}>
+                            {boldParts.map((bp, bIdx) => {
+                                if (bp.startsWith('**') && bp.endsWith('**')) {
+                                    return <strong key={bIdx}
+                                        className={`${markdownTheme.text.bold} font-semibold`}>{bp.slice(2, -2)}</strong>;
+                                }
+                                // Italic *...*
+                                const italicParts = bp.split(/(\*.*?\*)/g);
+                                return (
+                                    <React.Fragment key={bIdx}>
+                                        {italicParts.map((ip, iIdx) => {
+                                            if (ip.startsWith('*') && ip.endsWith('*') && ip.length > 2) {
+                                                return <em key={iIdx} className={markdownTheme.text.italic}>{ip.slice(1, -1)}</em>;
+                                            }
+                                            return <span key={iIdx}>{ip}</span>;
+                                        })}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </React.Fragment>
+                    );
+                })}
+            </>
+        );
     };
 
     const renderTable = (lines: string[], key: string) => {
@@ -355,27 +436,107 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onNavigate
                         continue;
                     }
 
-                    // D. Obsidian Images ![[...]] - handle optional |size parameter
+                    // D. Obsidian Embeds ![[...]] - handle both images and articles
                     if (trimmed.match(/!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/)) {
                         const match = trimmed.match(/!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/);
                         if (match) {
-                            const imageName = match[1];
-                            const encodedName = encodeURIComponent(imageName);
-                            // Use GitHub raw content
-                            const imageUrl = `https://raw.githubusercontent.com/66six11/BlogsWeb/main/attachments/${encodedName}`;
-                            result.push(
-                                <div key={key} className="my-6 flex flex-col items-center">
-                                    <img
-                                        src={imageUrl}
-                                        alt={imageName}
-                                        className={`max-w-full md:max-w-lg rounded-lg border ${markdownTheme.border.image} shadow-lg opacity-100`}
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).style.display = 'none';
-                                        }}
-                                    />
-                                    <span className={`text-xs ${markdownTheme.text.secondary} mt-2 italic`}>{imageName}</span>
-                                </div>
-                            );
+                            const embedName = match[1];
+                            
+                            // Check if it's an image file (common image extensions)
+                            const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp'];
+                            const isImage = imageExtensions.some(ext => embedName.toLowerCase().endsWith(ext));
+                            
+                            if (isImage) {
+                                // Render as image
+                                const encodedName = encodeURIComponent(embedName);
+                                const imageUrl = `https://raw.githubusercontent.com/66six11/BlogsWeb/main/attachments/${encodedName}`;
+                                result.push(
+                                    <div key={key} className="my-6 flex flex-col items-center">
+                                        <img
+                                            src={imageUrl}
+                                            alt={embedName}
+                                            className={`max-w-full md:max-w-lg rounded-lg border ${markdownTheme.border.image} shadow-lg opacity-100`}
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).style.display = 'none';
+                                            }}
+                                        />
+                                        <span className={`text-xs ${markdownTheme.text.secondary} mt-2 italic`}>{embedName}</span>
+                                    </div>
+                                );
+                            } else {
+                                // Render as article embed
+                                if (embedDepth >= 1) {
+                                    // Max depth reached, render as a link block only
+                                    result.push(
+                                        <div key={key} className={`my-4 p-4 rounded-lg border ${markdownTheme.border.blockquote} ${markdownTheme.background.blockquote}`}>
+                                            <div className="flex items-center gap-2">
+                                                <ExternalLink size={16} className={markdownTheme.text.linkInternal} />
+                                                <button
+                                                    onClick={() => onNavigate?.(embedName)}
+                                                    className={`${markdownTheme.text.linkInternal} underline font-medium hover:opacity-80`}
+                                                >
+                                                    {embedName}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                } else {
+                                    // Render embedded article content
+                                    const normalizedTarget = embedName.toLowerCase().trim();
+                                    const embeddedPost = loadedPosts.find((p) => {
+                                        const title = p.title.toLowerCase();
+                                        const filename = p.path?.split('/').pop()?.replace('.md', '').toLowerCase() || '';
+                                        return title === normalizedTarget || 
+                                               filename === normalizedTarget || 
+                                               title.startsWith(normalizedTarget) ||
+                                               filename.startsWith(normalizedTarget);
+                                    });
+                                    
+                                    if (embeddedPost) {
+                                        result.push(
+                                            <div key={key} className={`my-6 p-6 rounded-lg border-2 ${markdownTheme.border.blockquote} ${markdownTheme.background.blockquote}`}>
+                                                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/50">
+                                                    <h3 className={`text-lg font-bold ${markdownTheme.text.heading3}`}>
+                                                        {embeddedPost.title}
+                                                    </h3>
+                                                    <button
+                                                        onClick={() => onNavigate?.(embedName)}
+                                                        className={`${markdownTheme.text.linkInternal} flex items-center gap-1 text-sm hover:opacity-80 transition-opacity`}
+                                                    >
+                                                        <span>查看全文</span>
+                                                        <ExternalLink size={14} />
+                                                    </button>
+                                                </div>
+                                                <div className="embedded-content">
+                                                    <MarkdownRenderer 
+                                                        content={embeddedPost.content}
+                                                        onNavigate={onNavigate}
+                                                        basePath={basePath}
+                                                        embedDepth={embedDepth + 1}
+                                                        loadedPosts={loadedPosts}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    } else {
+                                        // Article not found, render as link
+                                        result.push(
+                                            <div key={key} className={`my-4 p-4 rounded-lg border ${markdownTheme.border.blockquote} ${markdownTheme.background.blockquote}`}>
+                                                <div className="flex items-center gap-2">
+                                                    <ExternalLink size={16} className={markdownTheme.text.secondary} />
+                                                    <button
+                                                        onClick={() => onNavigate?.(embedName)}
+                                                        className={`${markdownTheme.text.linkInternal} underline font-medium hover:opacity-80`}
+                                                    >
+                                                        {embedName}
+                                                    </button>
+                                                    <span className={`text-xs ${markdownTheme.text.secondary} italic`}>(点击加载)</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                }
+                            }
                             i++;
                             continue;
                         }
@@ -508,9 +669,16 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onNavigate
                                 ? 'list-disc pl-6 space-y-1'
                                 : 'list-decimal pl-6 space-y-1';
 
+                            const processedIndices = new Set<number>();
+
                             return (
                                 <ListTag key={`${type}-${depth}`} className={`${className} ${depth > 0 ? 'ml-4' : ''}`}>
                                     {items.map((item, idx) => {
+                                        // Skip items that were already processed as nested items
+                                        if (processedIndices.has(idx)) {
+                                            return null;
+                                        }
+
                                         const trimmed = item.trim();
                                         const taskMatch = trimmed.match(/^[-*+]\s*\[(.)\]\s*(.*)/);
                                         const orderedMatch = trimmed.match(/^(\d+)\.\s*(.*)/);
@@ -536,34 +704,40 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onNavigate
                                             content = unorderedMatch[1];
                                         }
 
-                                        // Check for nested lists
+                                        // Check for nested lists - look ahead to see if next items are indented
                                         const indentMatch = item.match(/^(\s+)/);
-                                        const indent = indentMatch ? indentMatch[1].length : 0;
-                                        const nestedDepth = Math.floor(indent / 2);
+                                        const currentIndent = indentMatch ? indentMatch[1].length : 0;
+                                        const currentDepth = Math.floor(currentIndent / 2);
 
-                                        if (nestedDepth > depth) {
-                                            // Find all items at this nested level
-                                            const nestedItems = [];
-                                            let k = idx;
-                                            while (k < items.length) {
-                                                const currentIndent = (items[k].match(/^(\s+)/)?.[1]?.length || 0);
-                                                const currentDepth = Math.floor(currentIndent / 2);
-                                                if (currentDepth === nestedDepth) {
-                                                    nestedItems.push(items[k]);
-                                                    k++;
-                                                } else if (currentDepth < nestedDepth) {
-                                                    break;
-                                                } else {
-                                                    k++;
-                                                }
+                                        // Only process at current depth level
+                                        if (currentDepth !== depth) {
+                                            return null;
+                                        }
+
+                                        // Look for nested items (items with greater indent following this item)
+                                        const nestedItems = [];
+                                        let k = idx + 1;
+                                        while (k < items.length) {
+                                            const nextIndent = (items[k].match(/^(\s+)/)?.[1]?.length || 0);
+                                            const nextDepth = Math.floor(nextIndent / 2);
+                                            
+                                            if (nextDepth <= depth) {
+                                                // Back to current or lower depth, stop
+                                                break;
                                             }
+                                            
+                                            nestedItems.push(items[k]);
+                                            processedIndices.add(k);
+                                            k++;
+                                        }
 
+                                        if (nestedItems.length > 0) {
                                             return (
                                                 <React.Fragment key={idx}>
                                                     <li className={markdownTheme.text.primary}>
                                                         {parseInline(content)}
                                                     </li>
-                                                    {renderList(nestedItems, nestedDepth)}
+                                                    {renderList(nestedItems, depth + 1)}
                                                 </React.Fragment>
                                             );
                                         }
@@ -608,7 +782,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onNavigate
         return result;
     };
 
-    return <div className="markdown-content">{parseBlocks()}</div>;
+    return <div ref={mathRef} className="markdown-content">{parseBlocks()}</div>;
 };
 
 // Export the component for reuse
