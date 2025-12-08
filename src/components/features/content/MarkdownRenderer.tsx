@@ -134,7 +134,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
         return parts.map((part, index) => {
             if (part.startsWith('$') && part.endsWith('$')) {
-                return <span key={index} className="mx-1">{renderMath(part.slice(1, -1), false)}</span>;
+                return <span key={`math-${index}`} className="mx-1">{renderMath(part.slice(1, -1), false)}</span>;
             }
 
             // 2. Standard Markdown Links [text](url) - process before wiki links
@@ -142,13 +142,14 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             const linkParts: React.ReactNode[] = [];
             let lastIndex = 0;
             let match;
+            let linkCount = 0;
 
             while ((match = linkRegex.exec(part)) !== null) {
                 // Add text before the link
                 if (match.index > lastIndex) {
                     const textBefore = part.substring(lastIndex, match.index);
                     linkParts.push(
-                        <React.Fragment key={`text-${lastIndex}`}>
+                        <React.Fragment key={`text-${index}-${linkCount}`}>
                             {parseInlineWithoutLinks(textBefore)}
                         </React.Fragment>
                     );
@@ -159,7 +160,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 const linkUrl = match[3];
                 linkParts.push(
                     <a
-                        key={`link-${match.index}`}
+                        key={`link-${index}-${linkCount}`}
                         href={linkUrl}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -171,22 +172,23 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 );
 
                 lastIndex = match.index + match[0].length;
+                linkCount++;
             }
 
             // If we found links, process the remaining text
             if (linkParts.length > 0) {
                 if (lastIndex < part.length) {
                     linkParts.push(
-                        <React.Fragment key={`text-${lastIndex}`}>
+                        <React.Fragment key={`text-${index}-end`}>
                             {parseInlineWithoutLinks(part.substring(lastIndex))}
                         </React.Fragment>
                     );
                 }
-                return <React.Fragment key={index}>{linkParts}</React.Fragment>;
+                return <React.Fragment key={`inline-${index}`}>{linkParts}</React.Fragment>;
             }
 
             // 3. No standard links found, process wiki links and formatting
-            return <React.Fragment key={index}>{parseInlineWithoutLinks(part)}</React.Fragment>;
+            return <React.Fragment key={`inline-${index}`}>{parseInlineWithoutLinks(part)}</React.Fragment>;
         });
     };
 
@@ -566,14 +568,34 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                     if (trimmed.startsWith('>')) {
                         const quoteLines = [];
                         let j = i;
-                        while (j < lines.length && (lines[j].trim().startsWith('>') || lines[j].trim() === '')) {
-                            if (lines[j].trim() !== '') {
+                        let emptyLineCount = 0;
+                        
+                        while (j < lines.length) {
+                            const currentLine = lines[j].trim();
+                            
+                            if (currentLine.startsWith('>')) {
                                 quoteLines.push(lines[j]);
-                            } else if (lines[j].trim() === '' && quoteLines.length > 0) {
-                                // Empty line inside a quote block, keep it
+                                emptyLineCount = 0;
+                                j++;
+                            } else if (currentLine === '' && quoteLines.length > 0) {
+                                // Empty line - might be inside quote or separator
+                                emptyLineCount++;
+                                // If we see 2 consecutive empty lines, or 1 empty line followed by non-quote, break
+                                if (emptyLineCount >= 1 && j + 1 < lines.length) {
+                                    const nextLine = lines[j + 1].trim();
+                                    if (!nextLine.startsWith('>')) {
+                                        // Next line is not a quote, stop here
+                                        break;
+                                    } else if (nextLine.startsWith('> [!')) {
+                                        // Next line is a new callout, stop here
+                                        break;
+                                    }
+                                }
                                 quoteLines.push(lines[j]);
+                                j++;
+                            } else {
+                                break;
                             }
-                            j++;
                         }
 
                         if (quoteLines.length > 0) {
