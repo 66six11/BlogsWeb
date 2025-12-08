@@ -1,11 +1,14 @@
 import React from 'react';
 import {
     Info, CheckCircle, AlertTriangle, XCircle, Bug, HelpCircle,
-    List, Quote, Clipboard, FileText, CheckSquare, Square
+    List, Quote, Clipboard, FileText, CheckSquare, Square, ExternalLink
 } from 'lucide-react';
+import { markdownTheme } from '../../../styles/markdownTheme';
 
 interface MarkdownRendererProps {
     content: string;
+    onNavigate?: (path: string) => void; // 处理内部链接点击
+    basePath?: string; // 当前文件的基础路径，用于解析相对链接
 }
 
 interface CalloutStyles {
@@ -13,7 +16,7 @@ interface CalloutStyles {
     icon: React.ReactNode;
 }
 
-const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onNavigate, basePath }) => {
     const renderMath = (latex: string, isDisplay: boolean) => {
         if (!window.katex) return <span className="font-mono text-xs text-amber-300">{latex}</span>;
         try {
@@ -34,22 +37,22 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
             case 'info':
             case 'todo':
                 return {
-                    color: 'border-blue-500 bg-blue-500/10 text-blue-200',
-                    icon: <Info size={18} className="text-blue-400" />
+                    color: `${markdownTheme.callout.note.border} ${markdownTheme.callout.note.bg} ${markdownTheme.callout.note.text}`,
+                    icon: <Info size={18} className={markdownTheme.callout.note.icon} />
                 };
             case 'tip':
             case 'done':
             case 'success':
                 return {
-                    color: 'border-emerald-500 bg-emerald-500/10 text-emerald-200',
-                    icon: <CheckCircle size={18} className="text-emerald-400" />
+                    color: `${markdownTheme.callout.tip.border} ${markdownTheme.callout.tip.bg} ${markdownTheme.callout.tip.text}`,
+                    icon: <CheckCircle size={18} className={markdownTheme.callout.tip.icon} />
                 };
             case 'warning':
             case 'attention':
             case 'caution':
                 return {
-                    color: 'border-orange-500 bg-orange-500/10 text-orange-200',
-                    icon: <AlertTriangle size={18} className="text-orange-400" />
+                    color: `${markdownTheme.callout.warning.border} ${markdownTheme.callout.warning.bg} ${markdownTheme.callout.warning.text}`,
+                    icon: <AlertTriangle size={18} className={markdownTheme.callout.warning.icon} />
                 };
             case 'fail':
             case 'failure':
@@ -57,42 +60,42 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
             case 'danger':
             case 'missing':
                 return {
-                    color: 'border-red-500 bg-red-500/10 text-red-200',
-                    icon: <XCircle size={18} className="text-red-400" />
+                    color: `${markdownTheme.callout.error.border} ${markdownTheme.callout.error.bg} ${markdownTheme.callout.error.text}`,
+                    icon: <XCircle size={18} className={markdownTheme.callout.error.icon} />
                 };
             case 'bug':
                 return {
-                    color: 'border-red-500 bg-red-500/10 text-red-200',
-                    icon: <Bug size={18} className="text-red-400" />
+                    color: `${markdownTheme.callout.error.border} ${markdownTheme.callout.error.bg} ${markdownTheme.callout.error.text}`,
+                    icon: <Bug size={18} className={markdownTheme.callout.error.icon} />
                 };
             case 'question':
             case 'help':
             case 'faq':
                 return {
-                    color: 'border-amber-500 bg-amber-500/10 text-amber-200',
-                    icon: <HelpCircle size={18} className="text-amber-400" />
+                    color: `${markdownTheme.callout.question.border} ${markdownTheme.callout.question.bg} ${markdownTheme.callout.question.text}`,
+                    icon: <HelpCircle size={18} className={markdownTheme.callout.question.icon} />
                 };
             case 'example':
                 return {
-                    color: 'border-purple-500 bg-purple-500/10 text-purple-200',
-                    icon: <List size={18} className="text-purple-400" />
+                    color: `${markdownTheme.callout.example.border} ${markdownTheme.callout.example.bg} ${markdownTheme.callout.example.text}`,
+                    icon: <List size={18} className={markdownTheme.callout.example.icon} />
                 };
             case 'quote':
             case 'cite':
                 return {
-                    color: 'border-slate-500 bg-slate-500/10 text-slate-300',
-                    icon: <Quote size={18} className="text-slate-400" />
+                    color: `${markdownTheme.callout.quote.border} ${markdownTheme.callout.quote.bg} ${markdownTheme.callout.quote.text}`,
+                    icon: <Quote size={18} className={markdownTheme.callout.quote.icon} />
                 };
             case 'summary':
             case 'abstract':
                 return {
-                    color: 'border-cyan-500 bg-cyan-500/10 text-cyan-200',
-                    icon: <Clipboard size={18} className="text-cyan-400" />
+                    color: `${markdownTheme.callout.summary.border} ${markdownTheme.callout.summary.bg} ${markdownTheme.callout.summary.text}`,
+                    icon: <Clipboard size={18} className={markdownTheme.callout.summary.icon} />
                 };
             default:
                 return {
-                    color: 'border-slate-600 bg-slate-800/50 text-slate-300',
-                    icon: <FileText size={18} className="text-slate-400" />
+                    color: `${markdownTheme.callout.default.border} ${markdownTheme.callout.default.bg} ${markdownTheme.callout.default.text}`,
+                    icon: <FileText size={18} className={markdownTheme.callout.default.icon} />
                 };
         }
     };
@@ -106,24 +109,61 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                 return <span key={index} className="mx-1">{renderMath(part.slice(1, -1), false)}</span>;
             }
 
-            // 2. Bold **...**
-            const boldParts = part.split(/(\*\*.*?\*\*)/g);
+            // 2. Obsidian Wiki Links [[...]] - must come before bold/italic parsing
+            // Match [[link]] or [[link|display text]] but NOT ![[image]]
+            // First, split by wiki links but preserve the delimiters
+            const wikiLinkRegex = /(\[\[[^\]]+\]\])/g;
+            const wikiLinkParts = part.split(wikiLinkRegex);
             return (
                 <React.Fragment key={index}>
-                    {boldParts.map((bp, bIdx) => {
-                        if (bp.startsWith('**') && bp.endsWith('**')) {
-                            return <strong key={bIdx}
-                                className="text-amber-200 font-semibold">{bp.slice(2, -2)}</strong>;
+                    {wikiLinkParts.map((wlp, wlIdx) => {
+                        // Check if this is a wiki link (starts with [[ and ends with ]]) 
+                        // AND not preceded by ! (check the original text context)
+                        const isWikiLink = wlp.startsWith('[[') && wlp.endsWith(']]');
+                        // Check if previous part ends with ! to exclude ![[image]]
+                        const prevPart = wlIdx > 0 ? wikiLinkParts[wlIdx - 1] : '';
+                        const isImageEmbed = prevPart.endsWith('!');
+                        
+                        if (isWikiLink && !isImageEmbed) {
+                            const innerContent = wlp.slice(2, -2); // Remove [[ and ]]
+                            const pipeSplit = innerContent.split('|');
+                            const linkTarget = pipeSplit[0].trim();
+                            const displayText = pipeSplit.length > 1 ? pipeSplit[1].trim() : linkTarget;
+                            
+                            return (
+                                <button
+                                    key={wlIdx}
+                                    onClick={() => onNavigate?.(linkTarget)}
+                                    className={`${markdownTheme.text.linkInternal} underline decoration-dotted cursor-pointer inline-flex items-center gap-1 font-medium`}
+                                    title={`导航到: ${linkTarget}`}
+                                >
+                                    <ExternalLink size={12} className="inline" />
+                                    {displayText}
+                                </button>
+                            );
                         }
-                        // 3. Italic *...*
-                        const italicParts = bp.split(/(\*.*?\*)/g);
+
+                        // 3. Bold **...**
+                        const boldParts = wlp.split(/(\*\*.*?\*\*)/g);
                         return (
-                            <React.Fragment key={bIdx}>
-                                {italicParts.map((ip, iIdx) => {
-                                    if (ip.startsWith('*') && ip.endsWith('*') && ip.length > 2) {
-                                        return <em key={iIdx} className="text-purple-200">{ip.slice(1, -1)}</em>;
+                            <React.Fragment key={wlIdx}>
+                                {boldParts.map((bp, bIdx) => {
+                                    if (bp.startsWith('**') && bp.endsWith('**')) {
+                                        return <strong key={bIdx}
+                                            className={`${markdownTheme.text.bold} font-semibold`}>{bp.slice(2, -2)}</strong>;
                                     }
-                                    return <span key={iIdx}>{ip}</span>;
+                                    // 4. Italic *...*
+                                    const italicParts = bp.split(/(\*.*?\*)/g);
+                                    return (
+                                        <React.Fragment key={bIdx}>
+                                            {italicParts.map((ip, iIdx) => {
+                                                if (ip.startsWith('*') && ip.endsWith('*') && ip.length > 2) {
+                                                    return <em key={iIdx} className={markdownTheme.text.italic}>{ip.slice(1, -1)}</em>;
+                                                }
+                                                return <span key={iIdx}>{ip}</span>;
+                                            })}
+                                        </React.Fragment>
+                                    );
                                 })}
                             </React.Fragment>
                         );
@@ -147,13 +187,13 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
         const bodyRows = lines.slice(2).map(parseRow);
 
         return (
-            <div key={key} className="my-6 overflow-x-auto rounded-lg border border-slate-700 shadow-lg">
-                <table className="min-w-full divide-y divide-slate-700 bg-slate-900/50">
-                    <thead className="bg-slate-900">
+            <div key={key} className={`my-6 overflow-x-auto rounded-lg border ${markdownTheme.border.table} shadow-lg`}>
+                <table className={`min-w-full divide-y ${markdownTheme.border.table} ${markdownTheme.background.table}`}>
+                    <thead className={markdownTheme.background.tableHeader}>
                         <tr>
                             {headers.map((h, i) => (
                                 <th key={i}
-                                    className="px-6 py-3 text-left text-xs font-bold text-amber-400 uppercase tracking-wider border-b border-slate-700">
+                                    className={`px-6 py-3 text-left text-xs font-bold text-amber-400 uppercase tracking-wider border-b ${markdownTheme.border.table}`}>
                                     {parseInline(h)}
                                 </th>
                             ))}
@@ -161,10 +201,10 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                     </thead>
                     <tbody className="divide-y divide-slate-800">
                         {bodyRows.map((row, idx) => (
-                            <tr key={idx} className={idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-800/20'}>
+                            <tr key={idx} className={idx % 2 === 0 ? 'bg-transparent' : markdownTheme.background.tableRowAlt}>
                                 {row.map((cell, cIdx) => (
                                     <td key={cIdx}
-                                        className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 border-r border-slate-800/50 last:border-0">
+                                        className={`px-6 py-4 whitespace-nowrap text-sm ${markdownTheme.text.primary} border-r border-slate-800/50 last:border-0`}>
                                         {parseInline(cell)}
                                     </td>
                                 ))}
@@ -183,7 +223,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
             const trimmed = line.trim();
             if (!trimmed) return <div key={idx} className="h-4" />;
             return (
-                <p key={idx} className="my-2 text-slate-300 leading-relaxed">
+                <p key={idx} className={`my-2 ${markdownTheme.text.primary} leading-relaxed`}>
                     {parseInline(trimmed)}
                 </p>
             );
@@ -205,9 +245,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                 result.push(
                     <div key={`code-${secIdx}`} className="relative group my-6">
                         {lang && <span
-                            className="absolute right-2 top-2 text-xs text-slate-500 font-mono select-none">{lang}</span>}
+                            className={`absolute right-2 top-2 text-xs ${markdownTheme.text.secondary} font-mono select-none`}>{lang}</span>}
                         <pre
-                            className="bg-slate-950/80 border border-slate-700/50 p-4 rounded-lg overflow-x-auto text-sm font-mono text-purple-200 shadow-inner">
+                            className={`${markdownTheme.background.codeBlock} border ${markdownTheme.border.codeBlock} p-4 rounded-lg overflow-x-auto text-sm font-mono ${markdownTheme.text.code} shadow-inner`}>
                             <code>{codeContent.trim()}</code>
                         </pre>
                     </div>
@@ -254,7 +294,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                         if (foundEnd) {
                             result.push(
                                 <div key={key}
-                                    className="my-6 overflow-x-auto text-center py-2 bg-slate-950/30 rounded border border-white/5">
+                                    className={`my-6 overflow-x-auto text-center py-2 ${markdownTheme.background.math} rounded border ${markdownTheme.border.math}`}>
                                     {renderMath(mathContent, true)}
                                 </div>
                             );
@@ -291,25 +331,25 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                         switch (level) {
                             case 1:
                                 result.push(<h1 key={key}
-                                    className="text-3xl font-serif font-bold text-slate-100 mt-8 mb-4 border-b border-amber-500/30 pb-2 flex items-center gap-2">
+                                    className={`text-3xl font-serif font-bold ${markdownTheme.text.heading1} mt-8 mb-4 border-b ${markdownTheme.border.heading1} pb-2 flex items-center gap-2`}>
                                     {content}</h1>);
                                 break;
                             case 2:
                                 result.push(<h2 key={key}
-                                    className="text-2xl font-serif font-bold text-slate-200 mt-6 mb-3 pl-3 border-l-4 border-purple-500">{content}</h2>);
+                                    className={`text-2xl font-serif font-bold ${markdownTheme.text.heading2} mt-6 mb-3 pl-3 border-l-4 ${markdownTheme.border.heading2}`}>{content}</h2>);
                                 break;
                             case 3:
                                 result.push(<h3 key={key}
-                                    className="text-xl font-bold text-purple-200 mt-5 mb-2">{content}</h3>);
+                                    className={`text-xl font-bold ${markdownTheme.text.heading3} mt-5 mb-2`}>{content}</h3>);
                                 break;
                             case 4:
                                 result.push(<h4 key={key}
-                                    className="text-lg font-bold text-amber-200/80 mt-4 mb-2 flex items-center gap-2">
+                                    className={`text-lg font-bold ${markdownTheme.text.heading4} mt-4 mb-2 flex items-center gap-2`}>
                                     <div className="w-1.5 h-1.5 rounded-full  bg-amber-400" />
                                     {content}</h4>);
                                 break;
                             default:
-                                result.push(<h5 key={key} className="font-bold text-slate-300 mt-3">{content}</h5>);
+                                result.push(<h5 key={key} className={`font-bold ${markdownTheme.text.heading5} mt-3`}>{content}</h5>);
                         }
                         i++;
                         continue;
@@ -328,12 +368,12 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                                     <img
                                         src={imageUrl}
                                         alt={imageName}
-                                        className="max-w-full md:max-w-lg rounded-lg border border-white/10 shadow-lg opacity-100"
+                                        className={`max-w-full md:max-w-lg rounded-lg border ${markdownTheme.border.image} shadow-lg opacity-100`}
                                         onError={(e) => {
                                             (e.target as HTMLImageElement).style.display = 'none';
                                         }}
                                     />
-                                    <span className="text-xs text-slate-500 mt-2 italic">{imageName}</span>
+                                    <span className={`text-xs ${markdownTheme.text.secondary} mt-2 italic`}>{imageName}</span>
                                 </div>
                             );
                             i++;
@@ -352,9 +392,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                         result.push(
                             <div key={key} className="my-6 flex flex-col items-center">
                                 <img src={imageUrl} alt={altText}
-                                    className="max-w-full rounded-lg border border-white/10 shadow-lg opacity-100" />
+                                    className={`max-w-full rounded-lg border ${markdownTheme.border.image} shadow-lg opacity-100`} />
                                 {altText &&
-                                    <span className="text-xs text-slate-500 mt-2 italic">{altText}</span>}
+                                    <span className={`text-xs ${markdownTheme.text.secondary} mt-2 italic`}>{altText}</span>}
                             </div>
                         );
                         i++;
@@ -402,7 +442,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                                 const bodyContent = quoteLines.map(l => l.replace(/^>\s?/, '')).join('\n');
                                 result.push(
                                     <div key={key}
-                                        className="my-6 border-l-4 border-amber-500/50 pl-4 py-2 bg-slate-900/30 italic text-slate-300">
+                                        className={`my-6 border-l-4 ${markdownTheme.border.blockquote} pl-4 py-2 ${markdownTheme.background.blockquote} italic ${markdownTheme.text.primary}`}>
                                         {renderSimpleText(bodyContent)}
                                     </div>
                                 );
@@ -483,11 +523,11 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                                             return (
                                                 <li key={idx} className="flex items-start gap-2">
                                                     {checked ? (
-                                                        <CheckSquare size={15} className="text-emerald-400 mt-0.5" />
+                                                        <CheckSquare size={15} className={`${markdownTheme.callout.tip.icon} mt-0.5`} />
                                                     ) : (
-                                                        <Square size={15} className="text-slate-500 mt-0.5" />
+                                                        <Square size={15} className={`${markdownTheme.text.secondary} mt-0.5`} />
                                                     )}
-                                                    <span className="text-slate-300">{parseInline(content)}</span>
+                                                    <span className={markdownTheme.text.primary}>{parseInline(content)}</span>
                                                 </li>
                                             );
                                         } else if (orderedMatch) {
@@ -520,7 +560,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
 
                                             return (
                                                 <React.Fragment key={idx}>
-                                                    <li className="text-slate-300">
+                                                    <li className={markdownTheme.text.primary}>
                                                         {parseInline(content)}
                                                     </li>
                                                     {renderList(nestedItems, nestedDepth)}
@@ -529,7 +569,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                                         }
 
                                         return (
-                                            <li key={idx} className="text-slate-300">
+                                            <li key={idx} className={markdownTheme.text.primary}>
                                                 {parseInline(content)}
                                             </li>
                                         );
@@ -549,14 +589,14 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
 
                     // H. Horizontal Rule
                     if (trimmed.match(/^[-*_]{3,}$/)) {
-                        result.push(<hr key={key} className="my-8 border-t border-slate-700/50" />);
+                        result.push(<hr key={key} className={`my-8 border-t ${markdownTheme.border.horizontalRule}`} />);
                         i++;
                         continue;
                     }
 
                     // I. Paragraph
                     result.push(
-                        <p key={key} className="my-3 text-slate-300 leading-relaxed">
+                        <p key={key} className={`my-3 ${markdownTheme.text.primary} leading-relaxed`}>
                             {parseInline(trimmed)}
                         </p>
                     );

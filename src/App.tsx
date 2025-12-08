@@ -265,6 +265,58 @@ const App: React.FC = () => {
     }
   };
 
+  // Handle wiki link navigation from markdown content
+  const handleWikiLinkNavigate = async (linkTarget: string) => {
+    // Try to find the post by title or filename
+    const normalizedTarget = linkTarget.toLowerCase().trim();
+    
+    // First, search in already loaded posts with exact match or prefix match
+    const existingPost = posts.find((p) => {
+      const title = p.title.toLowerCase();
+      const filename = p.path.split('/').pop()?.replace('.md', '').toLowerCase() || '';
+      // Use exact match or check if the filename/title starts with the target
+      return title === normalizedTarget || 
+             filename === normalizedTarget || 
+             title.startsWith(normalizedTarget) ||
+             filename.startsWith(normalizedTarget);
+    });
+
+    if (existingPost) {
+      setSelectedPost(existingPost);
+      return;
+    }
+
+    // If not found in loaded posts, search in the directory tree
+    const findInTree = (nodes: DirectoryNode[]): DirectoryNode | null => {
+      for (const node of nodes) {
+        if (node.type === 'file') {
+          const filename = node.name.replace('.md', '').toLowerCase();
+          // Use exact match or prefix match for better precision
+          if (filename === normalizedTarget || filename.startsWith(normalizedTarget)) {
+            return node;
+          }
+        }
+        if (node.children) {
+          const found = findInTree(node.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const foundNode = findInTree(blogDirectory);
+    if (foundNode) {
+      await handleDirectorySelect(foundNode);
+    } else {
+      // Provide more helpful error message
+      const availableTitles = posts.map(p => p.title).slice(0, 5).join(', ');
+      console.warn(
+        `Wiki link target '${linkTarget}' not found.`,
+        posts.length > 0 ? `Available posts include: ${availableTitles}...` : 'No posts loaded yet.'
+      );
+    }
+  };
+
   const renderNav = () => (
     <nav className="nav-bar fixed top-0 left-0 right-0 z-40 w-full backdrop-blur-md border-b shadow-lg opacity-90 theme-bg-secondary theme-border-subtle">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -502,7 +554,11 @@ const App: React.FC = () => {
                     ))}
                   </div>
                 </header>
-                <MarkdownRenderer content={selectedPost.content} />
+                <MarkdownRenderer 
+                  content={selectedPost.content}
+                  onNavigate={handleWikiLinkNavigate}
+                  basePath={selectedPost.path}
+                />
               </article>
             ) : (
               <div className="grid gap-6">
