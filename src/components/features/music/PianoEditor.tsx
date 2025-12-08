@@ -65,6 +65,15 @@ const PIANO_KEYS: PianoKey[] = (() => {
         }
     }
 
+    // Octave 0: only A (pitch 9), A# (pitch 10), B (pitch 11) (lowest 3 keys)
+    for (let p = 11; p >= 9; p--) {
+        keys.push({
+            name: pitchNames[p],
+            pitch: p,
+            octave: 0,
+            isBlack: pitchNames[p].includes('#')
+        });
+    }
 
     return keys;
 })();

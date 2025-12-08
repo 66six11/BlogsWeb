@@ -121,30 +121,52 @@ export const isABCNotation = (content: string): boolean => {
 };
 
 // Parse ABC duration string per ABC v2.1 standard
+// Supports: numbers (A2), fractions (A/2, A3/4), dots (A., A..), slashes (A/, A//)
 const parseABCDurationV2 = (durationStr: string, baseNoteDuration: number): number => {
   if (!durationStr) return baseNoteDuration;
   
   const cleanStr = durationStr.replace(/[><]/g, '');
   if (!cleanStr) return baseNoteDuration;
   
-  if (/^\/+$/.test(cleanStr)) {
-    const slashCount = cleanStr.length;
-    return Math.max(1, Math.round(baseNoteDuration / Math.pow(2, slashCount)));
+  // Count dots at the end for dotted notes
+  let dotCount = 0;
+  let mainDuration = cleanStr;
+  while (mainDuration.endsWith('.')) {
+    dotCount++;
+    mainDuration = mainDuration.slice(0, -1);
   }
   
-  if (cleanStr.includes('/')) {
-    const parts = cleanStr.split('/');
+  // Parse the main duration part (without dots)
+  let baseDuration = baseNoteDuration;
+  
+  if (/^\/+$/.test(mainDuration)) {
+    // Only slashes: A/, A//, etc.
+    const slashCount = mainDuration.length;
+    baseDuration = Math.max(1, Math.round(baseNoteDuration / Math.pow(2, slashCount)));
+  } else if (mainDuration.includes('/')) {
+    // Fraction: A/2, A3/4, etc.
+    const parts = mainDuration.split('/');
     const numerator = parts[0] ? parseInt(parts[0], 10) : 1;
     const denominator = parts[1] ? parseInt(parts[1], 10) : 2;
-    return Math.max(1, Math.round(baseNoteDuration * numerator / denominator));
+    baseDuration = Math.max(1, Math.round(baseNoteDuration * numerator / denominator));
+  } else if (mainDuration) {
+    // Plain number: A2, A3, etc.
+    const multiplier = parseInt(mainDuration, 10);
+    if (!isNaN(multiplier) && multiplier > 0) {
+      baseDuration = baseNoteDuration * multiplier;
+    }
   }
   
-  const multiplier = parseInt(cleanStr, 10);
-  if (!isNaN(multiplier) && multiplier > 0) {
-    return baseNoteDuration * multiplier;
+  // Apply dots: each dot adds half of the previous value
+  // Single dot: 1.5x (adds 0.5x), Double dot: 1.75x (adds 0.5x + 0.25x)
+  let finalDuration = baseDuration;
+  let addedValue = baseDuration;
+  for (let i = 0; i < dotCount; i++) {
+    addedValue = addedValue / 2;
+    finalDuration += addedValue;
   }
   
-  return baseNoteDuration;
+  return Math.max(1, Math.round(finalDuration));
 };
 
 // Parse a single ABC note
@@ -157,7 +179,7 @@ const parseABCSingleNote = (
   barAccidentals: Map<string, number>,
   accidental: number,
   hasExplicitAccidental: boolean
-): { note: Note | null; nextIndex: number } => {
+): { note: Note | null; nextIndex: number; hasTie: boolean } => {
   let i = startIdx;
   
   const noteChar = line[i];
@@ -195,11 +217,19 @@ const parseABCSingleNote = (
     }
   }
   
-  octave = Math.max(3, Math.min(5, octave));
+  // Support full 88-key piano range: A0 (MIDI 21) to C8 (MIDI 108)
+  octave = Math.max(0, Math.min(8, octave));
   
   let durationStr = '';
-  while (i < line.length && (/\d|\/|>|</.test(line[i]))) {
+  while (i < line.length && (/\d|\/|>|<|\./.test(line[i]))) {
     durationStr += line[i];
+    i++;
+  }
+  
+  // Check for tie marker after duration
+  let hasTie = false;
+  if (i < line.length && line[i] === '-') {
+    hasTie = true;
     i++;
   }
   
@@ -212,18 +242,20 @@ const parseABCSingleNote = (
       startTime,
       duration
     },
-    nextIndex: i
+    nextIndex: i,
+    hasTie
   };
 };
 
 // Parse ABC chord content
+// Returns notes with optional tie markers (stored temporarily in a custom property)
 const parseABCChordV2 = (
   content: string, 
   baseNoteDuration: number, 
   startTime: number,
   keySignature: Record<string, number>,
   barAccidentals: Map<string, number>
-): { chordNotes: Note[], maxDuration: number } => {
+): { chordNotes: (Note & { _hasTie?: boolean })[], maxDuration: number } => {
   const chordNotes: Note[] = [];
   let maxDuration = baseNoteDuration;
   let i = 0;
@@ -282,22 +314,35 @@ const parseABCChordV2 = (
         }
       }
       
-      octave = Math.max(3, Math.min(5, octave));
+      // Support full 88-key piano range: A0 (MIDI 21) to C8 (MIDI 108)
+      octave = Math.max(0, Math.min(8, octave));
       
       let noteDurationStr = '';
-      while (i < content.length && /\d|\//.test(content[i])) {
+      while (i < content.length && /\d|\/|\./.test(content[i])) {
         noteDurationStr += content[i];
         i++;
       }
+      
+      // Check for tie marker on this note within the chord
+      let hasTie = false;
+      if (i < content.length && content[i] === '-') {
+        hasTie = true;
+        i++;
+      }
+      
       const noteDuration = noteDurationStr ? parseABCDurationV2(noteDurationStr, baseNoteDuration) : baseNoteDuration;
       maxDuration = Math.max(maxDuration, noteDuration);
       
-      chordNotes.push({
+      const note: Note & { _hasTie?: boolean } = {
         pitch,
         octave,
         startTime,
         duration: noteDuration
-      });
+      };
+      if (hasTie) {
+        note._hasTie = true;
+      }
+      chordNotes.push(note);
     } else {
       i++;
     }
@@ -461,12 +506,92 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
         continue;
       }
       
-      if ('()-'.includes(char)) {
-        if (char === '(' && i + 1 < musicContent.length && /\d/.test(musicContent[i + 1])) {
+      // Tuplets: (3ABC means 3 notes in 2 beats, (5ABCDE means 5 notes in 4 beats
+      if (char === '(' && i + 1 < musicContent.length && /\d/.test(musicContent[i + 1])) {
+        i++;
+        let tupletNum = 0;
+        while (i < musicContent.length && /\d/.test(musicContent[i])) {
+          tupletNum = tupletNum * 10 + parseInt(musicContent[i], 10);
           i++;
-          while (i < musicContent.length && /\d/.test(musicContent[i])) i++;
-          continue;
         }
+        
+        // Skip optional colon and ratio (e.g., (3:2:4)
+        if (i < musicContent.length && musicContent[i] === ':') {
+          i++;
+          while (i < musicContent.length && /\d:/.test(musicContent[i])) i++;
+        }
+        
+        // Calculate tuplet duration scaling factor
+        // Standard tuplet rules: (3 = 3 notes in time of 2, (5 = 5 notes in time of 4
+        let tupletIntoTime = 2;
+        if (tupletNum === 2 || tupletNum === 3) tupletIntoTime = 2;
+        else if (tupletNum === 4 || tupletNum === 5 || tupletNum === 6 || tupletNum === 7) tupletIntoTime = 4;
+        else if (tupletNum === 8 || tupletNum === 9) tupletIntoTime = 8;
+        else tupletIntoTime = Math.floor(tupletNum * 2 / 3);
+        
+        const tupletFactor = tupletIntoTime / tupletNum;
+        
+        // Parse notes within tuplet
+        const tupletStartTime = currentTime;
+        let notesInTuplet = 0;
+        const tupletNotes: Note[] = [];
+        
+        while (i < musicContent.length && notesInTuplet < tupletNum) {
+          const tupletChar = musicContent[i];
+          
+          if (/\s/.test(tupletChar)) {
+            i++;
+            continue;
+          }
+          
+          // Skip ornaments
+          if ('~.HLMOPSTuv!+'.includes(tupletChar)) {
+            i++;
+            continue;
+          }
+          
+          // Parse note
+          let accidental = 0;
+          let hasExplicitAccidental = false;
+          while (i < musicContent.length && (musicContent[i] === '^' || musicContent[i] === '_' || musicContent[i] === '=')) {
+            hasExplicitAccidental = true;
+            if (musicContent[i] === '^') accidental++;
+            else if (musicContent[i] === '_') accidental--;
+            else if (musicContent[i] === '=') accidental = 0;
+            i++;
+          }
+          
+          if (i < musicContent.length && /[A-Ga-g]/.test(musicContent[i])) {
+            const noteResult = parseABCSingleNote(
+              musicContent, i, baseNoteDuration, currentTime,
+              keySignature, barAccidentals, accidental, hasExplicitAccidental
+            );
+            
+            if (noteResult.note) {
+              // Apply tuplet scaling to duration
+              noteResult.note.duration = Math.max(1, Math.round(noteResult.note.duration * tupletFactor));
+              noteResult.note.voice = currentVoice;
+              
+              if (noteResult.hasTie) {
+                (noteResult.note as any)._hasTie = true;
+              }
+              
+              tupletNotes.push(noteResult.note);
+              currentTime += noteResult.note.duration;
+              notesInTuplet++;
+            }
+            i = noteResult.nextIndex;
+          } else {
+            break;
+          }
+        }
+        
+        parsedNotes.push(...tupletNotes);
+        continue;
+      }
+      
+      // Slurs and other parentheses (for legato markings, not tuplets)
+      if ('()-'.includes(char)) {
         i++;
         continue;
       }
@@ -476,6 +601,48 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
         while (i < musicContent.length && musicContent[i] !== '"') i++;
         i++;
         continue;
+      }
+      
+      // Grace notes: {g}A or {ab}C etc.
+      if (char === '{') {
+        const closeBrace = musicContent.indexOf('}', i);
+        if (closeBrace > i) {
+          const graceContent = musicContent.substring(i + 1, closeBrace);
+          const graceNoteDuration = 0.5; // Very short duration for grace notes
+          
+          // Parse each grace note character
+          for (let g = 0; g < graceContent.length; g++) {
+            const graceChar = graceContent[g];
+            if (/[A-Ga-g]/.test(graceChar)) {
+              let graceOctave = graceChar === graceChar.toUpperCase() ? 4 : 5;
+              const graceBaseNote = graceChar.toUpperCase();
+              let gracePitch = ABC_NOTE_TO_SEMITONE[graceBaseNote];
+              
+              if (gracePitch !== undefined) {
+                // Apply key signature to grace note
+                const keyAcc = keySignature[graceBaseNote];
+                if (keyAcc !== undefined) {
+                  gracePitch = (gracePitch + keyAcc + 12) % 12;
+                }
+                
+                graceOctave = Math.max(0, Math.min(8, graceOctave));
+                
+                parsedNotes.push({
+                  pitch: gracePitch,
+                  octave: graceOctave,
+                  startTime: currentTime,
+                  duration: graceNoteDuration,
+                  voice: currentVoice
+                });
+                
+                currentTime += graceNoteDuration;
+              }
+            }
+          }
+          
+          i = closeBrace + 1;
+          continue;
+        }
       }
       
       if (char === '[') {
@@ -495,7 +662,7 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
           
           let durationStr = '';
           let j = closeBracket + 1;
-          while (j < musicContent.length && (/\d|\/|>|</.test(musicContent[j]))) {
+          while (j < musicContent.length && (/\d|\/|>|<|\./.test(musicContent[j]))) {
             durationStr += musicContent[j];
             j++;
           }
@@ -515,7 +682,7 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
       if (char === 'z' || char === 'Z' || char === 'x' || char === 'X') {
         let durationStr = '';
         i++;
-        while (i < musicContent.length && (/\d|\//.test(musicContent[i]))) {
+        while (i < musicContent.length && (/\d|\/|\./.test(musicContent[i]))) {
           durationStr += musicContent[i];
           i++;
         }
@@ -541,6 +708,13 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
         );
         if (noteResult.note) {
           noteResult.note.voice = currentVoice;
+          
+          // Handle tie: if this note has a tie marker, we'll mark it for merging
+          // We store it temporarily with a special property
+          if (noteResult.hasTie) {
+            (noteResult.note as any)._hasTie = true;
+          }
+          
           parsedNotes.push(noteResult.note);
           currentTime += noteResult.note.duration;
         }
@@ -557,7 +731,69 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
   // Store voices in metadata
   metadata.voices = Array.from(voiceSet);
 
-  return { notes: parsedNotes, metadata };
+  // Post-process: merge tied notes
+  // Tied notes are consecutive notes of the same pitch/octave where the first has a tie marker
+  const mergedNotes: Note[] = [];
+  let i = 0;
+  while (i < parsedNotes.length) {
+    const note = parsedNotes[i] as Note & { _hasTie?: boolean };
+    
+    // If this note has a tie marker, look for the next note with matching pitch/octave
+    if (note._hasTie) {
+      let totalDuration = note.duration;
+      let j = i + 1;
+      
+      // Find all consecutive tied notes with same pitch/octave/voice
+      while (j < parsedNotes.length) {
+        const nextNote = parsedNotes[j] as Note & { _hasTie?: boolean };
+        
+        // Check if next note is the tied continuation (same pitch, octave, voice, and starts where previous ends)
+        if (nextNote.pitch === note.pitch && 
+            nextNote.octave === note.octave &&
+            (nextNote.voice || 'V1') === (note.voice || 'V1') &&
+            nextNote.startTime === note.startTime + totalDuration) {
+          
+          totalDuration += nextNote.duration;
+          j++;
+          
+          // If this continuation doesn't have a tie, we're done with this tie chain
+          if (!nextNote._hasTie) {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+      
+      // Create merged note without the internal _hasTie property
+      const mergedNote: Note = {
+        pitch: note.pitch,
+        octave: note.octave,
+        startTime: note.startTime,
+        duration: totalDuration,
+        voice: note.voice,
+        slur: note.slur
+      };
+      mergedNotes.push(mergedNote);
+      
+      // Skip the notes we merged
+      i = j;
+    } else {
+      // No tie, just copy the note (without internal _hasTie property)
+      const cleanNote: Note = {
+        pitch: note.pitch,
+        octave: note.octave,
+        startTime: note.startTime,
+        duration: note.duration,
+        voice: note.voice,
+        slur: note.slur
+      };
+      mergedNotes.push(cleanNote);
+      i++;
+    }
+  }
+
+  return { notes: mergedNotes, metadata };
 };
 
 // Parse legacy score format

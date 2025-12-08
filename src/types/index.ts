@@ -33,10 +33,11 @@ export interface DirectoryNode {
 
 export interface Note {
   pitch: number; // 0-11 (C to B) relative to octave
-  octave: number; // 3-5
+  octave: number; // 0-8 (standard 88-key piano range)
   startTime: number; // 16th note steps
   duration: number; // 16th note steps
   voice?: string; // Track/voice identifier for multi-track scores
+  slur?: boolean; // Optional: indicates note is part of a slur/legato phrase
 }
 
 export interface ChatMessage {
