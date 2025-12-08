@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
     Info, CheckCircle, AlertTriangle, XCircle, Bug, HelpCircle,
     List, Quote, Clipboard, FileText, CheckSquare, Square, ExternalLink,
@@ -868,7 +868,10 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
 
                                 const isCollapsible = foldIndicator !== undefined;
                                 const defaultCollapsed = foldIndicator === '-';
-                                const isCollapsed = collapsedCallouts.has(calloutId) ? collapsedCallouts.has(calloutId) : defaultCollapsed;
+                                // If in set, it means user toggled it, so invert the default
+                                const isCollapsed = collapsedCallouts.has(calloutId) 
+                                    ? !defaultCollapsed 
+                                    : defaultCollapsed;
 
                                 result.push(
                                     <div key={key} className={`my-6 rounded-lg border p-4 ${styles.color}`}>
