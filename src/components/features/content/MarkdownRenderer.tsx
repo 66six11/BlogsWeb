@@ -56,7 +56,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         if (isDisplay) {
             return <div className="flex justify-center my-4">{"\\[" + latex + "\\]"}</div>;
         } else {
-            return <span className="inline">{"\\(" + latex + "\\)"}</span>;
+            return <span style={{ display: 'inline' }}>{"\\(" + latex + "\\)"}</span>;
         }
     };
 
@@ -136,7 +136,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
         return parts.map((part, index) => {
             if (part.startsWith('$') && part.endsWith('$')) {
-                return <span key={`math-${index}`} className="inline">{renderMath(part.slice(1, -1), false)}</span>;
+                return <React.Fragment key={`math-${index}`}>{renderMath(part.slice(1, -1), false)}</React.Fragment>;
             }
 
             // 2. Standard Markdown Links [text](url) - process before wiki links
