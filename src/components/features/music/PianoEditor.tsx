@@ -1127,7 +1127,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [isPlaying, notes, currentStep, lastNoteEndTime, stepInterval, cleanupSampler, onPlaybackChange]);
+    }, [isPlaying, notes, currentStep, lastNoteEndTime, stepInterval, cleanupSampler, onPlaybackChange, performVisualUpdate]);
 
     return (
         <div className={`bg-tertiary border rounded-xl p-6 shadow-2xl ${className}`}>
