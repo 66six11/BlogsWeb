@@ -503,6 +503,8 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
     }
     
     let musicContent = trimmed;
+    
+    // Handle inline fields in square brackets: [K:G], [V:1]
     const inlineFieldRegex = /\[([A-Za-z]):([^\]]*)\]/g;
     let match;
     while ((match = inlineFieldRegex.exec(trimmed)) !== null) {
@@ -530,6 +532,39 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
       }
     }
     musicContent = musicContent.replace(/\[[A-Za-z]:[^\]]*\]/g, '');
+    
+    // Handle field lines that appear after bar lines (e.g., "| K:Ab")
+    // This happens when lines are joined with backslash continuation
+    const barFieldMatch = musicContent.match(/\|\s*([A-Za-z]):(.+?)(?=\[|$)/);
+    if (barFieldMatch) {
+      const field = barFieldMatch[1].toUpperCase();
+      const value = barFieldMatch[2].trim();
+      
+      if (field === 'K') {
+        const keyMatch = value.match(/^([A-G][b#]?)(m|min|maj|major|minor|mix|dor|phr|lyd|loc)?/i);
+        if (keyMatch) {
+          // Normalize key name case: first letter uppercase, b/# lowercase
+          let keyName = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1).toLowerCase();
+          const mode = keyMatch[2]?.toLowerCase() || '';
+          if (mode === 'm' || mode === 'min' || mode === 'minor') {
+            keyName += 'm';
+          }
+          keySignature = KEY_SIGNATURES[keyName] || {};
+          // Clear bar accidentals when key changes
+          barAccidentals.clear();
+        }
+        // Remove the field from music content
+        musicContent = musicContent.replace(/\|\s*[A-Za-z]:[^\[]+/, '|');
+      } else if (field === 'V') {
+        currentVoice = value.split(/\s+/)[0] || 'V1';
+        if (!voicePositions.has(currentVoice)) {
+          voicePositions.set(currentVoice, 0);
+        }
+        voiceSet.add(currentVoice);
+        // Remove the field from music content
+        musicContent = musicContent.replace(/\|\s*[A-Za-z]:[^\[]+/, '|');
+      }
+    }
     
     let currentTime = voicePositions.get(currentVoice) || 0;
     
