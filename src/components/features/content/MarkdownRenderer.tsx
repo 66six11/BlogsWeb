@@ -111,12 +111,20 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onNavigate
 
             // 2. Obsidian Wiki Links [[...]] - must come before bold/italic parsing
             // Match [[link]] or [[link|display text]] but NOT ![[image]]
-            const wikiLinkParts = part.split(/(?<!\!)(\[\[([^\]]+)\]\])/g);
+            // First, split by wiki links but preserve the delimiters
+            const wikiLinkRegex = /(\[\[[^\]]+\]\])/g;
+            const wikiLinkParts = part.split(wikiLinkRegex);
             return (
                 <React.Fragment key={index}>
                     {wikiLinkParts.map((wlp, wlIdx) => {
-                        // Check if this is a wiki link (starts with [[ and ends with ]])
-                        if (wlp.startsWith('[[') && wlp.endsWith(']]')) {
+                        // Check if this is a wiki link (starts with [[ and ends with ]]) 
+                        // AND not preceded by ! (check the original text context)
+                        const isWikiLink = wlp.startsWith('[[') && wlp.endsWith(']]');
+                        // Check if previous part ends with ! to exclude ![[image]]
+                        const prevPart = wlIdx > 0 ? wikiLinkParts[wlIdx - 1] : '';
+                        const isImageEmbed = prevPart.endsWith('!');
+                        
+                        if (isWikiLink && !isImageEmbed) {
                             const innerContent = wlp.slice(2, -2); // Remove [[ and ]]
                             const pipeSplit = innerContent.split('|');
                             const linkTarget = pipeSplit[0].trim();
@@ -515,9 +523,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onNavigate
                                             return (
                                                 <li key={idx} className="flex items-start gap-2">
                                                     {checked ? (
-                                                        <CheckSquare size={15} className={markdownTheme.callout.tip.icon + ' mt-0.5'} />
+                                                        <CheckSquare size={15} className={`${markdownTheme.callout.tip.icon} mt-0.5`} />
                                                     ) : (
-                                                        <Square size={15} className={markdownTheme.text.secondary + ' mt-0.5'} />
+                                                        <Square size={15} className={`${markdownTheme.text.secondary} mt-0.5`} />
                                                     )}
                                                     <span className={markdownTheme.text.primary}>{parseInline(content)}</span>
                                                 </li>

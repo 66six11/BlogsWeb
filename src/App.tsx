@@ -270,11 +270,15 @@ const App: React.FC = () => {
     // Try to find the post by title or filename
     const normalizedTarget = linkTarget.toLowerCase().trim();
     
-    // First, search in already loaded posts
+    // First, search in already loaded posts with exact match or prefix match
     const existingPost = posts.find((p) => {
       const title = p.title.toLowerCase();
       const filename = p.path.split('/').pop()?.replace('.md', '').toLowerCase() || '';
-      return title.includes(normalizedTarget) || filename.includes(normalizedTarget) || normalizedTarget.includes(title);
+      // Use exact match or check if the filename/title starts with the target
+      return title === normalizedTarget || 
+             filename === normalizedTarget || 
+             title.startsWith(normalizedTarget) ||
+             filename.startsWith(normalizedTarget);
     });
 
     if (existingPost) {
@@ -287,7 +291,8 @@ const App: React.FC = () => {
       for (const node of nodes) {
         if (node.type === 'file') {
           const filename = node.name.replace('.md', '').toLowerCase();
-          if (filename.includes(normalizedTarget) || normalizedTarget.includes(filename)) {
+          // Use exact match or prefix match for better precision
+          if (filename === normalizedTarget || filename.startsWith(normalizedTarget)) {
             return node;
           }
         }
@@ -303,7 +308,12 @@ const App: React.FC = () => {
     if (foundNode) {
       await handleDirectorySelect(foundNode);
     } else {
-      console.warn(`Could not find post for wiki link: ${linkTarget}`);
+      // Provide more helpful error message
+      const availableTitles = posts.map(p => p.title).slice(0, 5).join(', ');
+      console.warn(
+        `Wiki link target '${linkTarget}' not found.`,
+        posts.length > 0 ? `Available posts include: ${availableTitles}...` : 'No posts loaded yet.'
+      );
     }
   };
 
