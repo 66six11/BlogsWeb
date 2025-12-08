@@ -54,9 +54,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     const renderMath = (latex: string, isDisplay: boolean) => {
         // Return LaTeX with delimiters, MathJax will process it
         if (isDisplay) {
-            return <div className="text-center my-4">{"\\[" + latex + "\\]"}</div>;
+            return <div className="flex justify-center my-4">{"\\[" + latex + "\\]"}</div>;
         } else {
-            return <span>{"\\(" + latex + "\\)"}</span>;
+            return <span style={{ display: 'inline' }}>{"\\(" + latex + "\\)"}</span>;
         }
     };
 
@@ -136,7 +136,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
         return parts.map((part, index) => {
             if (part.startsWith('$') && part.endsWith('$')) {
-                return <span key={`math-${index}`} className="mx-1">{renderMath(part.slice(1, -1), false)}</span>;
+                return <React.Fragment key={`math-${index}`}>{renderMath(part.slice(1, -1), false)}</React.Fragment>;
             }
 
             // 2. Standard Markdown Links [text](url) - process before wiki links
@@ -641,144 +641,164 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                     if (trimmed.match(/^(\s*[-*+]|\s*\d+\.)/)) {
                         const listLines = [];
                         let j = i;
-                        while (j < lines.length && (lines[j].trim().match(/^(\s*[-*+]|\s*\d+\.)/) || lines[j].trim() === '')) {
-                            listLines.push(lines[j]);
-                            j++;
+                        // Collect all consecutive list items (including empty lines between them)
+                        while (j < lines.length) {
+                            const line = lines[j];
+                            const lineTrimmed = line.trim();
+                            // Continue if it's a list item or an empty line
+                            if (lineTrimmed.match(/^([-*+]|\d+\.)/) || lineTrimmed === '') {
+                                listLines.push(line);
+                                j++;
+                            } else if (line.match(/^\s+/) && listLines.length > 0) {
+                                // Also include indented continuation lines
+                                listLines.push(line);
+                                j++;
+                            } else {
+                                break;
+                            }
                         }
 
-                        const renderList = (items: string[], depth = 0): React.ReactNode => {
-                            const result: React.ReactNode[] = [];
-                            let currentList: string[] = [];
-                            let currentType: 'ul' | 'ol' | null = null;
-
-                            items.forEach((item, idx) => {
-                                const trimmedItem = item.trim();
-                                if (!trimmedItem) {
-                                    if (currentList.length > 0) {
-                                        result.push(renderListItems(currentList, currentType!, depth));
-                                        currentList = [];
-                                        currentType = null;
+                        // Parse list items with proper nesting support
+                        interface ListItem {
+                            type: 'ul' | 'ol';
+                            content: string;
+                            children: string[];
+                            indent: number;
+                            isTask?: boolean;
+                            taskChecked?: boolean;
+                        }
+                        
+                        const parseListItems = (lines: string[], baseIndent: number = 0): React.ReactNode => {
+                            const items: ListItem[] = [];
+                            let idx = 0;
+                            
+                            while (idx < lines.length) {
+                                const line = lines[idx];
+                                const trimmed = line.trim();
+                                
+                                if (!trimmed) {
+                                    idx++;
+                                    continue;
+                                }
+                                
+                                const indentMatch = line.match(/^(\s*)/);
+                                const indent = indentMatch ? indentMatch[1].length : 0;
+                                
+                                // Skip items that are too indented (they belong to parent)
+                                if (indent < baseIndent) {
+                                    break;
+                                }
+                                
+                                // Skip items that are too deeply indented (will be processed as children)
+                                if (indent > baseIndent) {
+                                    idx++;
+                                    continue;
+                                }
+                                
+                                const taskMatch = trimmed.match(/^[-*+]\s*\[(.)\]\s*(.*)/);
+                                const orderedMatch = trimmed.match(/^(\d+)\.\s*(.*)/);
+                                const unorderedMatch = trimmed.match(/^[-*+]\s*(.*)/);
+                                
+                                let content = '';
+                                let type: 'ul' | 'ol' = 'ul';
+                                let isTask = false;
+                                let taskChecked = false;
+                                
+                                if (taskMatch) {
+                                    isTask = true;
+                                    taskChecked = taskMatch[1] !== ' ';
+                                    content = taskMatch[2];
+                                    type = 'ul';
+                                } else if (orderedMatch) {
+                                    content = orderedMatch[2];
+                                    type = 'ol';
+                                } else if (unorderedMatch) {
+                                    content = unorderedMatch[1];
+                                    type = 'ul';
+                                }
+                                
+                                // Collect child items (items with greater indentation)
+                                const children: string[] = [];
+                                let k = idx + 1;
+                                while (k < lines.length) {
+                                    const childLine = lines[k];
+                                    const childTrimmed = childLine.trim();
+                                    if (!childTrimmed) {
+                                        k++;
+                                        continue;
                                     }
-                                    return;
-                                }
-
-                                const isOrdered = /^\d+\./.test(trimmedItem);
-                                const type = isOrdered ? 'ol' : 'ul';
-
-                                if (currentType === null) {
-                                    currentType = type;
-                                }
-
-                                if (currentType === type) {
-                                    currentList.push(item);
-                                } else {
-                                    if (currentList.length > 0) {
-                                        result.push(renderListItems(currentList, currentType!, depth));
+                                    const childIndent = (childLine.match(/^(\s*)/) || ['', ''])[1].length;
+                                    if (childIndent > indent) {
+                                        children.push(childLine);
+                                        k++;
+                                    } else {
+                                        break;
                                     }
-                                    currentList = [item];
-                                    currentType = type;
                                 }
-                            });
-
-                            if (currentList.length > 0) {
-                                result.push(renderListItems(currentList, currentType!, depth));
+                                
+                                items.push({ type, content, children, indent, isTask, taskChecked });
+                                idx = k;
                             }
-
-                            return <React.Fragment key={`list-${depth}`}>{result}</React.Fragment>;
-                        };
-
-                        const renderListItems = (items: string[], type: 'ul' | 'ol', depth: number) => {
-                            const ListTag = type === 'ul' ? 'ul' : 'ol';
-                            const className = type === 'ul'
-                                ? 'list-disc pl-6 space-y-1'
-                                : 'list-decimal pl-6 space-y-1';
-
-                            const processedIndices = new Set<number>();
-
+                            
+                            // Group consecutive items by type
+                            const groups: Array<{ type: 'ul' | 'ol', items: typeof items }> = [];
+                            let currentGroup: typeof items = [];
+                            let currentType: 'ul' | 'ol' | null = null;
+                            
+                            for (const item of items) {
+                                if (currentType === null || currentType === item.type) {
+                                    currentType = item.type;
+                                    currentGroup.push(item);
+                                } else {
+                                    if (currentGroup.length > 0) {
+                                        groups.push({ type: currentType, items: currentGroup });
+                                    }
+                                    currentType = item.type;
+                                    currentGroup = [item];
+                                }
+                            }
+                            
+                            if (currentGroup.length > 0 && currentType !== null) {
+                                groups.push({ type: currentType, items: currentGroup });
+                            }
+                            
                             return (
-                                <ListTag key={`${type}-${depth}`} className={`${className} ${depth > 0 ? 'ml-4' : ''}`}>
-                                    {items.map((item, idx) => {
-                                        // Skip items that were already processed as nested items
-                                        if (processedIndices.has(idx)) {
-                                            return null;
-                                        }
-
-                                        const trimmed = item.trim();
-                                        const taskMatch = trimmed.match(/^[-*+]\s*\[(.)\]\s*(.*)/);
-                                        const orderedMatch = trimmed.match(/^(\d+)\.\s*(.*)/);
-                                        const unorderedMatch = trimmed.match(/^[-*+]\s*(.*)/);
-
-                                        let content = '';
-                                        if (taskMatch) {
-                                            const checked = taskMatch[1] !== ' ';
-                                            content = taskMatch[2];
-                                            return (
-                                                <li key={idx} className="flex items-start gap-2">
-                                                    {checked ? (
-                                                        <CheckSquare size={15} className={`${markdownTheme.callout.tip.icon} mt-0.5`} />
-                                                    ) : (
-                                                        <Square size={15} className={`${markdownTheme.text.secondary} mt-0.5`} />
-                                                    )}
-                                                    <span className={markdownTheme.text.primary}>{parseInline(content)}</span>
-                                                </li>
-                                            );
-                                        } else if (orderedMatch) {
-                                            content = orderedMatch[2];
-                                        } else if (unorderedMatch) {
-                                            content = unorderedMatch[1];
-                                        }
-
-                                        // Check for nested lists - look ahead to see if next items are indented
-                                        const indentMatch = item.match(/^(\s+)/);
-                                        const currentIndent = indentMatch ? indentMatch[1].length : 0;
-                                        const currentDepth = Math.floor(currentIndent / 2);
-
-                                        // Only process at current depth level
-                                        if (currentDepth !== depth) {
-                                            return null;
-                                        }
-
-                                        // Look for nested items (items with greater indent following this item)
-                                        const nestedItems = [];
-                                        let k = idx + 1;
-                                        while (k < items.length) {
-                                            const nextIndent = (items[k].match(/^(\s+)/)?.[1]?.length || 0);
-                                            const nextDepth = Math.floor(nextIndent / 2);
-                                            
-                                            if (nextDepth <= depth) {
-                                                // Back to current or lower depth, stop
-                                                break;
-                                            }
-                                            
-                                            nestedItems.push(items[k]);
-                                            processedIndices.add(k);
-                                            k++;
-                                        }
-
-                                        if (nestedItems.length > 0) {
-                                            return (
-                                                <React.Fragment key={idx}>
-                                                    <li className={markdownTheme.text.primary}>
-                                                        {parseInline(content)}
-                                                    </li>
-                                                    {renderList(nestedItems, depth + 1)}
-                                                </React.Fragment>
-                                            );
-                                        }
-
+                                <>
+                                    {groups.map((group, gIdx) => {
+                                        const ListTag = group.type === 'ul' ? 'ul' : 'ol';
+                                        const className = group.type === 'ul'
+                                            ? 'list-disc pl-6 space-y-1'
+                                            : 'list-decimal pl-6 space-y-1';
+                                        
                                         return (
-                                            <li key={idx} className={markdownTheme.text.primary}>
-                                                {parseInline(content)}
-                                            </li>
+                                            <ListTag key={gIdx} className={className}>
+                                                {group.items.map((item: ListItem, iIdx) => (
+                                                    <li key={iIdx} className={item.isTask ? "flex items-start gap-2" : markdownTheme.text.primary}>
+                                                        {item.isTask && (
+                                                            item.taskChecked ? (
+                                                                <CheckSquare size={15} className={`${markdownTheme.callout.tip.icon} mt-0.5`} />
+                                                            ) : (
+                                                                <Square size={15} className={`${markdownTheme.text.secondary} mt-0.5`} />
+                                                            )
+                                                        )}
+                                                        <span className={markdownTheme.text.primary}>{parseInline(item.content)}</span>
+                                                        {item.children.length > 0 && (
+                                                            <div className="mt-1">
+                                                                {parseListItems(item.children, item.indent + 2)}
+                                                            </div>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ListTag>
                                         );
                                     })}
-                                </ListTag>
+                                </>
                             );
                         };
 
                         result.push(
                             <div key={key} className="my-4">
-                                {renderList(listLines)}
+                                {parseListItems(listLines, 0)}
                             </div>
                         );
                         i = j;
