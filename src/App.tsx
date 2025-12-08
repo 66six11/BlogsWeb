@@ -265,6 +265,43 @@ const App: React.FC = () => {
     }
   };
 
+  // Handle wiki link navigation from markdown content
+  const handleWikiLinkNavigate = async (filename: string) => {
+    // First, check if the post is already loaded
+    const normalizedFilename = filename.endsWith('.md') ? filename : `${filename}.md`;
+    const existingPost = posts.find((p) => 
+      p.path?.endsWith(normalizedFilename) || 
+      p.title === filename ||
+      p.path?.includes(filename)
+    );
+    
+    if (existingPost) {
+      setSelectedPost(existingPost);
+      return;
+    }
+
+    // Search in blogDirectory for the file
+    const findNodeByName = (nodes: DirectoryNode[], name: string): DirectoryNode | null => {
+      for (const node of nodes) {
+        if (node.type === 'file' && (node.name === normalizedFilename || node.name.replace('.md', '') === filename)) {
+          return node;
+        }
+        if (node.type === 'folder' && node.children.length > 0) {
+          const found = findNodeByName(node.children, name);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const node = findNodeByName(blogDirectory, filename);
+    if (node) {
+      await handleDirectorySelect(node);
+    } else {
+      console.warn(`Could not find blog post: ${filename}`);
+    }
+  };
+
   const renderNav = () => (
     <nav className="nav-bar fixed top-0 left-0 right-0 z-40 w-full backdrop-blur-md border-b shadow-lg opacity-90 theme-bg-secondary theme-border-subtle">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -502,7 +539,10 @@ const App: React.FC = () => {
                     ))}
                   </div>
                 </header>
-                <MarkdownRenderer content={selectedPost.content} />
+                <MarkdownRenderer 
+                  content={selectedPost.content} 
+                  onNavigate={handleWikiLinkNavigate}
+                />
               </article>
             ) : (
               <div className="grid gap-6">
