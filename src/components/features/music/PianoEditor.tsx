@@ -1108,26 +1108,69 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                 }
             } else if (!document.hidden && isPlaying) {
                 // Page returning to foreground - sync playhead position with Transport and resume visual updates
-                if (toneSamplerRef.current && Tone.Transport.state === 'started' && playbackSessionRef.current) {
-                    const currentPlaybackId = playbackIdRef.current;
+                if (playbackSessionRef.current) {
                     const { startStep, transportStartTime, stepDurationMs } = playbackSessionRef.current;
                     
-                    // Resume visual update loop using shared function
-                    const updateVisuals = () => {
-                        const result = performVisualUpdate(currentPlaybackId, startStep, transportStartTime, stepDurationMs);
-                        if (result.shouldContinue) {
+                    // Check if Transport is still running and playback hasn't ended
+                    if (Tone.Transport.state === 'started' && toneSamplerRef.current) {
+                        // Calculate current position to check if playback has ended
+                        const transportElapsed = Tone.Transport.seconds - transportStartTime;
+                        const currentPos = startStep + (transportElapsed * 1000 / stepDurationMs);
+                        
+                        if (currentPos > lastNoteEndTime) {
+                            // Playback has ended while in background - stop it
+                            pausePlayback();
+                            // Update playhead to final position
+                            updatePlayheadPosition(lastNoteEndTime * CELL_WIDTH);
+                            setCurrentStep(Math.floor(lastNoteEndTime));
+                        } else {
+                            // Playback is still ongoing - sync and resume visual updates
+                            const currentPlaybackId = playbackIdRef.current;
+                            
+                            // Immediately sync playhead to current position
+                            const px = currentPos * CELL_WIDTH;
+                            if (playheadRef.current) {
+                                playheadRef.current.style.transform = `translateX(${px}px)`;
+                            }
+                            setCurrentStep(Math.floor(currentPos));
+                            
+                            // Scroll to current playhead position
+                            if (scrollContainerRef.current) {
+                                const playheadTargetPosition = KEY_LABEL_WIDTH;
+                                const targetScrollLeft = px - playheadTargetPosition + KEY_LABEL_WIDTH;
+                                isProgrammaticScrollRef.current = true;
+                                scrollContainerRef.current.scrollLeft = Math.max(0, targetScrollLeft);
+                                isProgrammaticScrollRef.current = false;
+                            }
+                            
+                            // Reset user scrolling flag to enable auto-follow
+                            setIsUserScrolling(false);
+                            isUserScrollingRef.current = false;
+                            
+                            // Resume visual update loop using shared function
+                            const updateVisuals = () => {
+                                const result = performVisualUpdate(currentPlaybackId, startStep, transportStartTime, stepDurationMs);
+                                if (result.shouldContinue) {
+                                    animationFrameRef.current = requestAnimationFrame(updateVisuals);
+                                }
+                            };
+
                             animationFrameRef.current = requestAnimationFrame(updateVisuals);
                         }
-                    };
-
-                    animationFrameRef.current = requestAnimationFrame(updateVisuals);
+                    } else {
+                        // Transport is not running - playback has ended
+                        setIsPlaying(false);
+                        setActiveKeys(new Map());
+                        onPlaybackChange?.(false);
+                        playbackSessionRef.current = null;
+                    }
                 }
             }
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [isPlaying, notes, currentStep, lastNoteEndTime, stepInterval, cleanupSampler, onPlaybackChange, performVisualUpdate]);
+    }, [isPlaying, notes, currentStep, lastNoteEndTime, stepInterval, cleanupSampler, onPlaybackChange, performVisualUpdate, pausePlayback, updatePlayheadPosition]);
 
     return (
         <div className={`bg-tertiary border rounded-xl p-6 shadow-2xl ${className}`}>
