@@ -446,7 +446,8 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
           metadata.key = value;
           const keyMatch = value.match(/^([A-G][b#]?)(m|min|maj|major|minor|mix|dor|phr|lyd|loc)?/i);
           if (keyMatch) {
-            let keyName = keyMatch[1];
+            // Normalize key name case: first letter uppercase, b/# lowercase
+            let keyName = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1).toLowerCase();
             const mode = keyMatch[2]?.toLowerCase() || '';
             if (mode === 'm' || mode === 'min' || mode === 'minor') {
               keyName += 'm';
@@ -479,7 +480,8 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
           // Mid-piece key change
           const keyMatch = value.match(/^([A-G][b#]?)(m|min|maj|major|minor|mix|dor|phr|lyd|loc)?/i);
           if (keyMatch) {
-            let keyName = keyMatch[1];
+            // Normalize key name case: first letter uppercase, b/# lowercase
+            let keyName = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1).toLowerCase();
             const mode = keyMatch[2]?.toLowerCase() || '';
             if (mode === 'm' || mode === 'min' || mode === 'minor') {
               keyName += 'm';
@@ -515,7 +517,8 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
       } else if (field === 'K') {
         const keyMatch = value.match(/^([A-G][b#]?)(m|min|maj|major|minor)?/i);
         if (keyMatch) {
-          let keyName = keyMatch[1];
+          // Normalize key name case: first letter uppercase, b/# lowercase
+          let keyName = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1).toLowerCase();
           const mode = keyMatch[2]?.toLowerCase() || '';
           if (mode === 'm' || mode === 'min' || mode === 'minor') {
             keyName += 'm';
