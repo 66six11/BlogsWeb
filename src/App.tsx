@@ -26,6 +26,7 @@ import {
   fetchPostContent,
   clearBlogCache,
 } from './services/githubService';
+import { isPreviewMode } from './data/mockData';
 import {
   Book,
   Code,
@@ -40,6 +41,8 @@ import {
   Folder,
   RefreshCcw,
   Loader2,
+  Database,
+  Cloud,
 } from 'lucide-react';
 
 // Welcome overlay transition duration (ms)
@@ -65,6 +68,7 @@ const App: React.FC = () => {
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [isFetchingContent, setIsFetchingContent] = useState(false);
   const [isRateLimited, setIsRateLimited] = useState(false);
+  const [useMockData, setUseMockData] = useState(false);
 
   // Audio State
   const [musicAnalyser, setMusicAnalyser] = useState<AnalyserNode | null>(null);
@@ -154,7 +158,7 @@ const App: React.FC = () => {
     setIsRateLimited(false);
 
     try {
-      const { tree, allFiles, error } = await fetchBlogIndex();
+      const { tree, allFiles, error } = await fetchBlogIndex(useMockData);
 
       if (error) {
         setIsRateLimited(true);
@@ -163,7 +167,7 @@ const App: React.FC = () => {
       if (tree.length > 0) {
         setBlogDirectory(tree);
         const recentFiles = allFiles.slice(0, 5);
-        const loadedPosts = await Promise.all(recentFiles.map((f) => fetchPostContent(f.path)));
+        const loadedPosts = await Promise.all(recentFiles.map((f) => fetchPostContent(f.path, useMockData)));
         setPosts(loadedPosts.filter((p): p is BlogPost => p !== null));
       } else {
         setPosts(MOCK_POSTS);
@@ -250,7 +254,7 @@ const App: React.FC = () => {
     }
 
     setIsFetchingContent(true);
-    const newPost = await fetchPostContent(node.path);
+    const newPost = await fetchPostContent(node.path, useMockData);
     setIsFetchingContent(false);
 
     if (newPost) {
@@ -481,13 +485,30 @@ const App: React.FC = () => {
               <h3 className="font-bold flex items-center gap-2 theme-text-primary">
                 <Folder size={16} className="theme-text-accent1" /> 档案库
               </h3>
-              <button
-                onClick={handleRefresh}
-                title="刷新内容"
-                className="p-1.5 hover:bg-white/10 rounded-full transition-colors theme-text-secondary"
-              >
-                <RefreshCcw size={14} className={isLoadingPosts ? 'animate-spin' : ''} />
-              </button>
+              <div className="flex items-center gap-1">
+                {isPreviewMode() && (
+                  <button
+                    onClick={() => {
+                      setUseMockData(!useMockData);
+                      setPosts([]);
+                      setBlogDirectory([]);
+                      setSelectedPost(null);
+                      setTimeout(() => loadData(), 100);
+                    }}
+                    title={useMockData ? "切换到真实数据" : "切换到示例数据"}
+                    className="p-1.5 hover:bg-white/10 rounded-full transition-colors theme-text-secondary"
+                  >
+                    {useMockData ? <Database size={14} /> : <Cloud size={14} />}
+                  </button>
+                )}
+                <button
+                  onClick={handleRefresh}
+                  title="刷新内容"
+                  className="p-1.5 hover:bg-white/10 rounded-full transition-colors theme-text-secondary"
+                >
+                  <RefreshCcw size={14} className={isLoadingPosts ? 'animate-spin' : ''} />
+                </button>
+              </div>
             </div>
 
             {blogDirectory.length === 0 && !isLoadingPosts ? (

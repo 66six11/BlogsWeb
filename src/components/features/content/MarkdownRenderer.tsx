@@ -54,9 +54,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     const renderMath = (latex: string, isDisplay: boolean) => {
         // Return LaTeX with delimiters, MathJax will process it
         if (isDisplay) {
-            return <span>$${latex}$$</span>;
+            return <div className="text-center my-4">{"\\[" + latex + "\\]"}</div>;
         } else {
-            return <span>${latex}$</span>;
+            return <span>{"\\(" + latex + "\\)"}</span>;
         }
     };
 
