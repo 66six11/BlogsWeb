@@ -3,10 +3,15 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = process.env.GITHUB_TOKEN;
 
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Set CORS headers - allow same origin in production, or configured origins
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['https://blogsweb.vercel.app'];
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -39,8 +44,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Fetch raw content from GitHub
-    const rawUrl = `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/main/${path}`;
+    // Fetch raw content from GitHub - encode path to prevent traversal attacks
+    const rawUrl = `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/main/${encodeURIComponent(path)}`;
     const response = await fetch(rawUrl, { headers });
 
     if (!response.ok) {
