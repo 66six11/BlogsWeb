@@ -1,6 +1,17 @@
 /**
  * Score Parser Module
  * Parses ABC notation and legacy score formats into playable note data
+ * 
+ * ABC v2.1 Standard Features Supported:
+ * - Full 88-key piano range (A0 to C8, octaves 0-8)
+ * - Dotted notes: A. (1.5x), A.. (1.75x)
+ * - Ties: A-A (merges consecutive notes of same pitch)
+ * - Grace notes: {g}A (short ornamental notes)
+ * - Tuplets: (3ABC (3 notes in 2 beats), (5ABCDE (5 notes in 4 beats)
+ * - Slurs: (ABC) (legato markings, visual only)
+ * - Chords with individual note properties: [C-E.G2] (each note can have tie, dot, duration)
+ * - Key signatures with accidentals
+ * - Multi-voice/track support
  */
 
 import { Note } from '../../../types';
@@ -506,7 +517,22 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
         continue;
       }
       
-      // Tuplets: (3ABC means 3 notes in 2 beats, (5ABCDE means 5 notes in 4 beats
+      /**
+       * Tuplets: Play n notes in the time normally taken by a different number of notes
+       * 
+       * Examples:
+       * - (3ABC: Triplet - 3 notes in the time of 2
+       * - (5ABCDE: Quintuplet - 5 notes in the time of 4
+       * - (7ABCDEFG: Septuplet - 7 notes in the time of 4
+       * 
+       * ABC v2.1 Standard tuplet rules:
+       * - 2,3 notes: fit into time of 2
+       * - 4,5,6,7 notes: fit into time of 4
+       * - 8,9 notes: fit into time of 8
+       * - Other: use 2/3 ratio as approximation
+       * 
+       * Each note's duration is scaled by: tupletIntoTime / tupletNum
+       */
       if (char === '(' && i + 1 < musicContent.length && /\d/.test(musicContent[i + 1])) {
         i++;
         let tupletNum = 0;
@@ -515,7 +541,7 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
           i++;
         }
         
-        // Skip optional colon and ratio (e.g., (3:2:4)
+        // Skip optional colon and ratio (e.g., (3:2:4 for custom ratios)
         if (i < musicContent.length && musicContent[i] === ':') {
           i++;
           while (i < musicContent.length && /\d:/.test(musicContent[i])) i++;
@@ -603,7 +629,19 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
         continue;
       }
       
-      // Grace notes: {g}A or {ab}C etc.
+      /**
+       * Grace notes: Short ornamental notes played quickly before the main note
+       * 
+       * Syntax: {g}A or {ab}C for multiple grace notes
+       * 
+       * Grace notes are rendered as very short duration notes (0.5 steps) that
+       * occur before the main note. The main note's startTime is automatically
+       * pushed forward by the grace note duration(s).
+       * 
+       * Example: {g}A parses as:
+       * - Grace note 'g' at currentTime with duration 0.5
+       * - Main note 'A' at currentTime + 0.5
+       */
       if (char === '{') {
         const closeBrace = musicContent.indexOf('}', i);
         if (closeBrace > i) {
@@ -731,8 +769,27 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
   // Store voices in metadata
   metadata.voices = Array.from(voiceSet);
 
-  // Post-process: merge tied notes
-  // Tied notes are consecutive notes of the same pitch/octave where the first has a tie marker
+  /**
+   * Post-process: Merge tied notes
+   * 
+   * In ABC notation, ties connect consecutive notes of the same pitch and octave.
+   * Example: C-C creates one note with combined duration of both C notes.
+   * 
+   * Algorithm:
+   * 1. Scan through all parsed notes
+   * 2. When a note with a tie marker (_hasTie) is found:
+   *    - Look ahead for consecutive notes with matching pitch, octave, and voice
+   *    - Notes must be adjacent in time (next.startTime == current.startTime + current.duration)
+   *    - Accumulate their durations
+   *    - Continue until a note without a tie is found (end of chain)
+   * 3. Create a single merged note with the combined duration
+   * 4. Remove the internal _hasTie marker (it was only for parsing)
+   * 
+   * This supports:
+   * - Simple ties: A-A
+   * - Chained ties: A-A-A-A
+   * - Ties in chords: [A-C-E][ACE] (each note merged independently)
+   */
   const mergedNotes: Note[] = [];
   let i = 0;
   while (i < parsedNotes.length) {
