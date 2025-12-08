@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { markdownTheme } from '../../../styles/markdownTheme';
 import { BlogPost } from '../../../types';
+import { GITHUB_USERNAME, GITHUB_REPO } from '../../../constants';
 
 interface ObsidianRendererProps {
     content: string;
@@ -706,7 +707,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
 
                             if (isImage) {
                                 const encodedName = encodeURIComponent(embedName);
-                                const imageUrl = `https://raw.githubusercontent.com/66six11/BlogsWeb/main/attachments/${encodedName}`;
+                                // Use the configured GitHub repo (MyNotes) where blog content and attachments are stored
+                                const imageUrl = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/attachments/${encodedName}`;
                                 
                                 // Parse size specification
                                 let widthStyle = {};
