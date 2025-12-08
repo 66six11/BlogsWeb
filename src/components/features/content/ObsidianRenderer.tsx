@@ -706,9 +706,9 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                             const isImage = imageExtensions.some(ext => embedName.toLowerCase().endsWith(ext));
 
                             if (isImage) {
-                                const encodedName = encodeURIComponent(embedName);
-                                // Use the configured GitHub repo (MyNotes) where blog content and attachments are stored
-                                const imageUrl = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/attachments/${encodedName}`;
+                                // Use backend API proxy to fetch images, avoiding direct GitHub raw URL issues
+                                const imagePath = `attachments/${embedName}`;
+                                const imageUrl = `/api/github/raw?owner=${encodeURIComponent(GITHUB_USERNAME)}&repo=${encodeURIComponent(GITHUB_REPO)}&path=${encodeURIComponent(imagePath)}`;
                                 
                                 // Parse size specification
                                 let widthStyle = {};
@@ -894,12 +894,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                         </div>
                                         {!isCollapsed && (
                                             <div className="pl-9">
-                                                {/* Support nested callouts by recursively parsing blocks */}
-                                                {/* Check if content has nested blockquotes/callouts (starts with > at line beginning) */}
-                                                {/^>\s*(\[!|>)/m.test(bodyContent)
-                                                    ? parseBlocks(bodyContent)
-                                                    : renderSimpleText(bodyContent)
-                                                }
+                                                {/* Always use parseBlocks to support images, nested callouts, and other block elements */}
+                                                {parseBlocks(bodyContent)}
                                             </div>
                                         )}
                                     </div>
