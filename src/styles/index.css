@@ -12,6 +12,7 @@
     --bg-primary-rgb: 15, 23, 42;
     --bg-secondary-rgb: 30, 41, 59;
     --accent-1-rgb: 222, 185, 154;
+    --accent-2-rgb: 124, 133, 235;
     --accent-3-rgb: 196, 147, 177;
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.3);
     --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.3);
@@ -84,15 +85,6 @@
         }
     }
 
-
-}
-
-@layer components {
-    button.piano-btn-primary {
-        background-color: var(--accent-2) !important;
-        color: white;
-    }
-    
 
 }
 
@@ -194,7 +186,7 @@
 
 .piano-ruler-cell.current {
     color: var(--accent-3);
-    background-color: rgba(124, 133, 235, 0.2);
+    background-color: rgba(var(--accent-2-rgb), 0.2);
 }
 
 /* Piano ruler border */
