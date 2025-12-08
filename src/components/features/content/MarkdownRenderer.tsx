@@ -659,8 +659,17 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                         }
 
                         // Parse list items with proper nesting support
+                        interface ListItem {
+                            type: 'ul' | 'ol';
+                            content: string;
+                            children: string[];
+                            indent: number;
+                            isTask?: boolean;
+                            taskChecked?: boolean;
+                        }
+                        
                         const parseListItems = (lines: string[], baseIndent: number = 0): React.ReactNode => {
-                            const items: Array<{ type: 'ul' | 'ol', content: string, children: string[], indent: number }> = [];
+                            const items: ListItem[] = [];
                             let idx = 0;
                             
                             while (idx < lines.length) {
@@ -727,7 +736,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                                     }
                                 }
                                 
-                                items.push({ type, content, children, indent, isTask, taskChecked } as any);
+                                items.push({ type, content, children, indent, isTask, taskChecked });
                                 idx = k;
                             }
                             
@@ -763,7 +772,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                                         
                                         return (
                                             <ListTag key={gIdx} className={className}>
-                                                {group.items.map((item: any, iIdx) => (
+                                                {group.items.map((item: ListItem, iIdx) => (
                                                     <li key={iIdx} className={item.isTask ? "flex items-start gap-2" : markdownTheme.text.primary}>
                                                         {item.isTask && (
                                                             item.taskChecked ? (
