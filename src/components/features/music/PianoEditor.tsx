@@ -273,6 +273,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const playheadRef = useRef<HTMLDivElement>(null); // Playhead DOM ref for direct manipulation
     const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
     const [rulerScrollOffset, setRulerScrollOffset] = useState(0); // Track ruler scroll position
+    // Track playback session state for Transport synchronization
+    const playbackSessionRef = useRef<{
+        startStep: number;
+        transportStartTime: number;
+        stepDurationMs: number;
+    } | null>(null);
 
     // History for undo/redo
     const historyRef = useRef<{ states: Note[][]; cursor: number }>({states: [[]], cursor: 0});
@@ -647,6 +653,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         setIsPlaying(false);
         setActiveKeys(new Map()); // Clear active keys on pause
         onPlaybackChange?.(false);  // 通知父组件播放已暂停
+        playbackSessionRef.current = null; // Clear playback session info
         // Keep currentStep and playheadPosition - don't reset
     }, [cleanupSampler, onPlaybackChange]);
 
@@ -697,8 +704,105 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         isUserScrollingRef.current = false;
     }, [currentStep]);
 
-    // Play using Tone.js Sampler for realistic piano sound - can start from any step
-    // Uses real-time triggering instead of pre-scheduling for reliable jumps
+    // Shared visual update logic for playback - handles playhead position, active keys, and scrolling
+    // Used by both main playback loop and Page Visibility API handler
+    const performVisualUpdate = useCallback((
+        currentPlaybackId: number,
+        startStep: number,
+        transportStartTime: number,
+        stepDurationMs: number
+    ): { shouldContinue: boolean; currentPos: number } => {
+        if (playbackIdRef.current !== currentPlaybackId) return { shouldContinue: false, currentPos: 0 };
+        if (!toneSamplerRef.current) return { shouldContinue: false, currentPos: 0 };
+
+        // Get current position from Transport (reliable even after tab switches)
+        const transportElapsed = Tone.Transport.seconds - transportStartTime;
+        const currentPos = startStep + (transportElapsed * 1000 / stepDurationMs);
+        const currentStepFloor = Math.floor(currentPos);
+
+        // Track active notes for key glow effect based on Transport time
+        const currentTimeSec = transportElapsed;
+        const newActiveKeys = new Map<string, { color: string; endTime: number }>();
+        
+        for (const note of notes) {
+            if (note.startTime >= startStep) {
+                const noteStartSec = (note.startTime - startStep) * stepDurationMs / 1000;
+                const noteEndSec = noteStartSec + (note.duration * stepDurationMs / 1000);
+                
+                // Check if note is currently playing
+                if (currentTimeSec >= noteStartSec && currentTimeSec < noteEndSec) {
+                    const keyId = `${note.octave}-${note.pitch}`;
+                    const color = getNoteColor(note.octave, note.pitch);
+                    newActiveKeys.set(keyId, { 
+                        color, 
+                        endTime: Date.now() + (noteEndSec - currentTimeSec) * 1000 
+                    });
+                }
+            }
+        }
+
+        // Update active keys state with optimization to avoid unnecessary re-renders
+        setActiveKeys(prev => {
+            if (prev.size !== newActiveKeys.size) return newActiveKeys;
+            for (const k of prev.keys()) {
+                if (!newActiveKeys.has(k)) return newActiveKeys;
+            }
+            return prev;
+        });
+
+        // Update playhead position directly via ref (no React re-render)
+        const px = currentPos * CELL_WIDTH;
+        if (playheadRef.current) {
+            playheadRef.current.style.transform = `translateX(${px}px)`;
+        }
+
+        // Only update currentStep state when step actually changes (for position indicator)
+        if (currentStepFloor !== lastStepRef.current) {
+            lastStepRef.current = currentStepFloor;
+            setCurrentStep(currentStepFloor);
+        }
+
+        // Smooth scroll during playback - playhead stays near left edge (after key labels)
+        if (scrollContainerRef.current) {
+            const c = scrollContainerRef.current;
+            const playheadTargetPosition = KEY_LABEL_WIDTH;
+            const targetScrollLeft = px - playheadTargetPosition + KEY_LABEL_WIDTH;
+            const playheadViewportX = px - c.scrollLeft + KEY_LABEL_WIDTH;
+            const isPlayheadVisible = playheadViewportX >= KEY_LABEL_WIDTH && playheadViewportX <= c.clientWidth - CELL_WIDTH * 2;
+
+            if (isPlayheadVisible && isUserScrollingRef.current) {
+                setIsUserScrolling(false);
+                isUserScrollingRef.current = false;
+            }
+
+            if (!isUserScrollingRef.current) {
+                const currentScroll = c.scrollLeft;
+                const scrollDiff = targetScrollLeft - currentScroll;
+                const smoothFactor = 0.15;
+                const newScroll = currentScroll + scrollDiff * smoothFactor;
+                if (Math.abs(scrollDiff) > 1) {
+                    isProgrammaticScrollRef.current = true;
+                    c.scrollLeft = Math.max(0, newScroll);
+                    isProgrammaticScrollRef.current = false;
+                }
+            }
+        }
+
+        // Check if playback should end (backup check in case Transport schedule fails)
+        if (currentPos > lastNoteEndTime) {
+            playbackIdRef.current++;
+            cleanupSampler();
+            setIsPlaying(false);
+            setActiveKeys(new Map());
+            onPlaybackChange?.(false);
+            return { shouldContinue: false, currentPos };
+        }
+
+        return { shouldContinue: true, currentPos };
+    }, [notes, lastNoteEndTime, cleanupSampler, onPlaybackChange]);
+
+    // Play using Tone.js Sampler with Transport scheduling for background playback support
+    // Pre-schedules all notes using Transport.schedule() so playback continues in background tabs
     const startPlaybackFromStep = useCallback(async (fromStep?: number) => {
         if (notes.length === 0) return;
 
@@ -730,143 +834,76 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         const stepDurationMs = stepInterval;
         const startStep = fromStep !== undefined ? fromStep : (currentStep >= 0 ? currentStep : 0);
 
-        // Track which notes have been triggered to avoid duplicates
-        const triggeredNotes = new Set<string>();
-
         setIsPlaying(true);
         onPlaybackChange?.(true);  // 通知父组件播放已开始
         setIsUserScrolling(false);
         isUserScrollingRef.current = false;
 
-        // Real-time playback loop
-        const playStartTime = performance.now();
-        let lastProcessedStep = startStep - 1;
-        // Track active notes for key glow effect
-        const activeNoteEndTimes = new Map<string, { endTime: number; color: string }>();
+        // Pre-schedule all notes using Tone.Transport for reliable background playback
+        // Transport uses Web Audio API clock which continues in background tabs
+        Tone.Transport.cancel(); // Clear any existing scheduled events
+        Tone.Transport.stop();
+        Tone.Transport.position = 0;
 
-        const updatePlayhead = () => {
-            if (playbackIdRef.current !== currentPlaybackId) return;
-
-            // Check if sampler is still valid
-            if (!toneSamplerRef.current) return;
-
-            const elapsed = performance.now() - playStartTime;
-            const currentPos = startStep + (elapsed / stepDurationMs);
-            const currentStepFloor = Math.floor(currentPos);
-
-            // Trigger notes that should start at this step - O(1) lookup per step
-            if (currentStepFloor > lastProcessedStep) {
-                for (let step = lastProcessedStep + 1; step <= currentStepFloor; step++) {
-                    const notesAtStep = noteIndex.byStep.get(step);
-                    if (notesAtStep) {
-                        for (const note of notesAtStep) {
-                            const noteKey = `${note.octave}-${note.pitch}-${note.startTime}`;
-                            if (!triggeredNotes.has(noteKey)) {
-                                triggeredNotes.add(noteKey);
-
-                                // Use note name instead of frequency for Sampler
-                                const noteName = getNoteName(note.pitch, note.octave);
-                                const durSec = Math.max(0.05, note.duration * stepDurationMs / 1000);
-
-                                try {
-                                    sampler.triggerAttackRelease(noteName, durSec);
-                                } catch (e) {
-                                    // Sampler may have been disposed
-                                    return;
-                                }
-
-                                // Track active note for glow effect
-                                const keyId = `${note.octave}-${note.pitch}`;
-                                const endTimeMs = performance.now() + durSec * 1000;
-                                const color = getNoteColor(note.octave, note.pitch);
-                                activeNoteEndTimes.set(keyId, {endTime: endTimeMs, color});
-                            }
-                        }
-                    }
-                }
-                lastProcessedStep = currentStepFloor;
-            }
-
-            // Update active keys for glow effect
-            const now = performance.now();
-            const newActiveKeys = new Map<string, { color: string; endTime: number }>();
-            for (const [keyId, data] of activeNoteEndTimes) {
-                if (data.endTime > now) {
-                    newActiveKeys.set(keyId, data);
-                }
-            }
-            // Only update state if changed
-            setActiveKeys(prev => {
-                if (prev.size !== newActiveKeys.size) return newActiveKeys;
-                for (const [k, v] of prev) {
-                    const newV = newActiveKeys.get(k);
-                    if (!newV || newV.endTime !== v.endTime) return newActiveKeys;
-                }
-                return prev;
-            });
-
-            // Update playhead position directly via ref (no React re-render)
-            const px = currentPos * CELL_WIDTH;
-            if (playheadRef.current) {
-                playheadRef.current.style.transform = `translateX(${px}px)`;
-            }
-
-            // Only update currentStep state when step actually changes (for position indicator)
-            if (currentStepFloor !== lastStepRef.current) {
-                lastStepRef.current = currentStepFloor;
-                setCurrentStep(currentStepFloor);
-            }
-
-            // Smooth scroll during playback - playhead stays near left edge (after key labels)
-            if (scrollContainerRef.current) {
-                const c = scrollContainerRef.current;
-                // Fixed playhead position relative to viewport: at KEY_LABEL_WIDTH (right edge of key labels)
-                const playheadTargetPosition = KEY_LABEL_WIDTH; // A bit into the visible area
-
-                // Calculate the scroll position to keep playhead at target position
-                const targetScrollLeft = px - playheadTargetPosition + KEY_LABEL_WIDTH;
-
-                // Check if playhead is visible in current view
-                const playheadViewportX = px - c.scrollLeft + KEY_LABEL_WIDTH;
-                const isPlayheadVisible = playheadViewportX >= KEY_LABEL_WIDTH && playheadViewportX <= c.clientWidth - CELL_WIDTH * 2;
-
-                if (isPlayheadVisible && isUserScrollingRef.current) {
-                    // User scrolled away but playhead is now visible again - resume auto-scroll
-                    setIsUserScrolling(false);
-                    isUserScrollingRef.current = false;
-                }
-
-                if (!isUserScrollingRef.current) {
-                    // Smooth scroll to target position
-                    const currentScroll = c.scrollLeft;
-                    const scrollDiff = targetScrollLeft - currentScroll;
-                    // Smooth interpolation for fluid motion
-                    const smoothFactor = 0.15;
-                    const newScroll = currentScroll + scrollDiff * smoothFactor;
-                    if (Math.abs(scrollDiff) > 1) {
-                        // Set flag to prevent scroll event from triggering user scroll detection
-                        isProgrammaticScrollRef.current = true;
-                        c.scrollLeft = Math.max(0, newScroll);
-                        // Reset flag synchronously after scroll is set (scroll event fires synchronously)
-                        isProgrammaticScrollRef.current = false;
-                    }
-                }
-            }
-
-            // Check if playback should end
-            if (currentPos > lastNoteEndTime) {
-                playbackIdRef.current++;
-                cleanupSampler();
-                setIsPlaying(false);
-                setActiveKeys(new Map()); // Clear active keys on stop
-                return;
-            }
-
-            animationFrameRef.current = requestAnimationFrame(updatePlayhead);
+        // Store playback session info for Transport synchronization
+        playbackSessionRef.current = {
+            startStep,
+            transportStartTime: 0, // Will be set after Transport.start()
+            stepDurationMs
         };
 
-        animationFrameRef.current = requestAnimationFrame(updatePlayhead);
-    }, [notes, noteIndex, currentStep, lastNoteEndTime, stepInterval, isSamplerLoading, cleanupSampler, onPlaybackChange]);
+        // Schedule all notes that should play from startStep onward
+        const scheduledNoteIds = new Set<string>();
+        for (const note of notes) {
+            if (note.startTime >= startStep) {
+                const startTimeSec = (note.startTime - startStep) * stepDurationMs / 1000;
+                const durationSec = note.duration * stepDurationMs / 1000;
+                const noteName = getNoteName(note.pitch, note.octave);
+                const noteId = `${note.octave}-${note.pitch}-${note.startTime}`;
+                
+                // Only schedule each unique note once
+                if (!scheduledNoteIds.has(noteId)) {
+                    scheduledNoteIds.add(noteId);
+                    Tone.Transport.schedule((time) => {
+                        // Check if this playback session is still active
+                        if (playbackIdRef.current === currentPlaybackId) {
+                            sampler.triggerAttackRelease(noteName, durationSec, time);
+                        }
+                    }, startTimeSec);
+                }
+            }
+        }
+
+        // Schedule playback end
+        const endTimeSec = (lastNoteEndTime - startStep) * stepDurationMs / 1000;
+        Tone.Transport.schedule(() => {
+            if (playbackIdRef.current === currentPlaybackId) {
+                pausePlayback();
+            }
+        }, endTimeSec);
+
+        // Start Transport
+        Tone.Transport.start();
+        
+        // Update playback session with actual transport start time
+        if (playbackSessionRef.current) {
+            playbackSessionRef.current.transportStartTime = Tone.Transport.seconds;
+        }
+
+        // Visual update loop using requestAnimationFrame
+        // This handles playhead position and active key highlighting
+        // Will pause in background tabs but audio continues via Transport
+        const transportStartTime = Tone.Transport.seconds;
+
+        const updateVisuals = () => {
+            const result = performVisualUpdate(currentPlaybackId, startStep, transportStartTime, stepDurationMs);
+            if (result.shouldContinue) {
+                animationFrameRef.current = requestAnimationFrame(updateVisuals);
+            }
+        };
+
+        animationFrameRef.current = requestAnimationFrame(updateVisuals);
+    }, [notes, noteIndex, currentStep, lastNoteEndTime, stepInterval, isSamplerLoading, cleanupSampler, pausePlayback, onPlaybackChange]);
 
     // Wrapper for normal playback (from current position)
     const startPlayback = useCallback(() => {
@@ -1058,6 +1095,82 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
             pausePlayback();
         }
     }, [isVisible, isPlaying, pausePlayback]);
+
+    // Page Visibility API handler - sync playback state when tab visibility changes
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                // Page entering background - visual updates will pause naturally via requestAnimationFrame
+                // Audio continues via Tone.Transport which uses Web Audio API clock
+                if (animationFrameRef.current) {
+                    cancelAnimationFrame(animationFrameRef.current);
+                    animationFrameRef.current = 0;
+                }
+            } else if (!document.hidden && isPlaying) {
+                // Page returning to foreground - sync playhead position with Transport and resume visual updates
+                if (playbackSessionRef.current) {
+                    const { startStep, transportStartTime, stepDurationMs } = playbackSessionRef.current;
+                    
+                    // Check if Transport is still running and playback hasn't ended
+                    if (Tone.Transport.state === 'started' && toneSamplerRef.current) {
+                        // Calculate current position to check if playback has ended
+                        const transportElapsed = Tone.Transport.seconds - transportStartTime;
+                        const currentPos = startStep + (transportElapsed * 1000 / stepDurationMs);
+                        
+                        if (currentPos > lastNoteEndTime) {
+                            // Playback has ended while in background - stop it
+                            pausePlayback();
+                            // Update playhead to final position
+                            updatePlayheadPosition(lastNoteEndTime * CELL_WIDTH);
+                            setCurrentStep(Math.floor(lastNoteEndTime));
+                        } else {
+                            // Playback is still ongoing - sync and resume visual updates
+                            const currentPlaybackId = playbackIdRef.current;
+                            
+                            // Immediately sync playhead to current position
+                            const px = currentPos * CELL_WIDTH;
+                            if (playheadRef.current) {
+                                playheadRef.current.style.transform = `translateX(${px}px)`;
+                            }
+                            setCurrentStep(Math.floor(currentPos));
+                            
+                            // Scroll to current playhead position
+                            if (scrollContainerRef.current) {
+                                const playheadTargetPosition = KEY_LABEL_WIDTH;
+                                const targetScrollLeft = px - playheadTargetPosition + KEY_LABEL_WIDTH;
+                                isProgrammaticScrollRef.current = true;
+                                scrollContainerRef.current.scrollLeft = Math.max(0, targetScrollLeft);
+                                isProgrammaticScrollRef.current = false;
+                            }
+                            
+                            // Reset user scrolling flag to enable auto-follow
+                            setIsUserScrolling(false);
+                            isUserScrollingRef.current = false;
+                            
+                            // Resume visual update loop using shared function
+                            const updateVisuals = () => {
+                                const result = performVisualUpdate(currentPlaybackId, startStep, transportStartTime, stepDurationMs);
+                                if (result.shouldContinue) {
+                                    animationFrameRef.current = requestAnimationFrame(updateVisuals);
+                                }
+                            };
+
+                            animationFrameRef.current = requestAnimationFrame(updateVisuals);
+                        }
+                    } else {
+                        // Transport is not running - playback has ended
+                        setIsPlaying(false);
+                        setActiveKeys(new Map());
+                        onPlaybackChange?.(false);
+                        playbackSessionRef.current = null;
+                    }
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [isPlaying, notes, currentStep, lastNoteEndTime, stepInterval, cleanupSampler, onPlaybackChange, performVisualUpdate, pausePlayback, updatePlayheadPosition]);
 
     return (
         <div className={`bg-tertiary border rounded-xl p-6 shadow-2xl ${className}`}>
