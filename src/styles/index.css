@@ -27,6 +27,7 @@
     --text-secondary: #475569;
     --bg-primary-rgb: 247, 248, 243;
     --bg-secondary-rgb: 235, 236, 242;
+    --accent-2-rgb: 124, 133, 235;
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.3);
     --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.3);
     --bg-tertiary-translucent: rgb(from var(--bg-tertiary) r g b / 0.3);
@@ -41,6 +42,7 @@
     --bg-primary-rgb: 59, 52, 66;
     --bg-secondary-rgb: 77, 70, 88;
     --bg-tertiary-rgb: 59, 52, 66;
+    --accent-2-rgb: 124, 133, 235;
     --accent-3: #c493b1;
     --bg-primary-translucent: rgb(from var(--bg-primary) r g b / 0.5);
     --bg-secondary-translucent: rgb(from var(--bg-secondary) r g b / 0.5);
