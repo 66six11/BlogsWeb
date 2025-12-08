@@ -7,9 +7,29 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- Favicon using HexagramIcon SVG -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g transform='scale(0.8) translate(10,10)'><path d='M56.5 33.3l-2.7-4.5H13.2l10.7 18.5 2.7-4.6-5.4-9.4z' fill='rgb(251, 191, 36)'/><path d='M50 83.3L32.3 52.7l-2.6 4.6L50 92.5 60.7 74l-5.3-.1z' fill='rgb(251, 191, 36)'/><path d='M65.4 28.7l2.6 4.6h10.8L61.2 64h5.3l20.3-35.2z' fill='rgb(251, 191, 36)'/><path d='M33.5 36L13.2 71.2l21.4.1-2.6-4.6H21.2L38.8 36z' fill='rgb(251, 143, 36)'/><path d='M76.1 52.7l-2.7 4.6 5.4 9.4H43.5l2.7 4.5h40.6z' fill='rgb(251, 143, 36)'/><path d='M50 16.7l17.7 30.6 2.6-4.6L50 7.5 39.3 26l5.3.1z' fill='rgb(251, 143, 36)'/> </g></svg>" type="image/svg+xml" />
-    <!-- KaTeX for Math Rendering -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <!-- MathJax for Math Rendering -->
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']],
+          processEscapes: true,
+          processEnvironments: true
+        },
+        svg: {
+          fontCache: 'global'
+        },
+        startup: {
+          ready: () => {
+            MathJax.startup.defaultReady();
+            MathJax.startup.promise.then(() => {
+              console.log('MathJax is loaded and ready');
+            });
+          }
+        }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
   <script type="importmap">
 {
   "imports": {

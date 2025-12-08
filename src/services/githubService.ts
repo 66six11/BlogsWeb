@@ -2,6 +2,7 @@
 import { BlogPost, DirectoryNode, GitHubUser } from '../types';
 import { GITHUB_USERNAME, GITHUB_REPO } from '../constants';
 import { BLOG_INCLUDED_FOLDERS, EXCLUDED_PATHS, EXCLUDED_FILES } from '../config';
+import { mockBlogPosts } from '../data/mockData';
 
 const CACHE_PREFIX = 'gh_cache_';
 const CACHE_DURATION = 15 * 60 * 1000; // 15 Minutes Cache
@@ -160,7 +161,18 @@ const buildTree = (files: any[]): DirectoryNode[] => {
     return root;
 };
 
-export const fetchBlogIndex = async (): Promise<{ tree: DirectoryNode[], allFiles: any[], error?: boolean }> => {
+export const fetchBlogIndex = async (useMockData = false): Promise<{ tree: DirectoryNode[], allFiles: any[], error?: boolean }> => {
+    // Return mock data if requested
+    if (useMockData) {
+        const mockFiles = mockBlogPosts.map((post) => ({
+            path: post.path,
+            sha: post.id,
+            type: 'blob'
+        }));
+        const tree = buildTree(mockFiles);
+        return { tree, allFiles: mockFiles };
+    }
+
     if (!GITHUB_USERNAME || !GITHUB_REPO) return { tree: [], allFiles: [] };
 
     // Try Cache
@@ -239,8 +251,14 @@ const fetchLastCommitDate = async (path: string): Promise<string | null> => {
     }
 };
 
-export const fetchPostContent = async (path: string): Promise<BlogPost | null> => {
+export const fetchPostContent = async (path: string, useMockData = false): Promise<BlogPost | null> => {
     try {
+         // Return mock data if requested
+         if (useMockData) {
+             const mockPost = mockBlogPosts.find(post => post.path === path);
+             return mockPost || null;
+         }
+
          const cacheKey = `post_${path}`;
          const cached = getCache<BlogPost>(cacheKey);
          if (cached) return cached;
@@ -284,9 +302,14 @@ export const fetchPostContent = async (path: string): Promise<BlogPost | null> =
     }
 };
 
-export const fetchBlogPosts = async (): Promise<BlogPost[]> => {
-    const { allFiles } = await fetchBlogIndex();
+export const fetchBlogPosts = async (useMockData = false): Promise<BlogPost[]> => {
+    // Return mock data if requested
+    if (useMockData) {
+        return mockBlogPosts;
+    }
+
+    const { allFiles } = await fetchBlogIndex(useMockData);
     const filesToFetch = allFiles.slice(0, 5);
-    const posts = await Promise.all(filesToFetch.map(f => fetchPostContent(f.path)));
+    const posts = await Promise.all(filesToFetch.map(f => fetchPostContent(f.path, useMockData)));
     return posts.filter((p): p is BlogPost => p !== null);
 };
