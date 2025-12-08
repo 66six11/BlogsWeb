@@ -943,6 +943,18 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                             taskChecked?: boolean;
                         }
 
+                        // Helper to calculate minimum indentation of child items
+                        const getMinChildIndent = (children: string[]): number => {
+                            const childIndents = children
+                                .map(line => {
+                                    if (!line.trim()) return Infinity;
+                                    const match = line.match(/^(\s*)/);
+                                    return match ? match[1].length : 0;
+                                })
+                                .filter(indent => indent !== Infinity);
+                            return childIndents.length > 0 ? Math.min(...childIndents) : 0;
+                        };
+
                         const parseListItems = (lines: string[], baseIndent: number = 0): React.ReactNode => {
                             const items: ListItem[] = [];
                             let idx = 0;
@@ -1047,14 +1059,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                                 <span className={markdownTheme.text.primary}>{parseInlineFormats(item.content)}</span>
                                                 {item.children.length > 0 && (
                                                     <div className="mt-1">
-                                                        {(() => {
-                                                            // Calculate minimum indentation of children for proper recursive parsing
-                                                            const childIndents = item.children
-                                                                .map(line => line.trim() ? (line.match(/^(\s*)/) || ['', ''])[1].length : Infinity)
-                                                                .filter(indent => indent !== Infinity);
-                                                            const minChildIndent = childIndents.length > 0 ? Math.min(...childIndents) : item.indent + 2;
-                                                            return parseListItems(item.children, minChildIndent);
-                                                        })()}
+                                                        {parseListItems(item.children, getMinChildIndent(item.children))}
                                                     </div>
                                                 )}
                                             </li>
