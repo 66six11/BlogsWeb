@@ -273,6 +273,12 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
     const playheadRef = useRef<HTMLDivElement>(null); // Playhead DOM ref for direct manipulation
     const lastStepRef = useRef<number>(-1); // Track last step to avoid redundant state updates
     const [rulerScrollOffset, setRulerScrollOffset] = useState(0); // Track ruler scroll position
+    // Track playback session state for Transport synchronization
+    const playbackSessionRef = useRef<{
+        startStep: number;
+        transportStartTime: number;
+        stepDurationMs: number;
+    } | null>(null);
 
     // History for undo/redo
     const historyRef = useRef<{ states: Note[][]; cursor: number }>({states: [[]], cursor: 0});
@@ -647,6 +653,7 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         setIsPlaying(false);
         setActiveKeys(new Map()); // Clear active keys on pause
         onPlaybackChange?.(false);  // 通知父组件播放已暂停
+        playbackSessionRef.current = null; // Clear playback session info
         // Keep currentStep and playheadPosition - don't reset
     }, [cleanupSampler, onPlaybackChange]);
 
@@ -741,6 +748,13 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
         Tone.Transport.stop();
         Tone.Transport.position = 0;
 
+        // Store playback session info for Transport synchronization
+        playbackSessionRef.current = {
+            startStep,
+            transportStartTime: 0, // Will be set after Transport.start()
+            stepDurationMs
+        };
+
         // Schedule all notes that should play from startStep onward
         const scheduledNoteIds = new Set<string>();
         for (const note of notes) {
@@ -773,6 +787,11 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
 
         // Start Transport
         Tone.Transport.start();
+        
+        // Update playback session with actual transport start time
+        if (playbackSessionRef.current) {
+            playbackSessionRef.current.transportStartTime = Tone.Transport.seconds;
+        }
 
         // Visual update loop using requestAnimationFrame
         // This handles playhead position and active key highlighting
@@ -1077,11 +1096,9 @@ const PianoEditor: React.FC<PianoEditorProps> = ({className, isVisible = true, o
                 }
             } else if (!document.hidden && isPlaying) {
                 // Page returning to foreground - sync playhead position with Transport and resume visual updates
-                if (toneSamplerRef.current && Tone.Transport.state === 'started') {
+                if (toneSamplerRef.current && Tone.Transport.state === 'started' && playbackSessionRef.current) {
                     const currentPlaybackId = playbackIdRef.current;
-                    const stepDurationMs = stepInterval;
-                    const startStep = currentStep >= 0 ? currentStep : 0;
-                    const transportStartTime = Tone.Transport.seconds;
+                    const { startStep, transportStartTime, stepDurationMs } = playbackSessionRef.current;
                     
                     // Resume visual update loop
                     const updateVisuals = () => {
