@@ -468,6 +468,38 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
     
     if (!inBody) continue;
     
+    // Handle mid-piece field lines (like key changes)
+    if (/^[A-Za-z]:/.test(trimmed)) {
+      const colonIdx = trimmed.indexOf(':');
+      const field = trimmed.substring(0, colonIdx).trim();
+      const value = trimmed.substring(colonIdx + 1).trim();
+      
+      switch (field.toUpperCase()) {
+        case 'K':
+          // Mid-piece key change
+          const keyMatch = value.match(/^([A-G][b#]?)(m|min|maj|major|minor|mix|dor|phr|lyd|loc)?/i);
+          if (keyMatch) {
+            let keyName = keyMatch[1];
+            const mode = keyMatch[2]?.toLowerCase() || '';
+            if (mode === 'm' || mode === 'min' || mode === 'minor') {
+              keyName += 'm';
+            }
+            keySignature = KEY_SIGNATURES[keyName] || {};
+            // Clear bar accidentals when key changes
+            barAccidentals.clear();
+          }
+          break;
+        case 'V':
+          currentVoice = value.split(/\s+/)[0] || 'V1';
+          if (!voicePositions.has(currentVoice)) {
+            voicePositions.set(currentVoice, 0);
+          }
+          voiceSet.add(currentVoice);
+          break;
+      }
+      continue;
+    }
+    
     let musicContent = trimmed;
     const inlineFieldRegex = /\[([A-Za-z]):([^\]]*)\]/g;
     let match;
@@ -489,6 +521,8 @@ const parseABCNotation = (content: string): { notes: Note[], metadata: ScoreMeta
             keyName += 'm';
           }
           keySignature = KEY_SIGNATURES[keyName] || {};
+          // Clear bar accidentals when key changes
+          barAccidentals.clear();
         }
       }
     }
