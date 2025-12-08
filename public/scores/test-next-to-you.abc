@@ -5,6 +5,60 @@ L: 1/8
 Q:1/4=110
 V:1
 %%clef treble
-K:G
+K:G % 1 sharps
 %%MIDI program 0
-[gB-G-E,][eB-G-B,] [gB-G-E][bB-G-B,] [a-B-G-C,][a-BGG,-]/2[aG,]/2 [G-E][gG-C-]/2[fGC]/2|
+%%MIDI program 0
+[gB-G-E,][eB-G-B,] [gB-G-E][bB-G-B,] [a-B-G-C,][a-BGG,-]/2[aG,]/2 [G-E][gG-C-]/2[fGC]/2| \
+[g-D,][g-A,] [gD][aA,-]/2[gA,-]/2 [fA,][eD,] [dFA,][fD,]| \
+[gB-G-E,][eB-G-B,] [gB-G-E][bB-G-B,] [a-B-G-C,][a-BGG,-]/2[aG,]/2 [G-E][gG-C-]/2[fGC]/2| \
+[f-D,][f-A,] [fD][aA,-]/2[gA,-]/2 [aA,][c'D,] [bFA,][fD,]|
+[gB-G-E,][eB-G-B,] [gB-G-E][d'B-G-B,] [a-B-G-C,][a-BGG,-]/2[aG,]/2 [G-E][gG-C-]/2[fGC]/2| \
+[f-A-D,][fAA,] [d-A-F][ad-A-A,-]/2[gdAA,]/2 [d'-g-d-G,][d'gdD] [bf-d-F,][afdD]| \
+[gBGE,][BBB,] [eeBE][beB,] [a-C,][aG,] [G-E][gG-C-]/2[fGC]/2| \
+[f-D,][f-A,] [fD][aA,-]/2[gA,-]/2 [aA,][c'-D,,]/2[c'A,,]/2 [b-F,]/2[bA,,]/2[f-F,,]/2[fD,,]/2|
+[g-B-G-E,E,,]/2[gB-G-B,,]/2[e-B-G-E,]/2[eB-G-B,,]/2 [g-B-G-G,]/2[gB-G-B,,]/2[b-B-G-G,,]/2[bB-G-E,,]/2 [a-B-G-C,C,,]/2[a-B-G-G,,]/2[a-BGC,]/2[aC,]/2 [c-G-C]/2[c-G-G,]/2[gc-G-E,]/2[fcGC,]/2| \
+[g-D,D,,]/2[g-A,,]/2[g-D,]/2[gA,,]/2 [d-A-F,]/2[d-A-A,,]/2[ad-A-F,,]/2[gd-A-D,,-]/2 [f-d-A-D,,]/2[fd-A-D,,]/2[e-d-A-A,,]/2[ed-A-D,]/2 [d-d-A-F,]/2[d-dA-A,,]/2[f-dAF,,]/2[fD,,]/2| \
+[g-B-G-E,E,,]/2[gB-G-B,,]/2[e-B-G-E,]/2[eB-G-B,,]/2 [g-B-G-G,]/2[gB-G-B,,]/2[b-B-G-G,,]/2[bB-G-E,,]/2 [a-B-G-C,C,,]/2[a-B-G-G,,]/2[a-BGC,]/2[aC,]/2 [c-G-C]/2[c-G-G,]/2[gc-G-E,]/2[fcGC,]/2| \
+[f-D,D,,]/2[f-A,,]/2[f-D,]/2[fA,,]/2 [d-A-F,]/2[d-A-A,,]/2[ad-A-F,,]/2[gd-A-D,,-]/2 [a-d-A-D,,]/2[ad-A-D,,]/2[c'-d-A-A,,]/2[c'd-A-D,]/2 [b-d-A-F,]/2[bd-A-A,,]/2[f-dAF,,]/2[fD,,]/2|
+[g-B-G-E,E,,]/2[gB-G-B,,]/2[e-B-G-E,]/2[eB-G-B,,]/2 [g-B-G-G,]/2[gB-G-B,,]/2[d'-B-G-G,,]/2[d'B-G-E,,]/2 [a-e-B-G-C,C,,]/2[a-e-B-G-G,,]/2[a-e-BGC,]/2[aeC,]/2 [c-G-C]/2[c-G-G,]/2[gc-G-E,]/2[fcGC,]/2| \
+[f-A-D,D,,][f-A-D,]/2[fAA,]/2 [d-A-F]/2[d-A-A,]/2[ad-A-F,]/2[gdAD,]/2 [d'-g-d-G,G,,]/2[d'-g-d-D,]/2[d'-g-d-G,G,,]/2[d'gdD,]/2 [b-f-d-F,F,,]/2[bf-d-D,]/2[a-f-d-F,F,,]/2[afdD,]/2| \
+[g-B-G-E,E,,]/2[gBGB,,]/2[B-B-E,]/2[BBB,,]/2 [e-e-B-G,]/2[eeBB,,]/2[b-e-G,,]/2[beE,,]/2 [a-e-C,C,,][a-e-C,]/2[aeG,]/2 [c-G-C]/2[c-G-G,]/2[gc-G-E,]/2[fcGC,]/2| \
+[f-d-A-D,D,,]/2[f-d-A-A,,]/2[f-d-A-D,]/2[f-d-A-A,,]/2 [f-d-A-F,]/2[fdAA,,]/2[aF,,]/2[gD,,-]/2 [f-D,,]/2[fD,,]/2[c'-A,,]/2[c'D,]/2 [b-F,]/2[bA,,]/2[f-F,,]/2[fD,,]/2|
+[aE,][bB,] [g-E][g-BG-] [gG-]/2G/2-[gG-]2[f-G]/2f/2| \
+E,B, E[bG] [bG,][aB,] [aD][gG]| \
+[aA,][bC] [g-E][g-AG-] [gG-]/2G/2-[gG-]2[f-G]/2f/2-| \
+[f-A,][f-C] [f-E][fG-]/2G/2 G[gE] [gB][bG]|
+[bG,][aB,] [aD][gG] [gG-][gG] [gB-][bB]| \
+[bG,][aD] [aG][gB] g[aG,] [bDB,][fG,]| \
+[d-A-D,][d-A-A,] [dAD][fF-] [fF-][eF] [fA-][g-A]| \
+[gD,][fA,] [f-D][fA-F-] [fAF][fD] [eA,-][fA,]|
+[g-B-G-E,,][gBGE,] [g-G-G,][gGE,] [g-B-G-E][gBGB,] [f-G-G,][fGE,]| \
+[e-G-E-C,,][eGEC,] [e-E-C,][eEG,] [g-c-G-E][gcGG,] [fFE,][gGC,]| \
+[a-f-d-A-D,,][afdAD,] [a-A-D,][aAA,] [b-B-F][bBA,] [c'-c-F,][c'cD,]| \
+[b-g-d-B-G,,][bgdBD,] [b-B-B,][bBD,] [a-d-A-F,,][adAD,] [aAF,][gGD,]|
+[g-e-B-G-E,,][geBGE,] [g-G-G,][gGE,] [g-B-G-E][gBGB,] [a-A-G,][aAE,]| \
+[e-c-G-E-C,,][ecGEC,] [c'-c-C,][c'cG,] [b-B-E][bBG,] [aAE,][gGC,]| \
+[b-d-B-D,,][bdBD,] [a-A-D,][aAA,] [d'-d-F][d'dA,] [c'cF,][bBD,]| \
+[b-g-d-B-G,,][bgdBD,] [c'cB,][bBD,-] [aAD,][bBB,,] [a-A-B,]/2[aAF,]/2[g-G-D,]/2[gGB,,]/2|
+[e-c-G-E-C,C,,][e-c-G-E-G,,]/2[ecGEC,]/2 [ecGEC,][c'cE-G,-] [b-B-EG,][bBC,] [gGCG,][aAC,]| \
+[a-f-d-A-D,D,,][a-f-d-A-A,,] [a-f-d-A-D,][afdAF-A,-]/2[F-A,-]/2 [fFFA,][gGD,] [aADA,][bBD,]| \
+[b-g-e-B-E,E,,][b-g-e-B-B,,]/2[b-g-e-B-E,]/2 [bgeBE,][gGE-B,-] [f-F-EB,][fFE,] [gGEB,][aAE,]| \
+[b-f-^d-B-B,,B,,,][b-f-d-B-F,,]/2[bfdBB,,]/2 [a-A-B,,][aAB,-F,-] [c'-c-B,F,][c'cB,,] [b-f-d-B-B,F,][bfdBB,,]|
+[b'B,-B,,-]/2[f'B,-B,,-]/2[^d'B,-B,,-]/2[bB,-B,,-]/2 [fB,-B,,-]/2[dB,-B,,-]/2[BB,B,,]/2F/2 D/2B,/2F,/2D,/2 [B,,B,,,]2| \
+[ae-c-A-F,,-F,,,-][f-e-c-A-F-F,,-F,,F,,,-]/2[fe-c-A-FC,F,,-F,,,-]/2 [a-e-c-A-A-A,F,,-F,,,-]/2[ae-c-A-AC,F,,-F,,,-]/2[c'-e-c-c-A-A,,F,,F,,,]/2[c'e-c-cA-F,,]/2 [b-e-e-c-B-A-D,,-D,,,-][b-e-ecB-AD,,-D,,D,,,-]/2[beBA,,D,,-D,,,-]/2 [D-A,-F,-F,D,,-D,,,-]/2[D-A,-F,-A,,D,,-D,,,-]/2[aAD-A,-F,-F,,D,,D,,,]/2[gGDA,F,D,,]/2| \
+[a-A-E,,-E,,,-][a-A-E,,-E,,E,,,-]/2[aAB,,E,,-E,,,-]/2 [E-B,-G,-G,E,,-E,,,-]/2[E-B,-G,-B,,E,,-E,,,-]/2[bBE-B,-G,-G,,E,,E,,,]/2[aAE-B,-G,-E,,]/2 [gGE-B,-G,-E,,-E,,,-][f-F-E-B,-G,-E,,-E,,E,,,-]/2[fFE-B,-G,-B,,E,,-E,,,-]/2 [e-E-E-B,-G,-G,E,,-E,,,-]/2[eE-EB,-G,-B,,E,,-E,,,-]/2[g-G-EB,G,G,,E,,E,,,]/2[gGE,,]/2| \
+[ae-c-A-F,,-F,,,-][f-e-c-A-F-F,,-F,,F,,,-]/2[fe-c-A-FC,F,,-F,,,-]/2 [a-e-c-A-A-A,F,,-F,,,-]/2[ae-c-A-AC,F,,-F,,,-]/2[c'-e-c-c-A-A,,F,,F,,,]/2[c'e-c-cA-F,,]/2 [b-e-e-c-B-A-D,,-D,,,-][b-e-ecB-AD,,-D,,D,,,-]/2[beBA,,D,,-D,,,-]/2 [D-A,-F,-F,D,,-D,,,-]/2[D-A,-F,-A,,D,,-D,,,-]/2[aAD-A,-F,-F,,D,,D,,,]/2[gGDA,F,D,,]/2|
+[g-e-B-G-E,,-E,,,-][g-e-B-G-E,,-E,,E,,,-]/2[geBGB,,E,,-E,,,-]/2 [E-B,-G,-G,E,,-E,,,-]/2[E-B,-G,-B,,E,,-E,,,-]/2[bBE-B,-G,-G,,E,,E,,,]/2[aAE-B,-G,-E,,]/2 [bBE-B,-G,-E,,-E,,,-][d'-d-E-B,-G,-E,,-E,,E,,,-]/2[d'dE-B,-G,-B,,E,,-E,,,-]/2 [c'-c-E-B,-G,-G,E,,-E,,,-]/2[c'cE-B,-G,-B,,E,,-E,,,-]/2[g-G-EB,G,G,,E,,E,,,]/2[gGE,,]/2| \
+[ae-c-A-F,,-F,,,-][f-e-c-A-F-F,,-F,,F,,,-]/2[fe-c-A-FC,F,,-F,,,-]/2 [a-e-c-A-A-A,F,,-F,,,-]/2[ae-c-A-AC,F,,-F,,,-]/2[e'-e-e-c-A-A,,F,,F,,,]/2[e'e-ec-A-F,,]/2 [b-e-e-c-B-A-D,,-D,,,-][b-e-ecB-AD,,-D,,D,,,-]/2[beBA,,D,,-D,,,-]/2 [D-A,-F,-F,D,,-D,,,-]/2[D-A,-F,-A,,D,,-D,,,-]/2[aAD-A,-F,-F,,D,,D,,,]/2[gGDA,F,D,,]/2| \
+[g-e-B-G-E,,][g-e-B-G-E,,]/2[geBGB,,]/2 [E-B,-G,-G,]/2[E-B,-G,-B,,]/2[bBE-B,-G,-G,,]/2[aAE-B,-G,-E,,]/2 [e'-e-E-B,-G,-A,,A,,,]/2[e'-e-E-B,-G,-E,,]/2[e'-e-E-B,-G,-A,,A,,,]/2[e'eE-B,-G,-E,,]/2 [c'-a-e-c-E-B,-G,-G,,G,,,]/2[c'aecE-B,-G,-E,,]/2[b-B-EB,G,G,,G,,,]/2[bBE,,]/2| \
+[ae-c-A-F,,-F,,,-][e-c-c-A-C-F,,-F,,F,,,-]/2[e-c-cA-CC,F,,-F,,,-]/2 [f-e-c-A-F-A,F,,-F,,,-]/2[fe-c-A-FC,F,,-F,,,-]/2[c'-e-c-c-A-A,,F,,F,,,]/2[c'e-c-cA-F,,]/2 [b-e-e-c-B-A-D,,-D,,,-][b-e-ecB-AD,,-D,,D,,,-]/2[beBA,,D,,-D,,,-]/2 [D-A,-F,-F,D,,-D,,,-]/2[D-A,-F,-A,,D,,-D,,,-]/2[aAD-A,-F,-F,,D,,D,,,]/2[gGDA,F,D,,]/2|
+[g-e-B-G-E,,-E,,,-][g-e-B-G-E,,-E,,E,,,-]/2[geBGB,,E,,-E,,,-]/2 [E-B,-G,-G,E,,-E,,,-]/2[E-B,-G,-B,,E,,-E,,,-]/2[bBE-B,-G,-G,,E,,E,,,]/2[aAE-B,-G,-E,,]/2 [bBGE-B,-G,-E,,-E,,,-][d'-d-E-B,-G,-E,,-E,,E,,,-]/2[d'dE-B,-G,-B,,E,,-E,,,-]/2 [c'-c-E-B,-G,-G,E,,-E,,,-]/2[c'cE-B,-G,-B,,E,,-E,,,-]/2[g-G-EB,G,G,,E,,E,,,]/2[gGE,,]/2| \
+[ae-c-A-F,,F,,,]2 [fe-c-A-][c'e-c-A-] [b-e-c-A-][b-ecAD,-]/2[bD,]/2 [A-F-][aA-F-]/2[gAF]/2| \
+[a-E,][aB,] [B-G-][bB-G-]/2[aB-G]/2 [gB-][fB-C,] [eB-E][g-BG,-]/2[gG,]/2| \
+[ac-F,][fc-C] [ac-A-][c'c-A] [b-c-][b-cD,-]/2[bD,]/2 [A-F-][aA-F-]/2[gAF]/2|
+[g-E,][gB,] [B-G-][bB-G-]/2[aB-G]/2 [bB-][d'B-C,] [c'B-E][g-BG,-]/2[gG,]/2| \
+[ac-F,][fc-C] [ac-A-][e'c-A] [b-c-][b-cD,-]/2[bD,]/2 [A-F-][aA-F-]/2[gAF]/2| \
+[g-E,][gB,] [B-G-][bB-G-]/2[aB-G]/2 [e'-B-A,][e'B-E] [c'B-G,][b-BE-]/2[bE]/2| \
+[ac-F,][fc-C] [ac-A][c'c-C] [b-c-D,][b-cA,-]/2[bA,]/2 [A-F][aA-A,-]/2[gAA,]/2|
+[g-E,][gB,] [B-G-][aB-G-]/2[gB-G]/2 [gB-E,][d'B-B,] [c'B-G][g-BE-]/2[gE]/2| \
+[a-C-A,-F,-]3[aCA,F,]/2
