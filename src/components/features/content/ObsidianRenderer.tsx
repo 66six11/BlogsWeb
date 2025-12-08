@@ -893,7 +893,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                         {!isCollapsed && (
                                             <div className="pl-9">
                                                 {/* Support nested callouts by recursively parsing blocks */}
-                                                {bodyContent.trim().startsWith('>') 
+                                                {/* Check if content has nested blockquotes/callouts (starts with > at line beginning) */}
+                                                {/^>\s*(\[!|>)/m.test(bodyContent)
                                                     ? parseBlocks(bodyContent)
                                                     : renderSimpleText(bodyContent)
                                                 }
