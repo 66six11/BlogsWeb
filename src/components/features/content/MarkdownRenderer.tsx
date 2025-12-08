@@ -1,11 +1,13 @@
 import React from 'react';
 import {
     Info, CheckCircle, AlertTriangle, XCircle, Bug, HelpCircle,
-    List, Quote, Clipboard, FileText, CheckSquare, Square
+    List, Quote, Clipboard, FileText, CheckSquare, Square, ExternalLink
 } from 'lucide-react';
+import { markdownTheme } from '../../../styles/markdownTheme';
 
 interface MarkdownRendererProps {
     content: string;
+    onNavigate?: (filename: string) => void;
 }
 
 interface CalloutStyles {
@@ -13,13 +15,23 @@ interface CalloutStyles {
     icon: React.ReactNode;
 }
 
-const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onNavigate }) => {
     const renderMath = (latex: string, isDisplay: boolean) => {
         if (!window.katex) return <span className="font-mono text-xs text-amber-300">{latex}</span>;
         try {
             const html = window.katex.renderToString(latex, {
                 displayMode: isDisplay,
-                throwOnError: false
+                throwOnError: false,
+                trust: true,
+                strict: false,
+                macros: {
+                    "\\boldsymbol": "\\mathbf",
+                    "\\R": "\\mathbb{R}",
+                    "\\N": "\\mathbb{N}",
+                    "\\Z": "\\mathbb{Z}",
+                    "\\C": "\\mathbb{C}",
+                    "\\Q": "\\mathbb{Q}",
+                }
             });
             return <span dangerouslySetInnerHTML={{ __html: html }} />;
         } catch (e) {
@@ -98,39 +110,95 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     };
 
     const parseInline = (text: string) => {
-        // 1. Inline Math $...$
-        const parts = text.split(/(\$[^$\n]+?\$)/g);
+        const elements: React.ReactNode[] = [];
+        let remaining = text;
+        let elementKey = 0;
 
-        return parts.map((part, index) => {
-            if (part.startsWith('$') && part.endsWith('$')) {
-                return <span key={index} className="mx-1">{renderMath(part.slice(1, -1), false)}</span>;
+        while (remaining.length > 0) {
+            // 1. Inline Math $...$
+            const mathMatch = remaining.match(/^\$([^$\n]+?)\$/);
+            if (mathMatch) {
+                elements.push(
+                    <span key={elementKey++} className="mx-1">
+                        {renderMath(mathMatch[1], false)}
+                    </span>
+                );
+                remaining = remaining.slice(mathMatch[0].length);
+                continue;
             }
 
-            // 2. Bold **...**
-            const boldParts = part.split(/(\*\*.*?\*\*)/g);
-            return (
-                <React.Fragment key={index}>
-                    {boldParts.map((bp, bIdx) => {
-                        if (bp.startsWith('**') && bp.endsWith('**')) {
-                            return <strong key={bIdx}
-                                className="text-amber-200 font-semibold">{bp.slice(2, -2)}</strong>;
-                        }
-                        // 3. Italic *...*
-                        const italicParts = bp.split(/(\*.*?\*)/g);
-                        return (
-                            <React.Fragment key={bIdx}>
-                                {italicParts.map((ip, iIdx) => {
-                                    if (ip.startsWith('*') && ip.endsWith('*') && ip.length > 2) {
-                                        return <em key={iIdx} className="text-purple-200">{ip.slice(1, -1)}</em>;
-                                    }
-                                    return <span key={iIdx}>{ip}</span>;
-                                })}
-                            </React.Fragment>
-                        );
-                    })}
-                </React.Fragment>
-            );
-        });
+            // 2. Wiki links [[filename]] or [[filename|display text]]
+            const wikiMatch = remaining.match(/^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/);
+            if (wikiMatch) {
+                const filename = wikiMatch[1];
+                const displayText = wikiMatch[2] || filename;
+                if (onNavigate) {
+                    elements.push(
+                        <button
+                            key={elementKey++}
+                            onClick={() => onNavigate(filename)}
+                            className={`${markdownTheme.text.link} cursor-pointer inline-flex items-center gap-1`}
+                        >
+                            {displayText}
+                        </button>
+                    );
+                } else {
+                    elements.push(<span key={elementKey++} className={markdownTheme.text.link}>{displayText}</span>);
+                }
+                remaining = remaining.slice(wikiMatch[0].length);
+                continue;
+            }
+
+            // 3. Standard Markdown links [text](url)
+            const linkMatch = remaining.match(/^\[([^\]]+)\]\(([^)]+)\)/);
+            if (linkMatch) {
+                const linkText = linkMatch[1];
+                const url = linkMatch[2];
+                elements.push(
+                    <a
+                        key={elementKey++}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={markdownTheme.text.link}
+                    >
+                        {linkText}
+                    </a>
+                );
+                remaining = remaining.slice(linkMatch[0].length);
+                continue;
+            }
+
+            // 4. Bold **...**
+            const boldMatch = remaining.match(/^\*\*(.*?)\*\*/);
+            if (boldMatch) {
+                elements.push(
+                    <strong key={elementKey++} className={markdownTheme.text.bold}>
+                        {boldMatch[1]}
+                    </strong>
+                );
+                remaining = remaining.slice(boldMatch[0].length);
+                continue;
+            }
+
+            // 5. Italic *...*
+            const italicMatch = remaining.match(/^\*(.+?)\*/);
+            if (italicMatch) {
+                elements.push(
+                    <em key={elementKey++} className={markdownTheme.text.italic}>
+                        {italicMatch[1]}
+                    </em>
+                );
+                remaining = remaining.slice(italicMatch[0].length);
+                continue;
+            }
+
+            // 6. No match, take one character
+            elements.push(<span key={elementKey++}>{remaining[0]}</span>);
+            remaining = remaining.slice(1);
+        }
+
+        return <>{elements}</>;
     };
 
     const renderTable = (lines: string[], key: string) => {
@@ -315,27 +383,58 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
                         continue;
                     }
 
-                    // D. Obsidian Images ![[...]] - handle optional |size parameter
+                    // D. Obsidian Embeds ![[...]] - distinguish between images and article embeds
                     if (trimmed.match(/!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/)) {
                         const match = trimmed.match(/!\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/);
                         if (match) {
-                            const imageName = match[1];
-                            const encodedName = encodeURIComponent(imageName);
-                            // Use GitHub raw content
-                            const imageUrl = `https://raw.githubusercontent.com/66six11/BlogsWeb/main/attachments/${encodedName}`;
-                            result.push(
-                                <div key={key} className="my-6 flex flex-col items-center">
-                                    <img
-                                        src={imageUrl}
-                                        alt={imageName}
-                                        className="max-w-full md:max-w-lg rounded-lg border border-white/10 shadow-lg opacity-100"
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).style.display = 'none';
-                                        }}
-                                    />
-                                    <span className="text-xs text-slate-500 mt-2 italic">{imageName}</span>
-                                </div>
-                            );
+                            const filename = match[1];
+                            const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp'];
+                            const isImage = imageExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+
+                            if (isImage) {
+                                // Render as image
+                                const encodedName = encodeURIComponent(filename);
+                                const imageUrl = `https://raw.githubusercontent.com/66six11/BlogsWeb/main/attachments/${encodedName}`;
+                                result.push(
+                                    <div key={key} className="my-6 flex flex-col items-center">
+                                        <img
+                                            src={imageUrl}
+                                            alt={filename}
+                                            className="max-w-full md:max-w-lg rounded-lg border border-white/10 shadow-lg opacity-100"
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).style.display = 'none';
+                                            }}
+                                        />
+                                        <span className="text-xs text-slate-500 mt-2 italic">{filename}</span>
+                                    </div>
+                                );
+                            } else {
+                                // Render as article embed card
+                                result.push(
+                                    <div
+                                        key={key}
+                                        className={`my-6 rounded-lg border ${markdownTheme.border.embedCard} ${markdownTheme.background.embedCard} p-4`}
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h4 className={`text-lg font-semibold ${markdownTheme.text.embedCard}`}>
+                                                📄 {filename}
+                                            </h4>
+                                            {onNavigate && (
+                                                <button
+                                                    onClick={() => onNavigate(filename)}
+                                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md ${markdownTheme.background.embedCard} ${markdownTheme.border.embedCard} border ${markdownTheme.text.embedCard} hover:bg-cyan-500/10 transition-colors text-sm`}
+                                                >
+                                                    查看文章
+                                                    <ExternalLink size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <p className="text-slate-400 text-sm">
+                                            点击上方按钮查看完整文章内容
+                                        </p>
+                                    </div>
+                                );
+                            }
                             i++;
                             continue;
                         }
