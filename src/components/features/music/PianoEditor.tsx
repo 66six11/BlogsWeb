@@ -65,6 +65,16 @@ const PIANO_KEYS: PianoKey[] = (() => {
         }
     }
 
+    // Octave 0: only A (pitch 9), A# (pitch 10), B (pitch 11) (lowest 3 keys)
+    // Iterate in reverse (11->9) to maintain descending order like octaves 7-1 above
+    for (let p = 11; p >= 9; p--) {
+        keys.push({
+            name: pitchNames[p],
+            pitch: p,
+            octave: 0,
+            isBlack: pitchNames[p].includes('#')
+        });
+    }
 
     return keys;
 })();

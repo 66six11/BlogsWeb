@@ -26,8 +26,8 @@ BlogsWeb (MagicDev) 是一个深受《魔女之旅》动漫启发的个人博客
 ### ✨ 功能特性
 
 - 📝 **博客文章展示** - 支持 Markdown 渲染，包括数学公式（KaTeX）、代码高亮和自定义提示框
-- 🎵 **魔法音乐播放器** - 支持 ABC 记谱法解析和播放
-- 🎹 **钢琴编辑器** - 交互式音乐创作工具，支持实时播放和导出
+- 🎵 **魔法音乐播放器** - 支持 ABC v2.1 记谱法解析和播放
+- 🎹 **钢琴编辑器** - 交互式音乐创作工具，支持完整 88 键钢琴范围（A0-C8）、实时播放和导出
 - 💬 **AI 聊天功能** - 基于 Google Gemini API 的智能对话助手
 - 🌐 **3D 场景渲染** - 使用 Three.js 实现的粒子动画系统
 - 🌙 **深色/浅色主题** - 优雅的主题切换，带平滑过渡动画
@@ -178,6 +178,63 @@ BlogsWeb/
 
 Vercel 会自动检测 Vite 项目并使用正确的构建设置。
 
+### 🎹 ABC 记谱法支持
+
+钢琴编辑器支持完整的 ABC v2.1 标准，包括以下高级特性：
+
+#### 支持的功能
+
+1. **完整八度范围** (A0-C8)
+   - 支持标准 88 键钢琴的全音域
+   - 使用逗号 `,` 降低八度，撇号 `'` 升高八度
+   - 示例：`C,,,` (C0, 最低音)，`c'''` (C8, 最高音)
+
+2. **附点音符**
+   - 单附点 `A.` = 1.5 倍时值
+   - 双附点 `A..` = 1.75 倍时值
+   - 可与其他修饰符组合：`A2.` (双倍时值加附点 = 3 倍)
+
+3. **延音线 (Tie)**
+   - 语法：`A-A` 连接两个相同音高的音符
+   - 时值自动合并，显示为一个长音符
+   - 支持和弦内独立延音：`[A-CE]` (只有 A 音延音)
+
+4. **装饰音 (Grace Notes)**
+   - 语法：`{g}A` 在主音符前添加短促装饰音
+   - 支持多个装饰音：`{ab}C`
+   - 自动应用调号
+
+5. **连音符 (Tuplets)**
+   - 三连音：`(3ABC` (3 个音符在 2 拍内)
+   - 五连音：`(5ABCDE` (5 个音符在 4 拍内)
+   - 自动计算各音符时值
+
+6. **连音线 (Slur)**
+   - 语法：`(ABC)` 表示连贯演奏
+   - 用于标记乐句，不影响音符时值
+
+7. **和弦高级特性**
+   - 每个音符可有独立时值：`[C2E4G8]`
+   - 独立附点：`[C.EG.]`
+   - 独立延音：`[C-E-G][CEG]`
+
+#### 示例乐谱
+
+```abc
+X: 1
+T: ABC Feature Demo
+M: 4/4
+L: 1/8
+Q:1/4=120
+K:C
+% 附点和延音线
+C. D. E-E F.. G2|
+% 装饰音和三连音
+{e}c {f}d (3ABC (5DEFGA|
+% 和弦与扩展八度
+[C,E,G,] [CEG] [c'e'g'] c''4|
+```
+
 ### 🎨 自定义配置
 
 #### 修改网站信息
@@ -263,8 +320,8 @@ BlogsWeb (MagicDev) is a personal blog and portfolio website inspired by the ani
 ### ✨ Features
 
 - 📝 **Blog Post Display** - Markdown rendering with KaTeX math, code highlighting, and custom callouts
-- 🎵 **Magic Music Player** - ABC notation parser and playback
-- 🎹 **Piano Editor** - Interactive music composition tool with real-time playback and export
+- 🎵 **Magic Music Player** - ABC v2.1 notation parser and playback
+- 🎹 **Piano Editor** - Interactive music composition tool with full 88-key piano range (A0-C8), real-time playback and export
 - 💬 **AI Chat** - Intelligent conversational assistant powered by Google Gemini API
 - 🌐 **3D Scene Rendering** - Particle animation system built with Three.js
 - 🌙 **Dark/Light Theme** - Elegant theme switching with smooth transitions
@@ -414,6 +471,63 @@ BlogsWeb/
 4. Click Deploy
 
 Vercel will automatically detect the Vite project and use the correct build settings.
+
+### 🎹 ABC Notation Support
+
+The piano editor supports the full ABC v2.1 standard, including these advanced features:
+
+#### Supported Features
+
+1. **Full Octave Range** (A0-C8)
+   - Supports the complete range of a standard 88-key piano
+   - Use comma `,` to lower octaves, apostrophe `'` to raise octaves
+   - Examples: `C,,,` (C0, lowest), `c'''` (C8, highest)
+
+2. **Dotted Notes**
+   - Single dot `A.` = 1.5x duration
+   - Double dot `A..` = 1.75x duration
+   - Can combine with other modifiers: `A2.` (double duration plus dot = 3x)
+
+3. **Ties**
+   - Syntax: `A-A` connects two notes of the same pitch
+   - Durations are automatically merged into one long note
+   - Supports independent ties in chords: `[A-CE]` (only A is tied)
+
+4. **Grace Notes**
+   - Syntax: `{g}A` adds a short ornamental note before the main note
+   - Supports multiple grace notes: `{ab}C`
+   - Automatically applies key signature
+
+5. **Tuplets**
+   - Triplets: `(3ABC` (3 notes in 2 beats)
+   - Quintuplets: `(5ABCDE` (5 notes in 4 beats)
+   - Automatically calculates note durations
+
+6. **Slurs**
+   - Syntax: `(ABC)` indicates smooth playback
+   - Used to mark phrases, doesn't affect note durations
+
+7. **Advanced Chord Features**
+   - Independent durations per note: `[C2E4G8]`
+   - Independent dots: `[C.EG.]`
+   - Independent ties: `[C-E-G][CEG]`
+
+#### Example Score
+
+```abc
+X: 1
+T: ABC Feature Demo
+M: 4/4
+L: 1/8
+Q:1/4=120
+K:C
+% Dots and ties
+C. D. E-E F.. G2|
+% Grace notes and triplets
+{e}c {f}d (3ABC (5DEFGA|
+% Chords and extended octaves
+[C,E,G,] [CEG] [c'e'g'] c''4|
+```
 
 ### 🎨 Customization
 
