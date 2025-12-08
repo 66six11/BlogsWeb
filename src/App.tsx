@@ -244,7 +244,7 @@ const App: React.FC = () => {
     }
   }, [currentView]);
 
-  const handleDirectorySelect = async (node: DirectoryNode) => {
+  const handleDirectorySelect = useCallback(async (node: DirectoryNode) => {
     if (node.type !== 'file') return;
 
     const existingPost = posts.find((p) => p.path === node.path || p.id === node.fileId);
@@ -261,7 +261,7 @@ const App: React.FC = () => {
       setPosts((prev) => [...prev, newPost]);
       setSelectedPost(newPost);
     }
-  };
+  }, [posts, useMockData]);
 
   // Handle wiki link navigation from markdown content
   const handleWikiLinkNavigate = async (linkTarget: string) => {
