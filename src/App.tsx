@@ -17,7 +17,7 @@ import { CustomSparkleIcon, CustomWitchIcon, HexagramIcon } from './components/i
 import LoadingScreen from './components/common/LoadingScreen';
 import TextParticleSystem from './components/features/3d/TextParticleSystem';
 import FileTreeNode from './components/features/content/FileTreeNode';
-import MarkdownRenderer from './components/features/content/MarkdownRenderer';
+import ObsidianRenderer from './components/features/content/ObsidianRenderer';
 
 // Lazy load PreviewConsole only in preview mode to exclude from production builds
 const PreviewConsole = lazy(() => import('./components/dev/PreviewConsole'));
@@ -561,7 +561,7 @@ const App: React.FC = () => {
                     ))}
                   </div>
                 </header>
-                <MarkdownRenderer 
+                <ObsidianRenderer 
                   content={selectedPost.content}
                   onNavigate={handleWikiLinkNavigate}
                   basePath={selectedPost.path}
