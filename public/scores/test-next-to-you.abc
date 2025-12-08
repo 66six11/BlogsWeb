@@ -1,0 +1,10 @@
+X: 1
+T: Next To You
+M: 4/4
+L: 1/8
+Q:1/4=110
+V:1
+%%clef treble
+K:G
+%%MIDI program 0
+[gB-G-E,][eB-G-B,] [gB-G-E][bB-G-B,] [a-B-G-C,][a-BGG,-]/2[aG,]/2 [G-E][gG-C-]/2[fGC]/2|

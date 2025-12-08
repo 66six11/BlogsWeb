@@ -1,0 +1,22 @@
+X: 1
+T: ABC v2.1 Feature Test
+M: 4/4
+L: 1/8
+Q:1/4=120
+K:C
+% Test 1: Dotted notes - A. should be 1.5x, A.. should be 1.75x
+C. D. E2 F.. G2|
+% Test 2: Ties - C-C should merge into one long note
+A-A B-B-B c4|
+% Test 3: Grace notes - {g}A should add short grace note before A
+{e}c {f}d {g}e {a}f|
+% Test 4: Tuplets - (3ABC should be triplet
+(3CDE (3FGA (5CDEFG A2|
+% Test 5: Extended octaves - very low and very high notes
+C,,, D,, E, C c c' c'' C'''|
+% Test 6: Combined features - dotted tied notes with grace notes
+{g}A.-A {f}B.-B. c4|
+% Test 7: Chords with ties - [C-E-G-] ties all notes in chord
+[C-E-G-][CEG] [A,-C-E-][A,CE] z4|
+% Test 8: Fractional durations with dots
+C/2. D/2. E. F2.|
