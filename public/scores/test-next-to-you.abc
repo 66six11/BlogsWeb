@@ -1,8 +1,9 @@
 X: 1
-T: Next To You
+T: from C:\3d93f8e10dbe921fd572b2ec186cde8cdd367ffd42da111eef38e480ef1bad8f_input.tmp
 M: 4/4
 L: 1/8
 Q:1/4=110
+K:Ab % 4 flats
 V:1
 %%clef treble
 K:G % 1 sharps
@@ -45,6 +46,7 @@ E,B, E[bG] [bG,][aB,] [aD][gG]| \
 [b-g-e-B-E,E,,][b-g-e-B-B,,]/2[b-g-e-B-E,]/2 [bgeBE,][gGE-B,-] [f-F-EB,][fFE,] [gGEB,][aAE,]| \
 [b-f-^d-B-B,,B,,,][b-f-d-B-F,,]/2[bfdBB,,]/2 [a-A-B,,][aAB,-F,-] [c'-c-B,F,][c'cB,,] [b-f-d-B-B,F,][bfdBB,,]|
 [b'B,-B,,-]/2[f'B,-B,,-]/2[^d'B,-B,,-]/2[bB,-B,,-]/2 [fB,-B,,-]/2[dB,-B,,-]/2[BB,B,,]/2F/2 D/2B,/2F,/2D,/2 [B,,B,,,]2| \
+K:Ab % 4 flats
 [ae-c-A-F,,-F,,,-][f-e-c-A-F-F,,-F,,F,,,-]/2[fe-c-A-FC,F,,-F,,,-]/2 [a-e-c-A-A-A,F,,-F,,,-]/2[ae-c-A-AC,F,,-F,,,-]/2[c'-e-c-c-A-A,,F,,F,,,]/2[c'e-c-cA-F,,]/2 [b-e-e-c-B-A-D,,-D,,,-][b-e-ecB-AD,,-D,,D,,,-]/2[beBA,,D,,-D,,,-]/2 [D-A,-F,-F,D,,-D,,,-]/2[D-A,-F,-A,,D,,-D,,,-]/2[aAD-A,-F,-F,,D,,D,,,]/2[gGDA,F,D,,]/2| \
 [a-A-E,,-E,,,-][a-A-E,,-E,,E,,,-]/2[aAB,,E,,-E,,,-]/2 [E-B,-G,-G,E,,-E,,,-]/2[E-B,-G,-B,,E,,-E,,,-]/2[bBE-B,-G,-G,,E,,E,,,]/2[aAE-B,-G,-E,,]/2 [gGE-B,-G,-E,,-E,,,-][f-F-E-B,-G,-E,,-E,,E,,,-]/2[fFE-B,-G,-B,,E,,-E,,,-]/2 [e-E-E-B,-G,-G,E,,-E,,,-]/2[eE-EB,-G,-B,,E,,-E,,,-]/2[g-G-EB,G,G,,E,,E,,,]/2[gGE,,]/2| \
 [ae-c-A-F,,-F,,,-][f-e-c-A-F-F,,-F,,F,,,-]/2[fe-c-A-FC,F,,-F,,,-]/2 [a-e-c-A-A-A,F,,-F,,,-]/2[ae-c-A-AC,F,,-F,,,-]/2[c'-e-c-c-A-A,,F,,F,,,]/2[c'e-c-cA-F,,]/2 [b-e-e-c-B-A-D,,-D,,,-][b-e-ecB-AD,,-D,,D,,,-]/2[beBA,,D,,-D,,,-]/2 [D-A,-F,-F,D,,-D,,,-]/2[D-A,-F,-A,,D,,-D,,,-]/2[aAD-A,-F,-F,,D,,D,,,]/2[gGDA,F,D,,]/2|
