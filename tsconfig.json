@@ -20,13 +20,13 @@
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
-        "./*"
+        "./src/*"
       ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "typeRoots": [
-      "./types",
+      "./src/types",
       "./node_modules/@types"
     ]
   }

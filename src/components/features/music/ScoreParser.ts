@@ -3,7 +3,7 @@
  * Parses ABC notation and legacy score formats into playable note data
  */
 
-import { Note } from '../types';
+import { Note } from '../../../types';
 
 const DEFAULT_BPM = 120;
 

@@ -1,8 +1,8 @@
 import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
-import {Note} from '../types';
+import {Note} from '../../../types';
 import {Play, Trash2, Plus, Minus, Loader2, SkipBack, Pause, Crosshair, Undo2, Redo2} from 'lucide-react';
-import {SixteenthNoteIcon, EighthNoteIcon, QuarterNoteIcon, HalfNoteIcon, WholeNoteIcon} from './CustomIcons';
-import {MEDIA_CONFIG} from '../config';
+import {SixteenthNoteIcon, EighthNoteIcon, QuarterNoteIcon, HalfNoteIcon, WholeNoteIcon} from '../../icons/CustomIcons';
+import {MEDIA_CONFIG} from '../../../config';
 import {parseScore, ScoreMetadata, NOTE_DURATION_STEPS, NoteDurationType} from './ScoreParser';
 import * as Tone from 'tone';
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import {ICON_COLORS} from '../config';
+import {ICON_COLORS} from '../../config';
 
 interface IconProps {
     className?: string;

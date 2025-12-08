@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Music } from 'lucide-react';
-import { HexagramIcon } from './CustomIcons';
-import { WaveText } from './WaveText';
+import { HexagramIcon } from '../icons/CustomIcons';
+import { WaveText } from '../features/content/WaveText';
 
 interface LoadingScreenProps {
     isVisible: boolean;

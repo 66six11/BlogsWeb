@@ -1,5 +1,5 @@
-import { BlogPost, Project } from './types'
-import { SITE_CONFIG, GITHUB_CONFIG, MEDIA_CONFIG, PORTFOLIO_PROJECTS } from './config'
+import { BlogPost, Project } from '../types'
+import { SITE_CONFIG, GITHUB_CONFIG, MEDIA_CONFIG, PORTFOLIO_PROJECTS } from '../config'
 
 // --- Environment Variable Helper ---
 // Safely retrieves env vars from process.env (Webpack/Node) or import.meta.env (Vite)
