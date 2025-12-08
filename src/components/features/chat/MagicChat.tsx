@@ -1,8 +1,8 @@
 import React, {useState, useRef, useEffect} from 'react';
-import {sendMessageToGemini} from '../services/geminiService';
-import {ChatMessage} from '../types';
-import {CustomSparkleIcon} from './CustomIcons';
-import {LayeredCharacterIcon} from './LayeredCharacterIcon';
+import {sendMessageToGemini} from '../../../services/geminiService';
+import {ChatMessage} from '../../../types';
+import {CustomSparkleIcon} from '../../icons/CustomIcons';
+import {LayeredCharacterIcon} from '../../icons/LayeredCharacterIcon';
 import {X, Send} from 'lucide-react';
 
 const MagicChat: React.FC = () => {

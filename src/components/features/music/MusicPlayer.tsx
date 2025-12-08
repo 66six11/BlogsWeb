@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { Volume2, VolumeX, SkipBack, SkipForward, Play, Pause } from 'lucide-react';
-import { MEDIA_CONFIG } from '../config';
+import { MEDIA_CONFIG } from '../../../config';
 
 interface MusicPlayerProps {
   onAnalyserReady?: (analyser: AnalyserNode) => void;
