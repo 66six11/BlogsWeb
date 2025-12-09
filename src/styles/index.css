@@ -229,6 +229,13 @@
             var(--bg-tertiary) 32px
         );
 }
+/* 在全局样式中添加 */
+
+
+.math-display mjx-container[display="true"] > svg {
+    display: block !important;
+    margin: 0 auto !important;
+}
 
 /* Piano scroll custom scrollbar */
 .piano-scroll::-webkit-scrollbar {

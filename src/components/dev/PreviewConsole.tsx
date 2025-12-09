@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Database, Cloud, X, GripVertical, ChevronDown, ChevronUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Database, Cloud, X, GripVertical, ChevronDown, ChevronUp, Palette } from 'lucide-react';
 
 interface PreviewConsoleProps {
   useMockData: boolean;
@@ -116,8 +117,23 @@ const PreviewConsole: React.FC<PreviewConsoleProps> = ({
             </button>
           </div>
 
+          {/* UI Preview Button - Only in dev mode */}
+          {import.meta.env.DEV && (
+            <div className="border-t border-purple-500/20 pt-3">
+              <Link
+                to="/ui-preview"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 transition-all"
+              >
+                <Palette size={16} className="text-purple-300" />
+                <span className="text-sm text-purple-200 font-medium">UI 组件预览</span>
+              </Link>
+            </div>
+          )}
+
           {/* Status Indicator */}
-          <div className="text-xs text-purple-300/50 border-t border-purple-500/20 pt-2">
+          <div className="text-xs text-purple-300/50 border-t border-purple-500/20 pt-2 mt-3">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
               <span>预览模式已启用</span>
