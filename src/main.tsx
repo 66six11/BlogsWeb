@@ -4,9 +4,10 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import App from './App';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { isPreviewMode } from './data/mockData';
 
-// Lazy load UI preview page only in dev mode
-const UIPreviewPage = import.meta.env.DEV 
+// Lazy load UI preview page in dev or preview mode
+const UIPreviewPage = (import.meta.env.DEV || isPreviewMode())
   ? lazy(() => import('./pages/UIPreviewPage'))
   : null;
 
@@ -16,8 +17,8 @@ root.render(
     <StrictMode>
       <BrowserRouter>
         <Routes>
-          {/* Dev-only UI preview route */}
-          {import.meta.env.DEV && (
+          {/* Dev and preview mode UI preview route */}
+          {(import.meta.env.DEV || isPreviewMode()) && UIPreviewPage && (
             <Route 
               path="/ui-preview" 
               element={

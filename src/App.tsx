@@ -171,10 +171,11 @@ const App: React.FC = () => {
 
   // Load blog data only when on the blog page
   useEffect(() => {
-    if (currentView === View.BLOG && blogDirectory.length === 0 && posts.length === 0) {
+    if (currentView === View.BLOG && blogDirectory.length === 0 && posts.length === 0 && !isLoadingPosts) {
       setIsLoadingPosts(true);
       loadData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView]);
 
   const handleDirectorySelect = useCallback(async (node: DirectoryNode) => {
