@@ -132,8 +132,10 @@ All UI components in `src/components/ui/` follow the CVA (class-variance-authori
 
 ### Security
 - **Never commit secrets** - use environment variables
-- **API keys**: Store in `.env.local` (not committed), reference via `import.meta.env.VITE_*`
-- **Sensitive data**: Never expose API keys or tokens in client-side code
+- **API keys**: Store in `.env.local` (not committed)
+  - Server-side only (Vercel functions): Use `process.env.GEMINI_API_KEY`, `process.env.GITHUB_TOKEN` (NO `VITE_` prefix)
+  - Client-side (rare): Use `import.meta.env.VITE_*` prefix only for non-sensitive public variables
+- **Sensitive data**: Never expose API keys or tokens in client-side code - always use serverless functions
 - **Sanitization**: Always sanitize HTML comments and user input
 - **Multiple-pass sanitization**: Use do-while loops for complete HTML comment removal
 
@@ -150,9 +152,11 @@ npm run preview                # Preview production build
 ### Environment Variables
 Create `.env.local` file (not committed):
 ```env
-VITE_GEMINI_API_KEY=your_gemini_api_key_here
+# Server-side only (Vercel serverless functions) - NO VITE_ prefix
+GEMINI_API_KEY=your_gemini_api_key_here
 GITHUB_TOKEN=your_github_token_here
 ```
+**Important**: Never use `VITE_` prefix for sensitive API keys as this exposes them to the client bundle.
 
 ### Building
 - **Build command**: `npm run build`
