@@ -16,6 +16,7 @@ export const markdownTheme = {
     code: 'text-purple-200',
     link: 'text-blue-400 hover:text-blue-300',
     linkInternal: 'text-emerald-400 hover:text-emerald-300', // Obsidian 内部链接
+    accent1: 'text-amber-300', // 新增 accent1 颜色
   },
 
   // 背景颜色

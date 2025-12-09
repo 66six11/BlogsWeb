@@ -4,9 +4,9 @@ import {
     List, Quote, Clipboard, FileText, CheckSquare, Square, ExternalLink,
     ChevronDown, ChevronRight
 } from 'lucide-react';
-import { markdownTheme } from '../../../styles/markdownTheme';
-import { BlogPost } from '../../../types';
-import { GITHUB_USERNAME, GITHUB_REPO } from '../../../constants';
+import {markdownTheme} from '@/styles/markdownTheme.ts';
+import {BlogPost} from '@/types';
+import {GITHUB_USERNAME, GITHUB_REPO} from '@/constants';
 
 interface ObsidianRendererProps {
     content: string;
@@ -43,12 +43,12 @@ declare global {
 }
 
 const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
-    content,
-    onNavigate,
-    basePath,
-    embedDepth = 0,
-    loadedPosts = []
-}) => {
+                                                               content,
+                                                               onNavigate,
+                                                               basePath,
+                                                               embedDepth = 0,
+                                                               loadedPosts = []
+                                                           }) => {
     const mathRef = React.useRef<HTMLDivElement>(null);
     const mermaidRef = React.useRef<number>(0);
     const [collapsedCallouts, setCollapsedCallouts] = React.useState<Set<string>>(new Set());
@@ -93,7 +93,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
         if (window.mermaid && mathRef.current) {
             const mermaidElements = mathRef.current.querySelectorAll('.mermaid-diagram');
             if (mermaidElements.length > 0) {
-                window.mermaid.run({ nodes: Array.from(mermaidElements) as any }).catch((err) => {
+                window.mermaid.run({nodes: Array.from(mermaidElements) as any}).catch((err) => {
                     console.error('Mermaid rendering failed:', err);
                 });
             }
@@ -107,7 +107,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
         const match = text.match(frontMatterRegex);
 
         if (!match) {
-            return { frontMatter: null, contentWithoutFrontMatter: text };
+            return {frontMatter: null, contentWithoutFrontMatter: text};
         }
 
         const yamlContent = match[1];
@@ -151,12 +151,13 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
             frontMatter[currentKey] = currentArray;
         }
 
-        return { frontMatter, contentWithoutFrontMatter };
+        return {frontMatter, contentWithoutFrontMatter};
     };
 
     const renderFrontMatter = (frontMatter: FrontMatter) => {
         return (
-            <div className={`mb-8 p-6 rounded-lg border ${markdownTheme.border.blockquote} ${markdownTheme.background.blockquote}`}>
+            <div
+                className={`mb-8 p-6 rounded-lg border ${markdownTheme.border.blockquote} ${markdownTheme.background.blockquote}`}>
                 <h3 className={`text-lg font-bold mb-4 ${markdownTheme.text.heading3}`}>文档属性</h3>
                 <div className="space-y-2">
                     {Object.entries(frontMatter).map(([key, value]) => (
@@ -165,7 +166,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                             {Array.isArray(value) ? (
                                 <div className="flex flex-wrap gap-2">
                                     {value.map((item, idx) => (
-                                        <span key={idx} className={`text-xs px-2 py-1 rounded border ${markdownTheme.text.accent1}`}>
+                                        <span key={idx}
+                                              className={`text-xs px-2 py-1 rounded border ${markdownTheme.text.accent1}`}>
                                             {item}
                                         </span>
                                     ))}
@@ -181,10 +183,33 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
     };
 
     const renderMath = (latex: string, isDisplay: boolean) => {
+        let processedLatex = latex;
+        // 检测是否包含矩阵或多行内容
+        const hasMatrix = latex.includes('\\begin{matrix}') ||
+            latex.includes('\\begin{pmatrix}') ||
+            latex.includes('\\\\');
+
+        if (hasMatrix && !isDisplay) {
+            // 对于行内矩阵，使用 smallmatrix 环境
+            processedLatex = latex
+                .replace(/\\begin\{matrix\}/g, '\\begin{smallmatrix}')
+                .replace(/\\end\{matrix\}/g, '\\end{smallmatrix}')
+                .replace(/\\begin\{pmatrix\}/g, '\\begin{psmallmatrix}')
+                .replace(/\\end\{pmatrix\}/g, '\\end{psmallmatrix}');
+        }
+
         if (isDisplay) {
-            return <div className="flex justify-center my-4">{"\\[" + latex + "\\]"}</div>;
+            return (
+                <div className="math-display my-4 items-center">
+                    {`\\[${processedLatex}\\]`}
+                </div>
+            );
         } else {
-            return <span style={{ display: 'inline' }}>{"\\(" + latex + "\\)"}</span>;
+            return (
+                <span className="math-inline" style={{display: 'inline-block'}}>
+        {`\\(${processedLatex}\\)`}
+      </span>
+            );
         }
     };
 
@@ -196,21 +221,21 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
             case 'todo':
                 return {
                     color: `${markdownTheme.callout.note.border} ${markdownTheme.callout.note.bg} ${markdownTheme.callout.note.text}`,
-                    icon: <Info size={18} className={markdownTheme.callout.note.icon} />
+                    icon: <Info size={18} className={markdownTheme.callout.note.icon}/>
                 };
             case 'tip':
             case 'done':
             case 'success':
                 return {
                     color: `${markdownTheme.callout.tip.border} ${markdownTheme.callout.tip.bg} ${markdownTheme.callout.tip.text}`,
-                    icon: <CheckCircle size={18} className={markdownTheme.callout.tip.icon} />
+                    icon: <CheckCircle size={18} className={markdownTheme.callout.tip.icon}/>
                 };
             case 'warning':
             case 'attention':
             case 'caution':
                 return {
                     color: `${markdownTheme.callout.warning.border} ${markdownTheme.callout.warning.bg} ${markdownTheme.callout.warning.text}`,
-                    icon: <AlertTriangle size={18} className={markdownTheme.callout.warning.icon} />
+                    icon: <AlertTriangle size={18} className={markdownTheme.callout.warning.icon}/>
                 };
             case 'fail':
             case 'failure':
@@ -219,41 +244,41 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
             case 'missing':
                 return {
                     color: `${markdownTheme.callout.error.border} ${markdownTheme.callout.error.bg} ${markdownTheme.callout.error.text}`,
-                    icon: <XCircle size={18} className={markdownTheme.callout.error.icon} />
+                    icon: <XCircle size={18} className={markdownTheme.callout.error.icon}/>
                 };
             case 'bug':
                 return {
                     color: `${markdownTheme.callout.error.border} ${markdownTheme.callout.error.bg} ${markdownTheme.callout.error.text}`,
-                    icon: <Bug size={18} className={markdownTheme.callout.error.icon} />
+                    icon: <Bug size={18} className={markdownTheme.callout.error.icon}/>
                 };
             case 'question':
             case 'help':
             case 'faq':
                 return {
                     color: `${markdownTheme.callout.question.border} ${markdownTheme.callout.question.bg} ${markdownTheme.callout.question.text}`,
-                    icon: <HelpCircle size={18} className={markdownTheme.callout.question.icon} />
+                    icon: <HelpCircle size={18} className={markdownTheme.callout.question.icon}/>
                 };
             case 'example':
                 return {
                     color: `${markdownTheme.callout.example.border} ${markdownTheme.callout.example.bg} ${markdownTheme.callout.example.text}`,
-                    icon: <List size={18} className={markdownTheme.callout.example.icon} />
+                    icon: <List size={18} className={markdownTheme.callout.example.icon}/>
                 };
             case 'quote':
             case 'cite':
                 return {
                     color: `${markdownTheme.callout.quote.border} ${markdownTheme.callout.quote.bg} ${markdownTheme.callout.quote.text}`,
-                    icon: <Quote size={18} className={markdownTheme.callout.quote.icon} />
+                    icon: <Quote size={18} className={markdownTheme.callout.quote.icon}/>
                 };
             case 'summary':
             case 'abstract':
                 return {
                     color: `${markdownTheme.callout.summary.border} ${markdownTheme.callout.summary.bg} ${markdownTheme.callout.summary.text}`,
-                    icon: <Clipboard size={18} className={markdownTheme.callout.summary.icon} />
+                    icon: <Clipboard size={18} className={markdownTheme.callout.summary.icon}/>
                 };
             default:
                 return {
                     color: `${markdownTheme.callout.default.border} ${markdownTheme.callout.default.bg} ${markdownTheme.callout.default.text}`,
-                    icon: <FileText size={18} className={markdownTheme.callout.default.icon} />
+                    icon: <FileText size={18} className={markdownTheme.callout.default.icon}/>
                 };
         }
     };
@@ -281,7 +306,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                 {codeParts.map((part, idx) => {
                     if (part.startsWith('`') && part.endsWith('`')) {
                         return (
-                            <code key={idx} className={`${markdownTheme.background.inlineCode} ${markdownTheme.text.code} px-1.5 py-0.5 rounded text-sm font-mono`}>
+                            <code key={idx}
+                                  className={`${markdownTheme.background.inlineCode} ${markdownTheme.text.code} px-1.5 py-0.5 rounded text-sm font-mono`}>
                                 {part.slice(1, -1)}
                             </code>
                         );
@@ -293,7 +319,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                         <React.Fragment key={idx}>
                             {mathParts.map((mp, mpIdx) => {
                                 if (mp.startsWith('$') && mp.endsWith('$')) {
-                                    return <React.Fragment key={mpIdx}>{renderMath(mp.slice(1, -1), false)}</React.Fragment>;
+                                    return <React.Fragment
+                                        key={mpIdx}>{renderMath(mp.slice(1, -1), false)}</React.Fragment>;
                                 }
 
                                 // 3. Standard Markdown Links [text](url)
@@ -323,7 +350,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                             className={`${markdownTheme.text.link} underline inline-flex items-center gap-1`}
                                         >
                                             {linkText}
-                                            <ExternalLink size={12} className="inline" />
+                                            <ExternalLink size={12} className="inline"/>
                                         </a>
                                     );
 
@@ -376,7 +403,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                 className={`${markdownTheme.text.linkInternal} underline decoration-dotted cursor-pointer inline-flex items-center gap-1 font-medium`}
                                 title={`导航到: ${linkTarget}`}
                             >
-                                <ExternalLink size={12} className="inline" />
+                                <ExternalLink size={12} className="inline"/>
                                 {displayText}
                             </button>
                         );
@@ -423,7 +450,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                         {boldItalicParts.map((bip, bipIdx) => {
                                             if (bip.startsWith('***') && bip.endsWith('***')) {
                                                 return (
-                                                    <strong key={bipIdx} className={`${markdownTheme.text.bold} font-semibold`}>
+                                                    <strong key={bipIdx}
+                                                            className={`${markdownTheme.text.bold} font-semibold`}>
                                                         <em className={markdownTheme.text.italic}>{bip.slice(3, -3)}</em>
                                                     </strong>
                                                 );
@@ -436,7 +464,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                                     {boldParts.map((bp, bpIdx) => {
                                                         if (bp.startsWith('**') && bp.endsWith('**')) {
                                                             return (
-                                                                <strong key={bpIdx} className={`${markdownTheme.text.bold} font-semibold`}>
+                                                                <strong key={bpIdx}
+                                                                        className={`${markdownTheme.text.bold} font-semibold`}>
                                                                     {bp.slice(2, -2)}
                                                                 </strong>
                                                             );
@@ -448,11 +477,13 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                                             <React.Fragment key={bpIdx}>
                                                                 {italicParts.map((ip, ipIdx) => {
                                                                     if (ip.startsWith('*') && ip.endsWith('*') && ip.length > 2) {
-                                                                        return <em key={ipIdx} className={markdownTheme.text.italic}>{ip.slice(1, -1)}</em>;
+                                                                        return <em key={ipIdx}
+                                                                                   className={markdownTheme.text.italic}>{ip.slice(1, -1)}</em>;
                                                                     }
 
                                                                     // 6. Tags #tag
-                                                                    return <React.Fragment key={ipIdx}>{parseTagsAndComments(ip)}</React.Fragment>;
+                                                                    return <React.Fragment
+                                                                        key={ipIdx}>{parseTagsAndComments(ip)}</React.Fragment>;
                                                                 })}
                                                             </React.Fragment>
                                                         );
@@ -520,30 +551,32 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
 
         return (
             <div key={key} className={`my-6 overflow-x-auto rounded-lg border ${markdownTheme.border.table} shadow-lg`}>
-                <table className={`min-w-full divide-y ${markdownTheme.border.table} ${markdownTheme.background.table}`}>
+                <table
+                    className={`min-w-full divide-y ${markdownTheme.border.table} ${markdownTheme.background.table}`}>
                     <thead className={markdownTheme.background.tableHeader}>
-                        <tr>
-                            {headers.map((h, i) => (
-                                <th key={i}
-                                    style={{ textAlign: alignments[i] || 'left' }}
-                                    className={`px-6 py-3 text-xs font-bold text-amber-400 uppercase tracking-wider border-b ${markdownTheme.border.table}`}>
-                                    {parseInlineFormats(h)}
-                                </th>
-                            ))}
-                        </tr>
+                    <tr>
+                        {headers.map((h, i) => (
+                            <th key={i}
+                                style={{textAlign: alignments[i] || 'left'}}
+                                className={`px-6 py-3 text-xs font-bold text-amber-400 uppercase tracking-wider border-b ${markdownTheme.border.table}`}>
+                                {parseInlineFormats(h)}
+                            </th>
+                        ))}
+                    </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                        {bodyRows.map((row, idx) => (
-                            <tr key={idx} className={idx % 2 === 0 ? 'bg-transparent' : markdownTheme.background.tableRowAlt}>
-                                {row.map((cell, cIdx) => (
-                                    <td key={cIdx}
-                                        style={{ textAlign: alignments[cIdx] || 'left' }}
-                                        className={`px-6 py-4 whitespace-nowrap text-sm ${markdownTheme.text.primary} border-r border-slate-800/50 last:border-0`}>
-                                        {parseInlineFormats(cell)}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))}
+                    {bodyRows.map((row, idx) => (
+                        <tr key={idx}
+                            className={idx % 2 === 0 ? 'bg-transparent' : markdownTheme.background.tableRowAlt}>
+                            {row.map((cell, cIdx) => (
+                                <td key={cIdx}
+                                    style={{textAlign: alignments[cIdx] || 'left'}}
+                                    className={`px-6 py-4 whitespace-nowrap text-sm ${markdownTheme.text.primary} border-r border-slate-800/50 last:border-0`}>
+                                    {parseInlineFormats(cell)}
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
                     </tbody>
                 </table>
             </div>
@@ -554,7 +587,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
         const lines = text.split('\n');
         return lines.map((line, idx) => {
             const trimmed = line.trim();
-            if (!trimmed) return <div key={idx} className="h-4" />;
+            if (!trimmed) return <div key={idx} className="h-4"/>;
             return (
                 <p key={idx} className={`my-2 ${markdownTheme.text.primary} leading-relaxed`}>
                     {parseInlineFormats(trimmed)}
@@ -571,7 +604,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
             previousContent = cleanedContent;
             cleanedContent = cleanedContent.replace(/<!--[\s\S]*?-->/g, '');
         } while (previousContent !== cleanedContent);
-        
+
         // Split by code blocks
         const codeSplit = cleanedContent.split(/(```[\s\S]*?```)/g);
         const result: React.ReactNode[] = [];
@@ -586,7 +619,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                 if (lang === 'mermaid') {
                     mermaidRef.current += 1;
                     result.push(
-                        <div key={`mermaid-${secIdx}`} className={`my-6 p-4 rounded-lg border ${markdownTheme.border.codeBlock} ${markdownTheme.background.codeBlock} overflow-x-auto`}>
+                        <div key={`mermaid-${secIdx}`}
+                             className={`my-6 p-4 rounded-lg border ${markdownTheme.border.codeBlock} ${markdownTheme.background.codeBlock} overflow-x-auto`}>
                             <div className="mermaid-diagram">
                                 {codeContent.trim()}
                             </div>
@@ -595,8 +629,10 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                 } else {
                     result.push(
                         <div key={`code-${secIdx}`} className="relative group my-6">
-                            {lang && <span className={`absolute right-2 top-2 text-xs ${markdownTheme.text.secondary} font-mono select-none`}>{lang}</span>}
-                            <pre className={`${markdownTheme.background.codeBlock} border ${markdownTheme.border.codeBlock} p-4 rounded-lg overflow-x-auto text-sm font-mono ${markdownTheme.text.code} shadow-inner`}>
+                            {lang && <span
+                                className={`absolute right-2 top-2 text-xs ${markdownTheme.text.secondary} font-mono select-none`}>{lang}</span>}
+                            <pre
+                                className={`${markdownTheme.background.codeBlock} border ${markdownTheme.border.codeBlock} p-4 rounded-lg overflow-x-auto text-sm font-mono ${markdownTheme.text.code} shadow-inner`}>
                                 <code>{codeContent.trim()}</code>
                             </pre>
                         </div>
@@ -611,7 +647,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                     const key = `block-${secIdx}-${i}`;
 
                     if (!trimmed) {
-                        result.push(<div key={key} className="h-4" />);
+                        result.push(<div key={key} className="h-4"/>);
                         i++;
                         continue;
                     }
@@ -641,7 +677,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
 
                         if (foundEnd) {
                             result.push(
-                                <div key={key} className={`my-6 overflow-x-auto text-center py-2 ${markdownTheme.background.math} rounded border ${markdownTheme.border.math}`}>
+                                <div key={key}
+                                     className={`my-6 overflow-x-auto text-center py-2 ${markdownTheme.background.math} rounded border ${markdownTheme.border.math}`}>
                                     {renderMath(mathContent, true)}
                                 </div>
                             );
@@ -678,19 +715,26 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
 
                         switch (level) {
                             case 1:
-                                result.push(<h1 key={key} id={anchorId} className={`text-3xl font-serif font-bold ${markdownTheme.text.heading1} mt-8 mb-4 border-b ${markdownTheme.border.heading1} pb-2 flex items-center gap-2`}>{content}</h1>);
+                                result.push(<h1 key={key} id={anchorId}
+                                                className={`text-3xl font-serif font-bold ${markdownTheme.text.heading1} mt-8 mb-4 border-b ${markdownTheme.border.heading1} pb-2 flex items-center gap-2`}>{content}</h1>);
                                 break;
                             case 2:
-                                result.push(<h2 key={key} id={anchorId} className={`text-2xl font-serif font-bold ${markdownTheme.text.heading2} mt-6 mb-3 pl-3 border-l-4 ${markdownTheme.border.heading2}`}>{content}</h2>);
+                                result.push(<h2 key={key} id={anchorId}
+                                                className={`text-2xl font-serif font-bold ${markdownTheme.text.heading2} mt-6 mb-3 pl-3 border-l-4 ${markdownTheme.border.heading2}`}>{content}</h2>);
                                 break;
                             case 3:
-                                result.push(<h3 key={key} id={anchorId} className={`text-xl font-bold ${markdownTheme.text.heading3} mt-5 mb-2`}>{content}</h3>);
+                                result.push(<h3 key={key} id={anchorId}
+                                                className={`text-xl font-bold ${markdownTheme.text.heading3} mt-5 mb-2`}>{content}</h3>);
                                 break;
                             case 4:
-                                result.push(<h4 key={key} id={anchorId} className={`text-lg font-bold ${markdownTheme.text.heading4} mt-4 mb-2 flex items-center gap-2`}><div className="w-1.5 h-1.5 rounded-full bg-amber-400" />{content}</h4>);
+                                result.push(<h4 key={key} id={anchorId}
+                                                className={`text-lg font-bold ${markdownTheme.text.heading4} mt-4 mb-2 flex items-center gap-2`}>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400"/>
+                                    {content}</h4>);
                                 break;
                             default:
-                                result.push(<h5 key={key} id={anchorId} className={`font-bold ${markdownTheme.text.heading5} mt-3`}>{content}</h5>);
+                                result.push(<h5 key={key} id={anchorId}
+                                                className={`font-bold ${markdownTheme.text.heading5} mt-3`}>{content}</h5>);
                         }
                         i++;
                         continue;
@@ -710,7 +754,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                 // Use backend API proxy to fetch images, avoiding direct GitHub raw URL issues
                                 const imagePath = `attachments/${embedName}`;
                                 const imageUrl = `/api/github/raw?owner=${encodeURIComponent(GITHUB_USERNAME)}&repo=${encodeURIComponent(GITHUB_REPO)}&path=${encodeURIComponent(imagePath)}`;
-                                
+
                                 // Parse size specification
                                 let widthStyle = {};
                                 let heightStyle = {};
@@ -719,9 +763,9 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                     if (sizeMatch) {
                                         const width = sizeMatch[1];
                                         const height = sizeMatch[2];
-                                        widthStyle = { width: `${width}px` };
+                                        widthStyle = {width: `${width}px`};
                                         if (height) {
-                                            heightStyle = { height: `${height}px` };
+                                            heightStyle = {height: `${height}px`};
                                         }
                                     }
                                 }
@@ -731,22 +775,24 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                         <img
                                             src={imageUrl}
                                             alt={embedName}
-                                            style={{ ...widthStyle, ...heightStyle }}
+                                            style={{...widthStyle, ...heightStyle}}
                                             className={`max-w-full md:max-w-lg rounded-lg border ${markdownTheme.border.image} shadow-lg opacity-100`}
                                             onError={(e) => {
                                                 (e.target as HTMLImageElement).style.display = 'none';
                                             }}
                                         />
-                                        <span className={`text-xs ${markdownTheme.text.secondary} mt-2 italic`}>{embedName}</span>
+                                        <span
+                                            className={`text-xs ${markdownTheme.text.secondary} mt-2 italic`}>{embedName}</span>
                                     </div>
                                 );
                             } else {
                                 // Article embed
                                 if (embedDepth >= 1) {
                                     result.push(
-                                        <div key={key} className={`my-4 p-4 rounded-lg border ${markdownTheme.border.blockquote} ${markdownTheme.background.blockquote}`}>
+                                        <div key={key}
+                                             className={`my-4 p-4 rounded-lg border ${markdownTheme.border.blockquote} ${markdownTheme.background.blockquote}`}>
                                             <div className="flex items-center gap-2">
-                                                <ExternalLink size={16} className={markdownTheme.text.linkInternal} />
+                                                <ExternalLink size={16} className={markdownTheme.text.linkInternal}/>
                                                 <button
                                                     onClick={() => onNavigate?.(embedName)}
                                                     className={`${markdownTheme.text.linkInternal} underline font-medium hover:opacity-80`}
@@ -769,8 +815,10 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
 
                                     if (embeddedPost) {
                                         result.push(
-                                            <div key={key} className={`my-6 p-6 rounded-lg border-2 ${markdownTheme.border.blockquote} ${markdownTheme.background.blockquote}`}>
-                                                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/50">
+                                            <div key={key}
+                                                 className={`my-6 p-6 rounded-lg border-2 ${markdownTheme.border.blockquote} ${markdownTheme.background.blockquote}`}>
+                                                <div
+                                                    className="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/50">
                                                     <h3 className={`text-lg font-bold ${markdownTheme.text.heading3}`}>
                                                         {embeddedPost.title}
                                                     </h3>
@@ -779,7 +827,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                                         className={`${markdownTheme.text.linkInternal} flex items-center gap-1 text-sm hover:opacity-80 transition-opacity`}
                                                     >
                                                         <span>查看全文</span>
-                                                        <ExternalLink size={14} />
+                                                        <ExternalLink size={14}/>
                                                     </button>
                                                 </div>
                                                 <div className="embedded-content">
@@ -795,16 +843,18 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                         );
                                     } else {
                                         result.push(
-                                            <div key={key} className={`my-4 p-4 rounded-lg border ${markdownTheme.border.blockquote} ${markdownTheme.background.blockquote}`}>
+                                            <div key={key}
+                                                 className={`my-4 p-4 rounded-lg border ${markdownTheme.border.blockquote} ${markdownTheme.background.blockquote}`}>
                                                 <div className="flex items-center gap-2">
-                                                    <ExternalLink size={16} className={markdownTheme.text.secondary} />
+                                                    <ExternalLink size={16} className={markdownTheme.text.secondary}/>
                                                     <button
                                                         onClick={() => onNavigate?.(embedName)}
                                                         className={`${markdownTheme.text.linkInternal} underline font-medium hover:opacity-80`}
                                                     >
                                                         {embedName}
                                                     </button>
-                                                    <span className={`text-xs ${markdownTheme.text.secondary} italic`}>(点击加载)</span>
+                                                    <span
+                                                        className={`text-xs ${markdownTheme.text.secondary} italic`}>(点击加载)</span>
                                                 </div>
                                             </div>
                                         );
@@ -823,8 +873,10 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                         const imageUrl = imgMatch[2];
                         result.push(
                             <div key={key} className="my-6 flex flex-col items-center">
-                                <img src={imageUrl} alt={altText} className={`max-w-full rounded-lg border ${markdownTheme.border.image} shadow-lg opacity-100`} />
-                                {altText && <span className={`text-xs ${markdownTheme.text.secondary} mt-2 italic`}>{altText}</span>}
+                                <img src={imageUrl} alt={altText}
+                                     className={`max-w-full rounded-lg border ${markdownTheme.border.image} shadow-lg opacity-100`}/>
+                                {altText && <span
+                                    className={`text-xs ${markdownTheme.text.secondary} mt-2 italic`}>{altText}</span>}
                             </div>
                         );
                         i++;
@@ -877,8 +929,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                 const isCollapsible = foldIndicator !== undefined;
                                 const defaultCollapsed = foldIndicator === '-';
                                 // If in set, it means user toggled it, so invert the default
-                                const isCollapsed = collapsedCallouts.has(calloutId) 
-                                    ? !defaultCollapsed 
+                                const isCollapsed = collapsedCallouts.has(calloutId)
+                                    ? !defaultCollapsed
                                     : defaultCollapsed;
 
                                 result.push(
@@ -888,9 +940,10 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                             onClick={isCollapsible ? () => toggleCallout(calloutId) : undefined}
                                         >
                                             {styles.icon}
-                                            <div className="font-bold text-lg flex-1">{calloutTitle || calloutType}</div>
+                                            <div
+                                                className="font-bold text-lg flex-1">{calloutTitle || calloutType}</div>
                                             {isCollapsible && (
-                                                isCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />
+                                                isCollapsed ? <ChevronRight size={20}/> : <ChevronDown size={20}/>
                                             )}
                                         </div>
                                         {!isCollapsed && (
@@ -905,7 +958,8 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                 // Standard Blockquote
                                 const bodyContent = quoteLines.map(l => l.replace(/^>\s?/, '')).join('\n');
                                 result.push(
-                                    <div key={key} className={`my-6 border-l-4 ${markdownTheme.border.blockquote} pl-4 py-2 ${markdownTheme.background.blockquote} italic ${markdownTheme.text.primary}`}>
+                                    <div key={key}
+                                         className={`my-6 border-l-4 ${markdownTheme.border.blockquote} pl-4 py-2 ${markdownTheme.background.blockquote} italic ${markdownTheme.text.primary}`}>
                                         {renderSimpleText(bodyContent)}
                                     </div>
                                 );
@@ -1019,43 +1073,47 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                     }
                                 }
 
-                                items.push({ type, content, children, indent, isTask, taskChecked });
+                                items.push({type, content, children, indent, isTask, taskChecked});
                                 idx = k;
                             }
 
                             // Group consecutive items of the same type, but preserve structure
                             const renderGroups: React.ReactNode[] = [];
                             let i = 0;
-                            
+
                             while (i < items.length) {
                                 const currentItem = items[i];
                                 const currentType = currentItem.type;
                                 const group: typeof items = [currentItem];
-                                
+
                                 // Look ahead to group consecutive items of same type
                                 let j = i + 1;
                                 while (j < items.length && items[j].type === currentType) {
                                     group.push(items[j]);
                                     j++;
                                 }
-                                
+
                                 const ListTag = currentType === 'ul' ? 'ul' : 'ol';
                                 const className = currentType === 'ul'
                                     ? 'list-disc pl-6 space-y-1'
                                     : 'list-decimal pl-6 space-y-1';
-                                
+
                                 renderGroups.push(
                                     <ListTag key={i} className={className}>
                                         {group.map((item: ListItem, iIdx) => (
-                                            <li key={iIdx} className={item.isTask ? "flex items-start gap-2" : markdownTheme.text.primary}>
+                                            <li key={iIdx}
+                                                className={item.isTask ? "flex items-start gap-2" : markdownTheme.text.primary}>
                                                 {item.isTask && (
                                                     item.taskChecked ? (
-                                                        <CheckSquare size={15} className={`${markdownTheme.callout.tip.icon} mt-0.5`} />
+                                                        <CheckSquare size={15}
+                                                                     className={`${markdownTheme.callout.tip.icon} mt-0.5`}/>
                                                     ) : (
-                                                        <Square size={15} className={`${markdownTheme.text.secondary} mt-0.5`} />
+                                                        <Square size={15}
+                                                                className={`${markdownTheme.text.secondary} mt-0.5`}/>
                                                     )
                                                 )}
-                                                <span className={markdownTheme.text.primary}>{parseInlineFormats(item.content)}</span>
+                                                <span
+                                                    className={markdownTheme.text.primary}>{parseInlineFormats(item.content)}</span>
                                                 {item.children.length > 0 && (
                                                     <div className="mt-1">
                                                         {parseListItems(item.children, getMinChildIndent(item.children))}
@@ -1065,7 +1123,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                         ))}
                                     </ListTag>
                                 );
-                                
+
                                 i = j;
                             }
 
@@ -1083,7 +1141,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
 
                     // H. Horizontal Rule
                     if (trimmed.match(/^[-*_]{3,}$/)) {
-                        result.push(<hr key={key} className={`my-8 border-t ${markdownTheme.border.horizontalRule}`} />);
+                        result.push(<hr key={key} className={`my-8 border-t ${markdownTheme.border.horizontalRule}`}/>);
                         i++;
                         continue;
                     }
@@ -1103,7 +1161,7 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
     };
 
     // Main render function
-    const { frontMatter, contentWithoutFrontMatter } = parseFrontMatter(content);
+    const {frontMatter, contentWithoutFrontMatter} = parseFrontMatter(content);
 
     return (
         <div ref={mathRef} className="markdown-content obsidian-content">
