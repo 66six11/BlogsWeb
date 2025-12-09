@@ -1,19 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Database, Cloud, X, GripVertical, ChevronDown, ChevronUp, Palette } from 'lucide-react';
-import { View } from '../../types';
 
 interface PreviewConsoleProps {
   useMockData: boolean;
   onToggleMockData: () => void;
   onRefresh: () => void;
-  onNavigateToUIPreview?: () => void;
 }
 
 const PreviewConsole: React.FC<PreviewConsoleProps> = ({
   useMockData,
   onToggleMockData,
   onRefresh,
-  onNavigateToUIPreview,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [position, setPosition] = useState({ x: 20, y: 20 });
@@ -119,16 +116,18 @@ const PreviewConsole: React.FC<PreviewConsoleProps> = ({
             </button>
           </div>
 
-          {/* UI Preview Button */}
-          {onNavigateToUIPreview && (
+          {/* UI Preview Button - Only in dev mode */}
+          {import.meta.env.DEV && (
             <div className="border-t border-purple-500/20 pt-3">
-              <button
-                onClick={onNavigateToUIPreview}
+              <a
+                href="?ui-preview=true"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 transition-all"
               >
                 <Palette size={16} className="text-purple-300" />
                 <span className="text-sm text-purple-200 font-medium">UI 组件预览</span>
-              </button>
+              </a>
             </div>
           )}
 

@@ -53,6 +53,22 @@ const WELCOME_TRANSITION_DURATION = 700;
 
 // --- Main App Component ---
 const App: React.FC = () => {
+  // Check if we should show UI preview page (via URL parameter)
+  const urlParams = new URLSearchParams(window.location.search);
+  const showUIPreview = import.meta.env.DEV && (
+    urlParams.get('ui-preview') === 'true' || 
+    window.location.pathname === '/ui-preview'
+  );
+
+  // If UI preview is requested, render it directly
+  if (showUIPreview) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 text-purple-400">Loading UI Preview...</div>}>
+        <UIPreviewPage />
+      </Suspense>
+    );
+  }
+
   const [currentView, setCurrentView] = useState<View>(View.HOME);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
@@ -756,18 +772,6 @@ const App: React.FC = () => {
     </div>
   );
 
-  const renderUIPreview = () => {
-    // Only render in development mode
-    if (!import.meta.env.DEV) {
-      return null;
-    }
-    return (
-      <Suspense fallback={<div className="flex items-center justify-center h-screen text-purple-400">Loading UI Preview...</div>}>
-        <UIPreviewPage />
-      </Suspense>
-    );
-  };
-
   return (
     <div className="min-h-screen selection:text-black font-sans relative theme-text-secondary selection-accent">
       {/* Background Video/Image */}
@@ -825,7 +829,6 @@ const App: React.FC = () => {
           {currentView === View.PORTFOLIO && renderPortfolio()}
           {currentView === View.ABOUT && renderAbout()}
           {currentView === View.MUSIC && renderMusic()}
-          {currentView === View.UI_PREVIEW && renderUIPreview()}
         </main>
 
         <MagicChat />
@@ -874,7 +877,6 @@ const App: React.FC = () => {
             useMockData={useMockData}
             onToggleMockData={handleToggleMockData}
             onRefresh={handleRefresh}
-            onNavigateToUIPreview={import.meta.env.DEV ? () => setCurrentView(View.UI_PREVIEW) : undefined}
           />
         </Suspense>
       )}

@@ -27,9 +27,23 @@ export interface TypographyProps
   as?: 'h1' | 'h2' | 'h3' | 'h4' | 'p' | 'span' | 'div';
 }
 
+const getComponentFromVariant = (variant: TypographyProps['variant'], as?: TypographyProps['as']) => {
+  if (as) return as;
+  
+  const variantToElement: Record<string, string> = {
+    h1: 'h1',
+    h2: 'h2',
+    h3: 'h3',
+    h4: 'h4',
+    caption: 'span',
+  };
+  
+  return variantToElement[variant || 'body'] || 'p';
+};
+
 const Typography = React.forwardRef<HTMLElement, TypographyProps>(
   ({ className, variant, as, ...props }, ref) => {
-    const Component = as || (variant === 'h1' ? 'h1' : variant === 'h2' ? 'h2' : variant === 'h3' ? 'h3' : variant === 'h4' ? 'h4' : variant === 'caption' ? 'span' : 'p');
+    const Component = getComponentFromVariant(variant, as);
     
     return React.createElement(
       Component,

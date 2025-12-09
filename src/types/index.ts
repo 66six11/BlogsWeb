@@ -4,8 +4,7 @@ export enum View {
   BLOG = 'BLOG',
   ABOUT = 'ABOUT',
   MUSIC = 'MUSIC',
-  PORTFOLIO = 'PORTFOLIO',
-  UI_PREVIEW = 'UI_PREVIEW'
+  PORTFOLIO = 'PORTFOLIO'
 }
 
 export interface BlogPost {
