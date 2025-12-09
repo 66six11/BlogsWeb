@@ -100,9 +100,10 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
         }
     }, [content]);
 
-    // Parse YAML front matter
+    // Parse YAML front matter - must be at the very beginning of the file
     const parseFrontMatter = (text: string): { frontMatter: FrontMatter | null, contentWithoutFrontMatter: string } => {
-        const frontMatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n/;
+        // More strict: only match if the file starts with --- (after optional whitespace)
+        const frontMatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/;
         const match = text.match(frontMatterRegex);
 
         if (!match) {

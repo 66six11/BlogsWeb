@@ -21,6 +21,8 @@ import ObsidianRenderer from './components/features/content/ObsidianRenderer';
 
 // Lazy load PreviewConsole only in preview mode to exclude from production builds
 const PreviewConsole = lazy(() => import('./components/dev/PreviewConsole'));
+// Lazy load UIPreviewPage only in dev mode to exclude from production builds
+const UIPreviewPage = lazy(() => import('./pages/UIPreviewPage'));
 
 import {
   fetchBlogPosts,
@@ -754,6 +756,18 @@ const App: React.FC = () => {
     </div>
   );
 
+  const renderUIPreview = () => {
+    // Only render in development mode
+    if (!import.meta.env.DEV) {
+      return null;
+    }
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-screen text-purple-400">Loading UI Preview...</div>}>
+        <UIPreviewPage />
+      </Suspense>
+    );
+  };
+
   return (
     <div className="min-h-screen selection:text-black font-sans relative theme-text-secondary selection-accent">
       {/* Background Video/Image */}
@@ -811,6 +825,7 @@ const App: React.FC = () => {
           {currentView === View.PORTFOLIO && renderPortfolio()}
           {currentView === View.ABOUT && renderAbout()}
           {currentView === View.MUSIC && renderMusic()}
+          {currentView === View.UI_PREVIEW && renderUIPreview()}
         </main>
 
         <MagicChat />
@@ -859,6 +874,7 @@ const App: React.FC = () => {
             useMockData={useMockData}
             onToggleMockData={handleToggleMockData}
             onRefresh={handleRefresh}
+            onNavigateToUIPreview={import.meta.env.DEV ? () => setCurrentView(View.UI_PREVIEW) : undefined}
           />
         </Suspense>
       )}
