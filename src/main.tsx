@@ -1,14 +1,41 @@
 import './styles/index.css';
-import React, { StrictMode } from 'react';
+import React, { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import App from './App';
 import ErrorBoundary from './components/common/ErrorBoundary';
+
+// Lazy load UI preview page only in dev mode
+const UIPreviewPage = import.meta.env.DEV 
+  ? lazy(() => import('./pages/UIPreviewPage'))
+  : null;
 
 const root = createRoot(document.getElementById('root')!);
 root.render(
   <ErrorBoundary>
     <StrictMode>
-      <App />
+      <BrowserRouter>
+        <Routes>
+          {/* Main application route */}
+          <Route path="/*" element={<App />} />
+          
+          {/* Dev-only UI preview route */}
+          {import.meta.env.DEV && UIPreviewPage && (
+            <Route 
+              path="/ui-preview" 
+              element={
+                <Suspense fallback={
+                  <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 text-purple-400">
+                    Loading UI Preview...
+                  </div>
+                }>
+                  <UIPreviewPage />
+                </Suspense>
+              } 
+            />
+          )}
+        </Routes>
+      </BrowserRouter>
     </StrictMode>
   </ErrorBoundary>
 );
