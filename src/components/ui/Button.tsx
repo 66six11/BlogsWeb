@@ -3,20 +3,19 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none',
+  'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none',
   {
     variants: {
       variant: {
-        primary: 'bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500',
-        secondary: 'bg-slate-700 text-slate-100 hover:bg-slate-600 focus:ring-slate-500',
-        outline: 'border-2 border-purple-600 bg-transparent text-purple-400 hover:bg-purple-600/10 focus:ring-purple-500',
-        ghost: 'text-slate-300 hover:bg-slate-800 hover:text-slate-100',
-        destructive: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+        primary: 'px-8 py-3 text-white rounded-lg font-bold shadow-[0_0_20px_rgba(124,133,235,0.4)] transition-all hover:scale-105 hover:opacity-90 flex items-center gap-2 border backdrop-blur-sm theme-btn-primary accent3-border',
+        secondary: 'px-8 py-3 rounded-lg font-bold border transition-all hover:scale-105 flex items-center gap-2 backdrop-blur-md hover:bg-white/10 theme-text-primary theme-border-subtle bg-white/10',
+        ghost: 'hover:bg-white/5 theme-text-secondary transition-all duration-300',
+        icon: 'p-1.5 hover:bg-white/10 rounded-full transition-colors theme-text-secondary',
       },
       size: {
-        sm: 'h-8 px-3 text-sm',
-        md: 'h-10 px-4 text-base',
-        lg: 'h-12 px-6 text-lg',
+        sm: 'text-sm px-3 py-1.5',
+        md: 'text-base px-4 py-2',
+        lg: 'text-lg px-8 py-3',
       },
     },
     defaultVariants: {
@@ -28,9 +27,7 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
-}
+    VariantProps<typeof buttonVariants> {}
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, ...props }, ref) => {

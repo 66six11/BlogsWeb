@@ -1,14 +1,14 @@
-export { Button, buttonVariants } from './Button';
-export type { ButtonProps } from './Button';
-
-export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, cardVariants } from './Card';
-export type { CardProps } from './Card';
-
-export { Badge, badgeVariants } from './Badge';
-export type { BadgeProps } from './Badge';
-
-export { Input, inputVariants } from './Input';
-export type { InputProps } from './Input';
-
-export { Typography, typographyVariants } from './Typography';
-export type { TypographyProps } from './Typography';
+export { Button, buttonVariants, type ButtonProps } from './Button';
+export { 
+  Card, 
+  CardHeader, 
+  CardFooter, 
+  CardTitle, 
+  CardDescription, 
+  CardContent,
+  type CardProps 
+} from './Card';
+export { Badge, badgeVariants, type BadgeProps } from './Badge';
+export { Container, type ContainerProps } from './Container';
+export { Avatar, type AvatarProps } from './Avatar';
+export { SectionHeader, type SectionHeaderProps } from './SectionHeader';

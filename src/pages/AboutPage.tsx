@@ -1,115 +1,99 @@
 import React from 'react';
-import { ChevronRight, Github, Mail, Calendar, MapPin } from 'lucide-react';
 import { GitHubUser } from '../types';
+import { Github, Terminal, Palette, Music } from 'lucide-react';
+import { Container, Card, Avatar } from '../components/ui';
+import { CustomWitchIcon } from '../components/icons/CustomIcons';
 
-interface AboutPageProps {
-    userProfile: GitHubUser | null;
+export interface AboutPageProps {
+  userProfile: GitHubUser | null;
 }
 
 const AboutPage: React.FC<AboutPageProps> = ({ userProfile }) => {
-    if (!userProfile) {
-        return (
-            <div className="flex justify-center items-center min-h-screen theme-bg-primary">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400"></div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="min-h-screen theme-bg-primary py-12 px-4">
-            <div className="max-w-4xl mx-auto">
-                <div className="theme-card-primary rounded-xl p-8 shadow-xl">
-                    {/* Profile Header */}
-                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8">
-                        <img
-                            src={userProfile.avatar_url}
-                            alt={userProfile.name || userProfile.login}
-                            className="w-32 h-32 rounded-full border-4 about-profile-border shadow-lg"
-                        />
-                        <div className="text-center md:text-left">
-                            <h1 className="text-3xl font-bold theme-text-primary mb-2">
-                                {userProfile.name || userProfile.login}
-                            </h1>
-                            <p className="text-lg theme-text-secondary mb-4">
-                                {userProfile.bio || '开发者与创作者'}
-                            </p>
-                            <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                                <span className="px-3 py-1 rounded-full text-sm theme-bg-tertiary theme-text-secondary">
-                                    <Github size={16} className="inline mr-1" />
-                                    {userProfile.login}
-                                </span>
-                                <span className="px-3 py-1 rounded-full text-sm theme-bg-tertiary theme-text-secondary">
-                                    <Calendar size={16} className="inline mr-1" />
-                                    {userProfile.public_repos} 个仓库
-                                </span>
-                                <span className="px-3 py-1 rounded-full text-sm theme-bg-tertiary theme-text-secondary">
-                                    <MapPin size={16} className="inline mr-1" />
-                                    在线
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="space-y-6">
-                        <section>
-                            <h2 className="text-2xl font-bold theme-text-primary mb-4">关于我</h2>
-                            <p className="theme-text-secondary leading-relaxed">
-                                我是一名充满热情的开发者，专注于创造优雅的解决方案和用户体验。
-                                这个博客是我的数字花园，记录着我在技术探索、创意实现和思考过程中的点点滴滴。
-                            </p>
-                        </section>
-
-                        <section>
-                            <h2 className="text-2xl font-bold theme-text-primary mb-4">技能与专长</h2>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {['前端开发', 'React', 'TypeScript', 'Node.js', 'UI/UX设计', '创意编程'].map((skill) => (
-                                    <div key={skill} className="theme-bg-secondary rounded-lg p-3 text-center">
-                                        <span className="theme-text-accent1">{skill}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section>
-                            <h2 className="text-2xl font-bold theme-text-primary mb-4">联系方式</h2>
-                            <div className="flex flex-col gap-3">
-                                <a
-                                    href={userProfile.html_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-3 theme-text-secondary hover:theme-text-accent1 transition-colors"
-                                >
-                                    <Github size={20} />
-                                    <span>GitHub: {userProfile.login}</span>
-                                    <ChevronRight size={16} className="ml-auto" />
-                                </a>
-                                <a
-                                    href={`mailto:${userProfile.login}@example.com`}
-                                    className="flex items-center gap-3 theme-text-secondary hover:theme-text-accent1 transition-colors"
-                                >
-                                    <Mail size={20} />
-                                    <span>邮箱联系</span>
-                                    <ChevronRight size={16} className="ml-auto" />
-                                </a>
-                            </div>
-                        </section>
-
-                        <section>
-                            <h2 className="text-2xl font-bold theme-text-primary mb-4">更多关于我</h2>
-                            <p className="theme-text-secondary leading-relaxed">
-                                除了编程，我还热爱音乐、艺术和探索新技术。我相信技术与创意的结合能够创造出令人惊叹的作品。
-                                这个博客不仅是技术分享的平台，也是我记录生活、表达想法的空间。
-                            </p>
-                            <p className="theme-text-secondary leading-relaxed mt-4">
-                                欢迎你在这里浏览我的项目、阅读我的文章，或者直接与我联系。期待与志同道合的朋友交流！
-                            </p>
-                        </section>
-                    </div>
-                </div>
-            </div>
+  return (
+    <Container maxWidth="4xl" className="py-12 animate-fade-in-up relative z-10">
+      <Card variant="elevated" padding="lg" className="relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-10">
+          <CustomWitchIcon size={120} className="theme-text-accent1" />
         </div>
-    );
+
+        <div className="flex flex-col md:flex-row gap-10 items-center">
+          <div className="flex-shrink-0">
+            <Avatar
+              src={
+                userProfile?.avatar_url ||
+                'https://api.dicebear.com/7.x/avataaars/svg?seed=Elaina&clothing=graphicShirt&top=hat&hairColor=silverGray'
+              }
+              alt="Profile"
+              size="lg"
+              withGlow
+            />
+          </div>
+
+          <div className="flex-1">
+            <h2 className="text-4xl font-serif font-bold mb-4 theme-text-primary">关于旅行者</h2>
+            <div className="space-y-4 leading-relaxed font-sans theme-text-secondary">
+              {userProfile?.bio ? (
+                <p>{userProfile.bio}</p>
+              ) : (
+                <>
+                  <p>
+                    你好！我是一名对{' '}
+                    <strong className="theme-text-accent1">计算机图形学</strong>、
+                    <strong className="theme-text-accent1">Unity</strong> 和{' '}
+                    <strong className="theme-text-accent1">游戏引擎架构</strong>{' '}
+                    充满热情的学生。
+                  </p>
+                  <p>
+                    当我不在调试着色器或优化绘制调用时，我会花时间弹钢琴或绘制受我最喜欢的动漫《
+                    <em className="theme-text-accent3">魔女之旅</em>
+                    》启发的风景画。
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              {userProfile?.html_url && (
+                <a
+                  href={userProfile.html_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-4 rounded-lg border flex items-center gap-3 hover:opacity-80 transition-colors opacity-80 theme-bg-primary theme-border-subtle"
+                >
+                  <Github className="theme-text-accent1" />
+                  <div>
+                    <h4 className="font-bold text-sm theme-text-primary">GitHub</h4>
+                    <p className="text-xs theme-text-secondary">查看源码</p>
+                  </div>
+                </a>
+              )}
+              <div className="p-4 rounded-lg border flex items-center gap-3 opacity-80 theme-bg-primary theme-border-subtle">
+                <Terminal className="theme-text-accent1" />
+                <div>
+                  <h4 className="font-bold text-sm theme-text-primary">编程语言</h4>
+                  <p className="text-xs theme-text-secondary">C++, C#, HLSL, Python</p>
+                </div>
+              </div>
+              <div className="p-4 rounded-lg border flex items-center gap-3 opacity-80 theme-bg-primary theme-border-subtle">
+                <Palette className="theme-text-accent1" />
+                <div>
+                  <h4 className="font-bold text-sm theme-text-primary">工具</h4>
+                  <p className="text-xs theme-text-secondary">Unity, Blender, Photoshop</p>
+                </div>
+              </div>
+              <div className="p-4 rounded-lg border flex items-center gap-3 opacity-80 theme-bg-primary theme-border-subtle">
+                <Music className="theme-text-accent1" />
+                <div>
+                  <h4 className="font-bold text-sm theme-text-primary">爱好</h4>
+                  <p className="text-xs theme-text-secondary">钢琴即兴演奏</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </Container>
+  );
 };
 
 export default AboutPage;

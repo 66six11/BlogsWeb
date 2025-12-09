@@ -3,19 +3,17 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors',
+  'inline-flex items-center rounded font-medium transition-colors',
   {
     variants: {
       variant: {
-        default: 'bg-slate-800 text-slate-200 border border-slate-700',
-        success: 'bg-green-900/50 text-green-300 border border-green-700',
-        warning: 'bg-amber-900/50 text-amber-300 border border-amber-700',
-        error: 'bg-red-900/50 text-red-300 border border-red-700',
-        info: 'bg-blue-900/50 text-blue-300 border border-blue-700',
+        category: 'text-xs px-3 py-1 rounded-full border theme-text-accent1 accent-border-light',
+        tag: 'text-xs font-mono px-2 py-1 rounded border theme-text-secondary theme-bg-tertiary theme-border-subtle',
+        status: 'text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/30',
       },
     },
     defaultVariants: {
-      variant: 'default',
+      variant: 'category',
     },
   }
 );
