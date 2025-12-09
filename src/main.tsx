@@ -16,11 +16,8 @@ root.render(
     <StrictMode>
       <BrowserRouter>
         <Routes>
-          {/* Main application route */}
-          <Route path="/*" element={<App />} />
-          
           {/* Dev-only UI preview route */}
-          {import.meta.env.DEV && UIPreviewPage && (
+          {import.meta.env.DEV && (
             <Route 
               path="/ui-preview" 
               element={
@@ -34,6 +31,9 @@ root.render(
               } 
             />
           )}
+          
+          {/* Main application route - catches all other paths */}
+          <Route path="*" element={<App />} />
         </Routes>
       </BrowserRouter>
     </StrictMode>
