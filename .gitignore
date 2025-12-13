@@ -28,3 +28,6 @@ dist-ssr
 web-bundles
 /需求.md
 .vercel
+
+*storybook.log
+storybook-static

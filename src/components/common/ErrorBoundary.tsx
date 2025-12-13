@@ -1,26 +1,65 @@
+/**
+ * 错误边界组件 - 捕获和处理 React 应用中的未捕获错误
+ * @file src/components/common/ErrorBoundary.tsx
+ * @description 用于捕获子组件树中的 JavaScript 错误，记录错误信息，并显示友好的错误界面
+ * @created 2025-12-13
+ */
+
 import React from 'react';
 
+/**
+ * 错误边界组件类
+ * @class ErrorBoundary
+ * @extends React.Component
+ * @description 捕获子组件树中的未捕获错误，防止整个应用崩溃
+ */
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error: Error | null }
 > {
-  state: { hasError: boolean; error: any };
-  props: any;
+  /** 组件状态类型定义 */
+  state: { hasError: boolean; error: Error | null };
+  /** 组件属性类型定义 */
+  props: { children: React.ReactNode };
 
-  constructor(props: any) {
+  /**
+   * 构造函数 - 初始化组件状态
+   * @param {object} props - 组件属性
+   */
+  constructor(props: { children: React.ReactNode }) {
     super(props);
+    // 初始状态：无错误
     this.state = { hasError: false, error: null };
   }
 
+  /**
+   * 从错误中获取派生状态
+   * @static
+   * @param {Error} error - 捕获到的错误对象
+   * @returns {object} 更新后的状态
+   * @description 在渲染阶段捕获到错误后调用，用于更新组件状态以显示错误界面
+   */
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
 
+  /**
+   * 组件捕获错误后的处理
+   * @param {Error} error - 捕获到的错误对象
+   * @param {any} errorInfo - 错误上下文信息
+   * @description 在提交阶段捕获到错误后调用，用于记录错误日志
+   */
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error('Uncaught Error:', error, errorInfo);
+    console.error('未捕获的错误:', error, errorInfo);
   }
 
+  /**
+   * 渲染组件
+   * @returns {React.ReactNode} 渲染的 React 元素
+   * @description 如果有错误，显示友好的错误界面；否则渲染子组件
+   */
   render() {
+    // 如果捕获到错误，显示错误界面
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen text-white p-8 text-center theme-bg-primary">
@@ -34,6 +73,7 @@ class ErrorBoundary extends React.Component<
           </p>
           <button
             onClick={() => {
+              // 清除本地存储并刷新页面
               localStorage.clear();
               window.location.reload();
             }}
@@ -44,6 +84,8 @@ class ErrorBoundary extends React.Component<
         </div>
       );
     }
+
+    // 没有错误时，渲染子组件
     return this.props.children;
   }
 }
