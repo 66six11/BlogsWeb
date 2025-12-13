@@ -3,48 +3,15 @@ import { BlogPost, DirectoryNode, GitHubUser } from '../types';
 import { GITHUB_USERNAME, GITHUB_REPO } from '../constants';
 import { BLOG_INCLUDED_FOLDERS, EXCLUDED_PATHS, EXCLUDED_FILES } from '../config';
 import { mockBlogPosts } from '../data/mockData';
-
-const CACHE_PREFIX = 'gh_cache_';
-const CACHE_DURATION = 15 * 60 * 1000; // 15 Minutes Cache
+import { clearCache, getCache, setCache } from '../utils/cache';
+import { parseFrontmatter } from '../utils/frontmatter';
 
 const getHeaders = (): HeadersInit => ({
   'Accept': 'application/json',
 });
 
 // --- Caching Helpers ---
-export const clearBlogCache = () => {
-    if (typeof window === 'undefined') return;
-    Object.keys(localStorage).forEach(key => {
-        if (key.startsWith(CACHE_PREFIX)) {
-            localStorage.removeItem(key);
-        }
-    });
-    console.log("Magic cache cleared.");
-};
-
-const getCache = <T>(key: string): T | null => {
-    if (typeof window === 'undefined') return null;
-    const json = localStorage.getItem(CACHE_PREFIX + key);
-    if (!json) return null;
-    try {
-        const { timestamp, data } = JSON.parse(json);
-        if (Date.now() - timestamp < CACHE_DURATION) {
-            return data as T;
-        }
-        localStorage.removeItem(CACHE_PREFIX + key);
-    } catch (e) {
-        localStorage.removeItem(CACHE_PREFIX + key);
-    }
-    return null;
-};
-
-const setCache = (key: string, data: any) => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({
-        timestamp: Date.now(),
-        data
-    }));
-};
+export { clearCache as clearBlogCache };
 
 export const fetchUserProfile = async (): Promise<GitHubUser | null> => {
   if (!GITHUB_USERNAME) return null;
@@ -72,33 +39,6 @@ export const fetchUserProfile = async (): Promise<GitHubUser | null> => {
     console.error("GitHub Profile Fetch Error", error);
     return null;
   }
-};
-
-const parseFrontmatter = (content: string) => {
-  const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
-  const match = content.match(frontmatterRegex);
-  
-  const metadata: any = {};
-  let body = content;
-
-  if (match) {
-    const frontmatterBlock = match[1];
-    body = content.replace(frontmatterRegex, '').trim();
-    
-    frontmatterBlock.split('\n').forEach(line => {
-      const [key, ...value] = line.split(':');
-      if (key && value) {
-        let val = value.join(':').trim();
-        if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
-        if (val.startsWith('[') && val.endsWith(']')) {
-             metadata[key.trim()] = val.slice(1, -1).split(',').map(s => s.trim());
-        } else {
-             metadata[key.trim()] = val;
-        }
-      }
-    });
-  }
-  return { metadata, body };
 };
 
 const isExcluded = (path: string) => {
