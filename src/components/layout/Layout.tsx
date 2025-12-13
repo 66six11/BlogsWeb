@@ -32,7 +32,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             useBlogStore.getState().setSelectedPost(null);
           }}
         >
-          <div className=" from-purple-600 to-amber-500 p-1.5 rounded-lg group-hover:rotate-[30deg] transition-transform shadow-[0_0_15px_rgba(251,191,36,0.4)]">
+          <div className="p-1.5 rounded-lg group-hover:rotate-[30deg] transition-transform">
             <HexagramIcon size={48} />
           </div>
           <span className="font-serif font-bold text-xl tracking-tight transition-colors drop-shadow-md theme-text-primary">
@@ -120,7 +120,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       
       <footer className="backdrop-blur-md border-t py-2 text-center text-sm mt-auto opacity-90 theme-footer theme-bg-primary theme-border-subtle theme-text-secondary md:fixed md:bottom-0 md:left-0 md:right-0 md:z-40">
         <p>
-          © {new Date().getFullYear()} {userProfile?.name || AUTHOR_NAME}. 灵感来自《魔女之旅》。
+          © {new Date().getFullYear()} {AUTHOR_NAME}. 灵感来自《魔女之旅》。
         </p>
         <div className="flex justify-center gap-4 mt-2 md:hidden">
           <a

@@ -2,6 +2,8 @@ import React from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { CustomSparkleIcon } from '../components/icons/CustomIcons';
 import { Code, Book } from 'lucide-react';
+import { AUTHOR_NAME } from '../constants';
+import { SITE_CONFIG } from '../config';
 
 const HomePage: React.FC = () => {
   const { userProfile, setCurrentView } = useAppStore();
@@ -32,13 +34,13 @@ const HomePage: React.FC = () => {
         </div>
 
         <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] text-center theme-text-primary">
-          {userProfile?.name || 'Elaina'}
+          {AUTHOR_NAME}
         </h1>
         <p className="text-xl md:text-2xl max-w-2xl mx-auto mb-10 font-light leading-relaxed drop-shadow-md text-center theme-text-secondary">
-          {userProfile?.bio || '"一位用代码和色彩编织新世界的旅行者。"'}
+          {SITE_CONFIG.authorBio}
           <br />
           <span className="text-base mt-3 block font-mono inline-block px-4 py-1 rounded-full border theme-text-accent1 accent-border-light">
-            Unity • Graphic • C++ • Art
+            {SITE_CONFIG.skills}
           </span>
         </p>
 
