@@ -754,7 +754,6 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                                 // Use backend API proxy to fetch images, avoiding direct GitHub raw URL issues
                                 const imagePath = `attachments/${embedName}`;
                                 const imageUrl = `/api/github/raw?owner=${encodeURIComponent(GITHUB_USERNAME)}&repo=${encodeURIComponent(GITHUB_REPO)}&path=${encodeURIComponent(imagePath)}`;
-
                                 // Parse size specification
                                 let widthStyle = {};
                                 let heightStyle = {};
@@ -870,7 +869,19 @@ const ObsidianRenderer: React.FC<ObsidianRendererProps> = ({
                     const imgMatch = line.match(/^!\[([^\]]*?)?\]\((.*?)\)/);
                     if (imgMatch) {
                         const altText = imgMatch[1] || '';
-                        const imageUrl = imgMatch[2];
+                        let imageUrl = imgMatch[2];
+                        
+                        // 转换直接指向 raw.githubusercontent.com 的图片链接，使其通过代理访问
+                        const rawGithubRegex = /https:\/\/raw\.githubusercontent\.com\/([^\/]+)\/([^\/]+)\/([^\/]+)\/(.*)/;
+                        const match = imageUrl.match(rawGithubRegex);
+                        if (match) {
+                            const owner = match[1];
+                            const repo = match[2];
+                            const path = match[4];
+                            // 使用代理 URL 替换直接的 GitHub raw URL
+                            imageUrl = `/api/github/raw?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&path=${encodeURIComponent(path)}`;
+                        }
+                        
                         result.push(
                             <div key={key} className="my-6 flex flex-col items-center">
                                 <img src={imageUrl} alt={altText}

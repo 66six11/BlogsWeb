@@ -204,9 +204,10 @@ export const fetchPostContent = async (path: string, useMockData = false): Promi
          if (cached) return cached;
 
          const branch = 'main'; 
-         const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${branch}/${encodeURI(path)}`;
+         // 使用代理 URL 替代直接的 GitHub raw URL，避免 CORS 问题和网络连接问题
+         const proxyUrl = `/api/github/raw?owner=${encodeURIComponent(GITHUB_USERNAME)}&repo=${encodeURIComponent(GITHUB_REPO)}&path=${encodeURIComponent(path)}`;
          
-         const res = await fetch(rawUrl);
+         const res = await fetch(proxyUrl);
          if (!res.ok) return null;
 
          const rawText = await res.text();
